@@ -130,28 +130,28 @@ components.singleTypeEditor = `
             <div class="col-2 col-sm-2 text-center">
                 <p>Level (Ngang)</p>
                 <p><input id="levelNUM-PLACEHOLDER" name="levelNUM-PLACEHOLDER" class="text-center" value="" type="text" size=4></p>
-                <input type="text" id="glyphinputlevelNUM-PLACEHOLDER" name="glyphinputlevelNUM-PLACEHOLDER" for="levelNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center" value="" size="1" maxlength="5">
+                <input type="text" id="glyphinputlevelNUM-PLACEHOLDER" name="glyphinputlevelNUM-PLACEHOLDER" for="levelNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center input-padding" value="" size="1" maxlength="5">
             </div>
             <div class="col-2 col-sm-2 text-center">
                 <p>Acute (Sắc)</p>
                 <p><input id="acuteNUM-PLACEHOLDER" name="acuteNUM-PLACEHOLDER" class="text-center" value="" type="text" size=4></p>
-                <input type="text" id="glyphinputacuteNUM-PLACEHOLDER" name="glyphinputacuteNUM-PLACEHOLDER" for="acuteNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center" value="" size="1" maxlength="5">
+                <input type="text" id="glyphinputacuteNUM-PLACEHOLDER" name="glyphinputacuteNUM-PLACEHOLDER" for="acuteNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center input-padding" value="" size="1" maxlength="5">
             </div><div class="col-2 col-sm-2 text-center">
                 <p>Lower (Huyền)</p>
                 <p><input id="lowerNUM-PLACEHOLDER" name="lowerNUM-PLACEHOLDER" class="text-center" value="" type="text" size=4></p>
-                <input type="text" id="glyphinputlowerNUM-PLACEHOLDER" name="glyphinputlowerNUM-PLACEHOLDER" for="lowerNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center" value="" size="1" maxlength="5">
+                <input type="text" id="glyphinputlowerNUM-PLACEHOLDER" name="glyphinputlowerNUM-PLACEHOLDER" for="lowerNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center input-padding" value="" size="1" maxlength="5">
             </div><div class="col-2 col-sm-2 text-center">
                 <p>Rising (Hỏi)</p>
                 <p><input id="risingNUM-PLACEHOLDER" name="risingNUM-PLACEHOLDER" class="text-center" value="" type="text" size=4></p>
-                <input type="text" id="glyphinputrisingNUM-PLACEHOLDER" name="glyphinputrisingNUM-PLACEHOLDER" for="risingNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center" value="" size="1" maxlength="5">
+                <input type="text" id="glyphinputrisingNUM-PLACEHOLDER" name="glyphinputrisingNUM-PLACEHOLDER" for="risingNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center input-padding" value="" size="1" maxlength="5">
             </div><div class="col-2 col-sm-2 text-center">
                 <p>Raised (Ngã)</p>
                 <p><input id="raisedNUM-PLACEHOLDER" name="raisedNUM-PLACEHOLDER" class="text-center" value="" type="text" size=4></p>
-                <input type="text" id="glyphinputraisedNUM-PLACEHOLDER" name="glyphinputraisedNUM-PLACEHOLDER" for="raisedNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center" value="" size="1   " maxlength="5">
+                <input type="text" id="glyphinputraisedNUM-PLACEHOLDER" name="glyphinputraisedNUM-PLACEHOLDER" for="raisedNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center input-padding" value="" size="1   " maxlength="5">
             </div><div class="col-2 col-sm-2 text-center">
                 <p>Heavy (Nặng)</p>
                 <p><input id="heavyNUM-PLACEHOLDER" name="heavyNUM-PLACEHOLDER" class="text-center" value="" type="text" size=4></p>
-                <input type="text" id="glyphinputheavyNUM-PLACEHOLDER" name="glyphinputheavyNUM-PLACEHOLDER" for="heavyNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center" value="" size="1" maxlength="5">
+                <input type="text" id="glyphinputheavyNUM-PLACEHOLDER" name="glyphinputheavyNUM-PLACEHOLDER" for="heavyNUM-PLACEHOLDER" oninput="handleGlyphInput(this)" class="glyph text-center input-padding" value="" size="1" maxlength="5">
             </div>
         </div>
         <div class="row  d-flex align-items-center p-2">                                
