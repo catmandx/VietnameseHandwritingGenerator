@@ -33,12 +33,25 @@ p{
     margin: 0;
 }
 
-#result{
+#result{    
+    padding-left: 14.4pt;
+    padding-top: calc(3pt + 14.4pt *2 );
     font-size:72pt ;
     font-family: HP001; 
     font-weight: bold;
-    background-color: aqua;
+    line-height: 72pt;
+    color: white;
     margin-top: 20px;
+}
+
+#result>p:not(:first-child){
+    margin-top: calc(14.4pt * 3);
+}
+
+#result>p:last-child::after{
+    content: ' ';
+    display: block;
+    height: calc(14.4pt * 3);
 }
 
 #rulesformitem{
@@ -110,5 +123,24 @@ p{
 
 .font-color-input{
     float: right;
+}
+
+.board{
+    background-color: #496e53;
+}
+
+.grid-big {
+    background-image:
+      repeating-linear-gradient(#ccc 0 2px, transparent 2px 100%),
+      repeating-linear-gradient(90deg, #ccc 0 2px, transparent 2px 100%);
+    background-size: calc(14.4pt * 4) calc(14.4pt * 4);
+    background-position: 14.4pt 28.8pt
+} 
+
+.grid-small {
+    background-image:
+      repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
+    background-size: 14.4pt 14.4pt;
 }
 
