@@ -16,30 +16,24 @@ view.addHandler = function () {
             return result.join(' ');
         });
 
-        $result.html("<p style=\"\">" + linesResult.join("</p><p>") + "</p>")
+        $result.html("<p>" + linesResult.join("</p><p>") + "</p>")
     })
 }
 
-view.changeFontSizeInput = function () {
-    var fontSizeInput = $("#font-size-input").val();
-    var input = $("#input");
-    var result = $("#result");
-    var fontSizeSelect = $("font-size-select");
-    if (isNaN(fontSizeInput) === false) {
-        input.css("font-size", fontSizeInput + "pt");
-        result.css("font-size", fontSizeInput + "pt");
-        fontSizeSelect.val("" + fontSizeInput);
+view.changeFontSize = function (input){
+    var fontSize = input.value;
+    console.log(fontSize)
+    switch (fontSize) {
+        case "36":
+            $("#result").addClass('small')
+            $("#result > p").addClass('small')
+            break;
+        case "72":
+        default:
+            $("#result").removeClass('small')
+            $("#result > p").removeClass('small')
+            break;
     }
-}
-
-view.changeFontSizeSelect = function () {
-    var fontSizeSelect = $("#font-size-select").val();
-    var input = $("#input");
-    var result = $("#result");
-    var fontSizeInput = $("#font-size-input");
-    input.css("font-size", fontSizeSelect + "pt");
-    result.css("font-size", fontSizeSelect + "pt");
-    fontSizeInput.val("" + fontSizeSelect);
 }
 
 view.changeColorText = function(){

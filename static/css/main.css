@@ -54,6 +54,16 @@ p{
     height: calc(14.4pt * 3);
 }
 
+#result.small{
+    padding-top: calc(2pt + 14.4pt *4);
+    font-size: 36pt;
+    line-height: 36pt;
+}
+
+#result>p.small:not(:first-child) {
+    margin-top: calc(14.4pt * 1.5);
+}
+
 #rulesformitem{
     display: flex;
     height: 200px;
