@@ -33,18 +33,14 @@ p{
     margin: 0;
 }
 
-#result{    
+#result {
     padding-left: 14.4pt;
-    padding-top: calc(3pt + 14.4pt *2 );
-    font-size:72pt ;
-    font-family: HP001; 
+    padding-top: calc(14.4pt * 0.7);
+    font-size: 72pt;
+    font-family: HP001;
     font-weight: bold;
-    line-height: 72pt;
+    line-height: calc(72pt + 14.4pt * 3);
     margin-top: 20px;
-}
-
-#result>p:not(:first-child){
-    margin-top: calc(14.4pt * 3);
 }
 
 #result>p:last-child::after{
@@ -54,13 +50,9 @@ p{
 }
 
 #result.small{
-    padding-top: calc(2pt + 14.4pt *4);
+    padding-top: calc(14.4pt *3.4);
     font-size: 36pt;
-    line-height: 36pt;
-}
-
-#result.small>p:not(:first-child) {
-    margin-top: calc(14.4pt * 1.5);
+    line-height: calc(36pt + 14.4pt * 1.5);
 }
 
 #rulesformitem{
