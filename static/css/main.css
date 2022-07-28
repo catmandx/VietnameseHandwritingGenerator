@@ -40,7 +40,6 @@ p{
     font-family: HP001; 
     font-weight: bold;
     line-height: 72pt;
-    color: white;
     margin-top: 20px;
 }
 
@@ -60,7 +59,7 @@ p{
     line-height: 36pt;
 }
 
-#result>p.small:not(:first-child) {
+#result.small>p:not(:first-child) {
     margin-top: calc(14.4pt * 1.5);
 }
 
@@ -135,22 +134,45 @@ p{
     float: right;
 }
 
-.board{
+.board.black{
+    color: white;
     background-color: #496e53;
 }
 
+.board.white{
+    color: black;
+    background-color: #ffffff;
+}
+
 .grid-big {
-    background-image:
-      repeating-linear-gradient(#ccc 0 2px, transparent 2px 100%),
-      repeating-linear-gradient(90deg, #ccc 0 2px, transparent 2px 100%);
     background-size: calc(14.4pt * 4) calc(14.4pt * 4);
     background-position: 14.4pt 28.8pt
 } 
 
 .grid-small {
-    background-image:
-      repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
-      repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
     background-size: 14.4pt 14.4pt;
 }
 
+.black .grid-big {
+    background-image:
+      repeating-linear-gradient(#ccc 0 2px, transparent 2px 100%),
+      repeating-linear-gradient(90deg, #ccc 0 2px, transparent 2px 100%);
+}
+
+.black .grid-small {
+    background-image:
+      repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
+}
+
+.white .grid-big {
+    background-image:
+      repeating-linear-gradient(rgb(217, 210, 255) 0 2px, transparent 2px 100%),
+      repeating-linear-gradient(90deg, rgb(217, 210, 255) 0 2px, transparent 2px 100%);
+}
+
+.white .grid-small {
+    background-image:
+      repeating-linear-gradient(rgb(217, 210, 255) 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(90deg, rgb(217, 210, 255) 0 1px, transparent 1px 100%);
+}

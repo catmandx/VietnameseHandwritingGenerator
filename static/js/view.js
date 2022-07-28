@@ -22,7 +22,6 @@ view.addHandler = function () {
 
 view.changeFontSize = function (input){
     var fontSize = input.value;
-    console.log(fontSize)
     switch (fontSize) {
         case "36":
             $("#result").addClass('small')
@@ -44,4 +43,19 @@ view.changeColorText = function(){
     input.style.color = colorValue.value;
     result.style.color = colorValue.value;
 
+}
+
+view.changeBoardColor = function(input) {
+    var boardColor = input.value;
+    switch (boardColor) {
+        case "white":
+            $(".board").removeClass('black')
+            $(".board").addClass('white')
+            break;
+        case "black":
+        default:
+            $(".board").removeClass('white')
+            $(".board").addClass('black')
+            break;
+    }
 }

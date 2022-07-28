@@ -69,13 +69,21 @@
               onchange="view.changeColorText()"
             />
           </form>
+
+          <form id="board-color-form" class="board-color-form">
+            <label id="board-color-label" class="board-color-label">Màu bảng</label>
+            <select id="board-color-select" class="board-color-select" oninput="view.changeBoardColor(this)" >
+              <option selected value="black">Bảng đen</option>
+              <option value="white">Bảng trắng</option>
+            </select>
+          </form>
         </div>
 
         <div id="font-color" class="font-color"></div>
       </div>
     </div>
 
-    <div class="board">
+    <div class="board black">
         <div class="grid-big">
             <div class="grid-small">
                 <div id="result">
