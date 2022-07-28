@@ -59,3 +59,12 @@ view.changeBoardColor = function(input) {
             break;
     }
 }
+
+view.changeWeight = function(input){
+    var isBold = input.checked;
+    if(isBold){
+        $("#result").addClass('bold')
+    }else{
+        $("#result").removeClass('bold')
+    }
+}

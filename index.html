@@ -77,6 +77,15 @@
               <option value="white">Bảng trắng</option>
             </select>
           </form>
+
+          <form id="weight-form" class="weight-form">
+            <label id="weight-label" class="weight-label">Chữ đậm</label>
+            <input
+              type="checkbox"
+              checked
+              onchange="view.changeWeight(this)"
+            />
+          </form>
         </div>
 
         <div id="font-color" class="font-color"></div>
@@ -86,7 +95,7 @@
     <div class="board black">
         <div class="grid-big">
             <div class="grid-small">
-                <div id="result">
+                <div id="result" class="bold">
                     
                 </div>
             </div>

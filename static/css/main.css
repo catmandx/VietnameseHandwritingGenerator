@@ -38,9 +38,12 @@ p{
     padding-top: calc(14.4pt * 0.7);
     font-size: 72pt;
     font-family: HP001;
-    font-weight: bold;
     line-height: calc(72pt + 14.4pt * 3);
     margin-top: 20px;
+}
+
+#result.bold {
+    font-weight: bold;
 }
 
 #result>p:last-child::after{
