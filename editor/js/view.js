@@ -28,7 +28,7 @@ view.showComponents = function(name){
 
             //Download json button
             $('#downloadJson').on('click', function(e){
-                model.download('all.json', JSON.stringify(model.glyphData))
+                model.download('all.json', JSON.stringify(model.glyphData, null, 2))
             })
 
             //edit base
