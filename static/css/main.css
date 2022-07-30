@@ -53,8 +53,8 @@ p{
 }
 
 #result.small{
-    padding-top: calc(14.4pt *3.4);
-    font-size: 36pt;
+    padding-top: calc(14.4pt *3.35);
+    font-size: 37pt; /* to fit to the height of the line, might need to be reverted */
     line-height: calc(36pt + 14.4pt * 1.5);
 }
 
