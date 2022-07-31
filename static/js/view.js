@@ -16,50 +16,11 @@ view.addHandler = function () {
             return result.join(' ');
         });
 
-        $result.html("<p>" + linesResult.join("</p><p>") + "</p>")
-        $result.children('p').each(function(eq, el) {
-            el = $(el);
-            if(typeof(el.attr('id')) === "undefined") {
-                el.attr('class', 'line')
-                el.attr('id', 'line-' + eq);
-            }
-        }).on("mouseenter", function(){
-            let $line = $(this)
-            let menu = `<div>
-            <i class="fa-solid fa-arrow-left"></i>
-            <i class="fa-solid fa-hand-dots"></i>
-            <i class="fa-solid fa-arrow-right"></i>
-            <div>
-            `
-            let $menu = $.parseHTML(menu)
-            
-            $($menu[0]).children().eq(0).on('click', $line, function(event){
-                console.log(event.data.parent())
-                if(event.data.parent().hasClass('small')){
-                    event.data.css('margin-left', '-=3.6pt');
-                }else{
-                    event.data.css('margin-left', '-=7.2pt');
-                }
-            })
-
-            $($menu[0]).children().eq(2).on('click', $line, function(event){
-                if(event.data.parent().hasClass('small')){
-                    event.data.css('margin-left', '+=3.6pt');
-                }else{
-                    event.data.css('margin-left', '+=7.2pt');
-                }
-            })
-
-            $($menu[0]).children().eq(1).on('click', $line, function(event){
-                //drag, todo, now its just reset button
-                event.data.css('margin-left', '0');
-            })
-
-            $line.append($menu)
-        }).on("mouseleave", function(){
-            let $line = $(this)
-            $line.children('div').remove()
-        })
+        // $result.html("<p>" + linesResult.join("</p><p>") + "</p>")
+        let $lines = $result.children('p');
+        view.addOrRemoveLines($lines, linesResult)
+        view.addLineHandler($result)
+        view.populateResult(linesResult)
     })
 }
 
@@ -113,43 +74,97 @@ view.changeWeight = function(input){
 }
 
 
-function dragElement(elmnt) {
-    var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    if (document.getElementById(elmnt.id + "header")) {
-      // if present, the header is where you move the DIV from:
-      document.getElementById(elmnt.id + "header").onmousedown = dragMouseDown;
-    } else {
-      // otherwise, move the DIV from anywhere inside the DIV:
-      elmnt.onmousedown = dragMouseDown;
+view.addLineHandler = function($result) {
+    $result.children('p').each(function(eq, el) {
+        el = $(el);
+        if(typeof(el.attr('id')) === "undefined") {
+            el.attr('class', 'line')
+            el.attr('id', 'line-' + eq);
+        }
+    }).on("mouseenter", function(){
+        let $line = $(this)
+        if($line.is(':empty')){
+            return
+        }
+        let menu = `<div>
+        <i class="fa-solid fa-arrow-rotate-left"></i>
+        <i class="fa-solid fa-arrow-left"></i>
+        <i class="fa-solid fa-hand-dots"></i>
+        <i class="fa-solid fa-arrow-right"></i>
+        <div>
+        `
+        let $menu = $.parseHTML(menu)
+        
+        $($menu[0]).children().eq(0).on('click', $line, function(event){
+            //reset button
+            event.data.css('margin-left', '0');
+        })
+
+        $($menu[0]).children().eq(1).on('click', $line, function(event){
+            console.log(event.data.parent())
+            if(event.data.parent().hasClass('small')){
+                event.data.css('margin-left', '-=3.6pt');
+            }else{
+                event.data.css('margin-left', '-=7.2pt');
+    }
+        })
+  
+        $($menu[0]).children().eq(3).on('click', $line, function(event){
+            if(event.data.parent().hasClass('small')){
+                event.data.css('margin-left', '+=3.6pt');
+            }else{
+                event.data.css('margin-left', '+=7.2pt');
+            }
+        })
+
+        $($menu[0]).children().eq(2).on('mousedown', $line, function(event){
+            //drag, todo, now its just reset button
+            event.data.addClass('dragging');
+            if(!event.data.attr('x-cord')){
+                event.data.attr('x-cord', event.pageX)
+            }
+        })
+
+        $(document.body).on('mouseup', $line, function(event){
+            //drag, todo, now its just reset button
+            $('.dragging').removeClass('dragging');
+        })
+
+        $(document.body).on('mousemove', function(event){
+            //drag, todo, now its just reset button
+            $line = $('.dragging')
+            if($line){
+                let origX = $line.attr('x-cord');
+                $line.css("margin-left", event.pageX - origX);
+    }
+        })
+  
+        $line.append($menu)
+    }).on("mouseleave", function(){
+        let $line = $(this)
+        $line.children('div').remove()
+    })
     }
   
-    function dragMouseDown(e) {
-      e = e || window.event;
-      e.preventDefault();
-      // get the mouse cursor position at startup:
-      pos3 = e.clientX;
-      pos4 = e.clientY;
-      document.onmouseup = closeDragElement;
-      // call a function whenever the cursor moves:
-      document.onmousemove = elementDrag;
+view.addOrRemoveLines = function($lines, linesResult){
+    if($lines.length == linesResult.length){
+        return
     }
-  
-    function elementDrag(e) {
-      e = e || window.event;
-      e.preventDefault();
-      // calculate the new cursor position:
-      pos1 = pos3 - e.clientX;
-      pos2 = pos4 - e.clientY;
-      pos3 = e.clientX;
-      pos4 = e.clientY;
-      // set the element's new position:
-      elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-      elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+    if ($lines.length > linesResult.length){
+        $lines.children('p').each(function(eq,el){
+            if(eq > (linesResult.length - 1)){
+                $(el).remove()
+            }
+        })
+    }else{
+        for (let i = 0; i < linesResult.length - $lines.length; i++) {
+            $('#result').append('<p></p>')
+        }
     }
-  
-    function closeDragElement() {
-      // stop moving when mouse button is released:
-      document.onmouseup = null;
-      document.onmousemove = null;
     }
+
+view.populateResult = function(linesResult){
+    $('#result').children('p').each(function(eq, el){
+        $(el).text(linesResult[eq])
+    })
   }
