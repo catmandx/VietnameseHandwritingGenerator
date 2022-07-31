@@ -73,6 +73,14 @@ view.changeWeight = function(input){
     }
 }
 
+view.changeStyle = function(input){
+    var isItalics = input.checked;
+    if(isItalics){
+        $(".grid").addClass('italics')
+    }else{
+        $(".grid").removeClass('italics')
+    }
+}
 
 view.addLineHandler = function($result) {
     $result.children('p').each(function(eq, el) {
@@ -106,9 +114,9 @@ view.addLineHandler = function($result) {
                 event.data.css('margin-left', '-=3.6pt');
             }else{
                 event.data.css('margin-left', '-=7.2pt');
-    }
+            }
         })
-  
+
         $($menu[0]).children().eq(3).on('click', $line, function(event){
             if(event.data.parent().hasClass('small')){
                 event.data.css('margin-left', '+=3.6pt');
@@ -136,16 +144,16 @@ view.addLineHandler = function($result) {
             if($line){
                 let origX = $line.attr('x-cord');
                 $line.css("margin-left", event.pageX - origX);
-    }
+            }
         })
-  
+
         $line.append($menu)
     }).on("mouseleave", function(){
         let $line = $(this)
         $line.children('div').remove()
     })
-    }
-  
+}
+
 view.addOrRemoveLines = function($lines, linesResult){
     if($lines.length == linesResult.length){
         return
@@ -161,10 +169,10 @@ view.addOrRemoveLines = function($lines, linesResult){
             $('#result').append('<p></p>')
         }
     }
-    }
+}
 
 view.populateResult = function(linesResult){
     $('#result').children('p').each(function(eq, el){
         $(el).text(linesResult[eq])
     })
-  }
+}
