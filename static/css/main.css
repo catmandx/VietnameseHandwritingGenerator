@@ -54,7 +54,7 @@ p{
 
 #result.small{
     padding-top: calc(14.4pt *3.35);
-    font-size: 37pt; /* to fit to the height of the line, might need to be reverted */
+    font-size: 37pt; /* to fit to the height of the line, might need to be reversed */
     line-height: calc(36pt + 14.4pt * 1.5);
 }
 
@@ -164,14 +164,18 @@ p{
       repeating-linear-gradient(90deg, rgb(186, 186, 186) 0 1px, transparent 1px 100%);
 }
 
-.white .grid-big {
-    background-image:
-      repeating-linear-gradient(rgb(217, 210, 255) 0 2px, transparent 2px 100%),
-      repeating-linear-gradient(90deg, rgb(217, 210, 255) 0 2px, transparent 2px 100%);
+p.line{
+    position: relative;
+}
+p.line > div {
+    user-select: none;
+    position: absolute;
+    left: 0;
+    top: -16pt;
+    font-size: 10pt;
+    line-height: normal;
 }
 
-.white .grid-small {
-    background-image:
-      repeating-linear-gradient(rgb(217, 210, 255) 0 1px, transparent 1px 100%),
-      repeating-linear-gradient(90deg, rgb(217, 210, 255) 0 1px, transparent 1px 100%);
+p.line > div > i:hover{
+    text-shadow: 1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue;
 }
