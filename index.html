@@ -1,38 +1,113 @@
 <html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-        <title>Viết chữ đẹp - HN</title>
-        <link rel="apple-touch-icon" sizes="180x180" href="/static/img/favicon/apple-touch-icon.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon/favicon-32x32.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon/favicon-16x16.png">
-        <link rel="manifest" href="/static/img/favicon/site.webmanifest">
-        <link rel="mask-icon" href="/static/img/favicon/safari-pinned-tab.svg" color="#5bbad5">
-        <link rel="shortcut icon" href="/static/img/favicon/favicon.ico">
-        <meta name="msapplication-TileColor" content="#da532c">
-        <meta name="msapplication-config" content="/static/img/favicon/browserconfig.xml">
-        <meta name="theme-color" content="#ffffff">
-        <script src="/static/js/jquery-3.6.0.min.js"></script>
-        <link rel="stylesheet" href="./static/css/main.css">
-        <script src="./static/js/model.js"></script>
-        <script src="./static/js/view.js"></script>
-        <script src="./static/js/controller.js"></script>
-        <script src="./static/js/utils.js"></script>
-        <script src="./static/js/index.js"></script>
-    </head>
-    <body>
-        <div id="rulesformitem" class="formitem">
-            <div class="textwrapper">
-                <textarea id="input" cols="2" rows="2" id="rules"></textarea>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+    <title>Viết chữ đẹp - HN</title>
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/static/img/favicon/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/static/img/favicon/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/static/img/favicon/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/static/img/favicon/site.webmanifest" />
+    <link
+      rel="mask-icon"
+      href="/static/img/favicon/safari-pinned-tab.svg"
+      color="#5bbad5"
+    />
+    <link rel="shortcut icon" href="/static/img/favicon/favicon.ico" />
+    <meta name="msapplication-TileColor" content="#da532c" />
+    <meta
+      name="msapplication-config"
+      content="/static/img/favicon/browserconfig.xml"
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <script src="/static/js/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="./static/css/main.css" />
+    <link rel="stylesheet" href="./static/css/board.css" />
+    <link rel="stylesheet" 
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.2/css/all.min.css">
+    <script src="./static/js/model.js"></script>
+    <script src="./static/js/view.js"></script>
+    <script src="./static/js/controller.js"></script>
+    <script src="./static/js/utils.js"></script>
+    <script src="./static/js/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prefixfree/1.0.7/prefixfree.min.js"></script>
+  </head>
+  <body>
+    <div id="rulesformitem" class="formitem">
+      <div class="textwrapper">
+        <textarea id="input" cols="2" rows="2" id="rules"></textarea>
+      </div>
+      <div id="option" class="option">
+        <div>
+          <form id="font-size-form" class="font-size-form" onsubmit="return false">
+            <label id="font-size-label" class="font-size-label">Cỡ chữ</label>
+            <select id="font-size-select" class="font-size-select" oninput="view.changeFontSize(this)" >
+              <option value="36">36</option>
+              <option selected value="72">72</option>
+            </select>
+            <input type="submit" hidden>
+          </form>
+
+          <form id="font-color-form" class="font-color-form">
+            <label id="font-color-lable" class="font-color-label">Màu chữ</label>
+            <input
+              type="color"
+              id="font-color-input"
+              class="font-color-input"
+              value="#000"
+              onchange="view.changeColorText()"
+            />
+          </form>
+
+          <form id="board-color-form" class="board-color-form">
+            <label id="board-color-label" class="board-color-label">Màu bảng</label>
+            <select id="board-color-select" class="board-color-select" oninput="view.changeBoardColor(this)" >
+              <option selected value="black">Bảng đen</option>
+              <option value="white">Bảng trắng</option>
+            </select>
+          </form>
+
+          <form id="weight-form" class="weight-form">
+            <label id="weight-label" class="weight-label">Chữ đậm</label>
+            <input
+              type="checkbox"
+              checked
+              onchange="view.changeWeight(this)"
+            />
+          </form>
+
+          <form id="style-form" class="style-form">
+            <label id="style-label" class="style-label">Chữ nghiêng</label>
+            <input
+              type="checkbox"
+              onchange="view.changeStyle(this)"
+            />
+          </form>
+
+        </div>
+
+        <div id="font-color" class="font-color"></div>
+      </div>
+    </div>
+
+    <div class="board black">
+        <div class="grid">
+            <div id="result" class="bold">
+                
             </div>
         </div>
-        <div class="board">
-            <div class="grid1">
-                <div class="grid">
-                    <div id="result">
-                        
-                    </div>
-                </div>
-            </div>
-        </div>
-        </body>
+    </div>
+  </body>
 </html>

@@ -18,7 +18,7 @@ model.getUnicodeStr = function(word){
     while (i < charArr.length - 1){
         let currChar = charArr[i];
         let nextChar = charArr[i+1];
-        if ("kh nh ch gh ph th".split(' ').indexOf(currChar+nextChar) >= 0){
+        if ("kh nh ch gh ph th Gh".split(' ').indexOf(currChar+nextChar) >= 0){
             charArr[i] = currChar+nextChar;
             charArr.splice(i+1,1);
         }
@@ -38,7 +38,7 @@ model.getUnicodeStr = function(word){
         i++;
     }
 
-    let baseChars = charArr.map(char => utils.removeAccents(char.toLowerCase()));
+    let baseChars = charArr.map(char => utils.removeAccents(char));
     let unicodeString = "";
     let base = null;
     let prev = null;

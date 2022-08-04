@@ -63,3 +63,8 @@ input.glyph-display{
 .not-resizable{
     resize: none;
 }
+
+.input-padding{
+    line-height: 10pt;
+    background-color: aquamarine;
+}

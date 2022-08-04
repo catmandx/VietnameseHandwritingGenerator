@@ -1,0 +1,612 @@
+# A
+– A Ba Boa Ca Cha Choa Da Doa Đa Ga Gia Ha Hoa Kha Khoa La Loa Ma Na Nga Ngoa Nha Oa Pa Pha Qua Ra Roa Sa Soa Ta Tha Thoa Toa Tra Va Xa Xoa
+– À Bà Cà Chà Dà Đà Gà Già Hà Hoà Khà Là Loà Mà Nà Ngà Nhà Nhoà Oà Phà Quà Rà Sà Tà Thà Thoà Toà Trà Và Xà Xoà
+– Ả Bả Cả Chả Dả Đả Gả Giả Hả Hoả Khả Khoả Lả Loả Mả Nả Ngả Nhả Phả Quả Rả Sả Tả Thả Thoả Toả Trả Vả Xả Xoả
+– Ã Bã Chã Dã Đã Gã Giã Lã Loã Mã Nã Ngã Ngoã Nhã Rã Sã Tã Thoã Trã Vã Xã Xoã
+– Á Bá Cá Chá Choá Dá Doá Đá Đoá Gá Goá Giá Há Hoá Khá Khoá Lá Loá Má Ná Nhá Phá Quá Rá Sá Tá Thá Thoá Toá Trá Vá Xá Xoá
+– Ạ Bạ Cạ Chạ Dạ Doạ Đoạ Gạ Giạ Hạ Hoạ Lạ Mạ Nạ Quạ Rạ Sạ Tạ Toạ Vạ Xạ
+# AC
+– Ác Bác Các Chác Choác Dác Đác Đoác Gác Giác Hác Hoác Khác Khoác Lác Mác Nác Ngác Ngoác Nhác Phác Quác Rác Sác Tác Thác Toác Trác Vác Xác Xoác
+– Bạc Cạc Chạc Choạc Dạc Đạc Gạc Hạc Khạc Lạc Loạc Mạc Nạc Ngạc Ngoạc Nhạc Phạc Quạc Rạc Sạc Tạc Thạc Toạc Trạc Vạc Xạc Xoạc
+# ACH
+– Ách Bách Cách Chách Dách Đách Hách Khách Lách Mách Nách Ngách Nhách Oách Phách Quách Rách Sách Tách Thách Trách Vách Xách
+– Ạch Bạch Cạch Chạch Đạch Gạch Hạch Hoạch Lạch Mạch Ngạch Oạch Phạch Quạch Rạch Sạch Tạch Thạch Trạch Vạch Xạch Xoạch
+# AI
+– Ai Bai Cai Chai Choai Dai Đai Gai Giai Hai Hoai Khai Khoai Lai Mai Nai Ngai Ngoai Nhai Nhoai Oai Phai Quai Rai Sai Tai Thai Thoai Trai Vai Xoai
+– Bài Cài Chài Choài Dài Đài Đoài Gài Hài Hoài Lài Loài Mài Nài Ngài Ngoài Nhài Nhoài Oài Quài Rài Sài Soài Tài Thài Toài Vài Xài Xoài
+– Ải Bải Cải Chải Dải Giải Hải Hoải Khải Khoải Lải Mải Nải Ngải Ngoải Nhải Oải Phải Quải Rải Sải Soải Tải Thải Thoải Trải Vải Xải Xoải
+– Bãi Cãi Chãi Choãi Dãi Doãi Đãi Gãi Giãi Hãi Lãi Mãi Ngãi Nhãi Rãi Sãi Tãi Thãi Vãi
+– Ái Bái Cái Chái Choái Dái Đái Đoái Gái Hái Khái Khoái Lái Mái Nái Ngái Ngoái Nhái Oái Phái Quái Rái Sái Soái Tái Thái Thoái Toái Trái Vái Xái
+– Bại Choại Dại Đại Gại Giại Hại Hoại Lại Loại Mại Nại Ngại Ngoại Nhại Oại Quại Tại Thoại Toại Trại Vại
+# AM
+– Am Cam Dam Đam Gam Giam Ham Kham Lam Nam Nham Ram Sam Tam Tham Xam
+– Chàm Dàm Đàm Hàm Làm Ngàm Nhàm Nhoàm Phàm Sàm Tàm Tràm Vàm Xàm Xoàm
+– Ảm Cảm Đảm Giảm Khảm Lảm Nhảm Thảm Trảm Xảm
+– Hãm Lãm
+– Ám Bám Cám Dám Đám Giám Hám Khám Mám Nám Nhám Rám Sám Tám Thám Trám Xám
+– Cạm Chạm Dạm Đạm Giạm Hạm Lạm Nạm Ngoạm Phạm Rạm Sạm Tạm Trạm Vạm Xạm
+# AN
+– An Ban Can Chan Dan Đan Đoan Gan Gian Han Hoan Khan Khoan Lan Loan Man Nan Ngan Ngoan Nhan Oan Pan Quan Ran San Tan Than Toan Van Voan Xan Xoan
+– Bàn Càn Dàn Đàn Đoàn Gàn Giàn Hàn Hoàn Khàn Làn Loàn Màn Nàn Ngàn Nhàn Phàn Quàn Ràn Sàn Soàn Tàn Toàn Tràn Vàn Xoàn
+– Bản Cản Đản Đoản Giản Khản Khoản Nản Nhản Oản Phản Quản Sản Tản Thản Toản
+– Dãn Doãn Giãn Hãn Hoãn Lãn Mãn Ngoãn Nhãn Noãn
+– Án Bán Cán Chán Choán Dán Đán Đoán Gán Gián Hán Hoán Khán Khoán Lán Nán Ngán Oán Phán Quán Rán Sán Soán Tán Thán Thoán Toán Trán Ván Xán
+– Bạn Cạn Chạn Dạn Đạn Đoạn Gạn Hạn Hoạn Lạn Loạn Mạn Nạn Ngạn Ngoạn Nhạn Phạn Rạn Sạn Soạn Vạn
+# ANG
+– Ang Bang Cang Chang Choang Dang Đang Gang Giang Hang Hoang Khang Khoang Lang Loang Mang Nang Ngang Nhang Oang Phang Quang Rang Sang Tang Thang Thoang Toang Trang Vang Xang Xoang
+– Bàng Càng Chàng Choàng Dàng Đàng Đoàng Gàng Giàng Hàng Khàng Làng Loàng Màng Nàng Ngàng Nhàng Oàng Phàng Quàng Ràng Sàng Tàng Toàng Tràng Vàng Xàng Xoàng
+– Ảng Bảng Cảng Choảng Đảng Đoảng Giảng Hảng Hoảng Khảng Khoảng Lảng Loảng Mảng Phảng Quảng Rảng Sảng Soảng Tảng Thảng Thoảng Trảng Vảng Xoảng
+– Đãng Hãng Hoãng Lãng Loãng Mãng Ngãng Nhãng Quãng Vãng
+– Áng Báng Cáng Cháng Choáng Dáng Đáng Giáng Háng Kháng Khoáng Láng Loáng Máng Náng Ngáng Nhoáng Quáng Ráng Sáng Táng Tháng Thoáng Toáng Tráng Váng Xáng
+– Bạng Chạng Choạng Dạng Giạng Hạng Khạng Lạng Loạng Mạng Nạng Nhạng Nhoạng Quạng Rạng Soạng Tạng Toạng Trạng Vạng
+# ANH
+– Anh Banh Canh Chanh Danh Doanh Đanh Ganh Gianh Hanh Khanh Khoanh Lanh Loanh Manh Nanh Nhanh Oanh Panh Phanh Quanh Ranh Sanh Tanh Thanh Toanh Tranh Vanh Xanh
+– Bành Cành Chành Dành Doành Đành Đoành Gành Giành Hành Hoành Lành Mành Nành Ngành Nhành Oành Phành Quành Rành Sành Tành Thành Trành Vành Xoành
+– Ảnh Bảnh Cảnh Dảnh Đảnh Gảnh Giảnh Hảnh Hoảnh Khảnh Khoảnh Lảnh Mảnh Ngảnh Ngoảnh Nhảnh Rảnh Sảnh Thảnh Vảnh
+– Hãnh Lãnh Mãnh Rãnh Vãnh
+– Ánh Bánh Cánh Chánh Đánh Gánh Hánh Hoánh Khánh Lánh Mánh Nánh Nhánh Quánh Sánh Tánh Thánh Tránh Vánh
+– Bạnh Cạnh Chạnh Gạnh Hạnh Hoạnh Lạnh Mạnh Nạnh Ngạnh Nhạnh Quạnh Tạnh Thạnh Trạnh Vạnh
+# AO
+– Ao Bao Cao Chao Dao Đao Gao Giao Hao Khao Lao Mao Nao Ngao Ngoao Nhao Phao Rao Sao Tao Thao Trao Vao Xao
+– Ào Bào Cào Chào Dào Đào Gào Hào Lào Mào Nào Ngào Nhào Phào Quào Rào Sào Tào Thào Trào Vào Xào
+– Ảo Bảo Cảo Chảo Đảo Giảo Hảo Khảo Lảo Nảo Nhảo Rảo Sảo Tảo Thảo Trảo Xảo
+– Bão Chão Hão Lão Mão Não Ngão Nhão Rão
+– Áo Báo Cáo Cháo Dáo Đáo Gáo Giáo Háo Kháo Láo Máo Náo Ngáo Ngoáo Nháo Pháo Quáo Ráo Sáo Táo Tháo Tráo Váo Xáo
+– Bạo Cạo Chạo Dạo Đạo Gạo Hạo Khạo Lạo Mạo Nạo Ngạo Nhạo Rạo Sạo Tạo Thạo Trạo Xạo
+# AP
+– Áp Cáp Đáp Gáp Giáp Háp Kháp Láp Náp Ngáp Ngoáp Nháp Pháp Ráp Sáp Táp Tháp Tráp Váp Xáp
+– Bạp Cạp Chạp Đạp Giạp Hạp Khạp Lạp Mạp Nạp Nhạp Oạp Rạp Sạp Tạp Thạp Vạp
+# AT
+– Át Bát Cát Chát Dát Đát Giát Hát Khát Khoát Lát Loát Mát Nát Ngát Nhát Oát Phát Quát Rát Sát Soát Tát Thát Thoát Toát Trát Vát Xát Xoát
+– Ạt Bạt Chạt Dạt Đạt Đoạt Gạt Giạt Hạt Hoạt Lạt Loạt Mạt Nạt Ngạt Nhạt Phạt Quạt Rạt Sạt Soạt Tạt Thoạt Trạt Vạt Xoạt
+# AU
+– Au Cau Chau Đau Gau Hau Khau Lau Mau Ngau Nhau Phau Rau Sau Tau Thau Trau
+– Bàu Càu Dàu Gàu Giàu Hàu Làu Màu Ngàu Nhàu Quàu Tàu Tràu Xàu
+– Bảu Cảu Chảu Giảu Lảu Nhảu Rảu Trảu Xảu
+– Báu Cáu Cháu Đáu Gáu Háu Kháu Láu Máu Náu Ngáu Ráu Sáu Táu Tháu
+– Bạu Cạu Lạu Quạu
+# AY
+– Bay Cay Chay Day Đay Gay Hay Hoay Khay Lay Loay May Moay Nay Ngay Ngoay Nhay Nhoay Phay Quay Ray Say Tay Thay Vay Xay Xoay
+– Bày Cày Chày Dày Đày Gày Giày Mày Này Ngày Quày Rày Tày Thày Vày
+– Bảy Chảy Dảy Đảy Gảy Khảy Lảy Mảy Nảy Ngoảy Nhảy Phảy Quảy Rảy Sảy Thảy Trảy Vảy Xảy
+– Dãy Đãy Gãy Giãy Hãy Nãy Rãy
+– Áy Cáy Cháy Dáy Đáy Gáy Háy Hoáy Kháy Khoáy Láy Máy Náy Ngáy Ngoáy Nháy Nhoáy Ráy Táy Toáy Váy Xáy Xoáy
+– Cạy Chạy Dạy Gạy Lạy Mạy Nạy Ngoạy Nhạy Quạy Rạy Vạy
+# ĂC
+– Ắc Bắc Cắc Chắc Đắc Hắc Hoắc Khắc Lắc Mắc Nắc Ngắc Ngoắc Nhắc Phắc Quắc Rắc Sắc Tắc Thắc Trắc Vắc Xắc
+– Cặc Chặc Dặc Đặc Gặc Giặc Hặc Hoặc Khặc Lặc Mặc Nặc Ngoặc Quặc Rặc Sặc Tặc Trặc Vặc
+# ĂM
+– Ăm Băm Căm Chăm Dăm Đăm Găm Giăm Hăm Khăm Lăm Măm Năm Ngăm Nhăm Oăm Phăm Quăm Răm Săm Tăm Thăm Trăm Xăm
+– Bằm Cằm Chằm Dằm Đằm Gằm Giằm Hằm Khoằm Lằm Nằm Nhằm Quằm Rằm Tằm Trằm Vằm
+– Bẳm Hẳm Khẳm Lẳm Thẳm
+– Ẵm Bẵm Đẵm Giẵm
+– Cắm Chắm Đắm Gắm Hoắm Khắm Lắm Mắm Nắm Ngắm Nhắm Quắm Rắm Sắm Tắm Thắm Trắm Xắm
+– Bặm Cặm Chặm Dặm Đặm Gặm Giặm Hặm Khặm Lặm Nhặm Quặm Rặm Sặm
+# ĂN
+– Ăn Băn Căn Chăn Dăn Khăn Khoăn Lăn Loăn Măn Năn Ngăn Nhăn Phăn Quăn Răn Săn Tăn Thăn Thoăn Trăn Văn Xăn Xoăn
+– Bằn Cằn Chằn Dằn Đằn Gằn Giằn Hằn Hoằn Khằn Lằn Mằn Ngằn Ngoằn Nhằn Oằn Quằn Rằn Tằn Thằn Trằn Vằn
+– Bẳn Cẳn Dẳn Hẳn Hoẳn Khẳn Rẳn Mẳn Nhẳn Tẳn Xoẳn
+– Chẵn Đẵn Nhẵn Sẵn
+– Bắn Cắn Chắn Đắn Gắn Hắn Khắn Khoắn Mắn Nắn Ngắn Nhắn Quắn Rắn Sắn Tắn Thắn Vắn Xắn Xoắn
+– Bặn Cặn Chặn Dặn Đặn Gặn Giặn Lặn Mặn Nặn Nhặn Quặn Rặn Tặn Trặn Vặn
+# ĂNG
+– Ăng Băng Căng Chăng Dăng Đăng Găng Giăng Hăng Hoăng Khăng Lăng Loăng Măng Năng Nhăng Phăng Quăng Răng Săng Tăng Thăng Trăng Văng Xăng
+– Bằng Chằng Dằng Đằng Giằng Hằng Khằng Lằng Loằng Nằng Ngoằng Nhằng Rằng Sằng Tằng Thằng Vằng Xằng
+– Ẳng Cẳng Chẳng Dẳng Đẳng Khẳng Lẳng Ngẳng Nhẳng Oẳng Phẳng Quẳng Thẳng Vẳng
+– Bẵng Đẵng Gẵng Hẵng Hoẵng Lẵng Ngẵng Ngoẵng Nhẵng Xẵng
+– Ắng Bắng Dắng Đắng Gắng Hắng Khắng Khoắng Lắng Mắng Nắng Nhắng Sắng Thắng Thoắng Trắng Vắng
+– Bặng Chặng Dặng Đặng Gặng Lặng Nặng Nhặng Quặng Rặng Tặng Thặng
+# ĂP
+– Ắp Bắp Cắp Chắp Đắp Gắp Khắp Lắp Nắp Nhắp Phắp Quắp Rắp Sắp Tắp Thắp Xắp
+– Bặp Cặp Chặp Gặp Lặp Quặp
+# ĂT
+– Ắt Bắt Cắt Chắt Choắt Dắt Đắt Gắt Giắt Hắt Hoắt Khắt Khoắt Lắt Loắt Mắt Ngắt Ngoắt Nhắt Oắt Phắt Quắt Rắt Sắt Tắt Thắt Thoắt Trắt Vắt Xắt
+– Bặt Cặt Chặt Dặt Đặt Gặt Giặt Lặt Mặt Ngặt Ngoặt Nhặt Oặt Quặt Rặt Sặt Vặt
+# ÂC
+– Bấc Cấc Gấc Giấc Khấc Lấc Nấc Ngấc Nhấc Quấc Tấc Xấc
+– Bậc Chậc
+# ÂM
+– Âm Câm Châm Dâm Đâm Giâm Hâm Khâm Lâm Mâm Ngâm Nhâm Râm Sâm Tâm Thâm Trâm Vâm Xâm
+– Ầm Bầm Cầm Chầm Dầm Đầm Gầm Giầm Hầm Lầm Mầm Nầm Ngầm Nhầm Phầm Rầm Sầm Tầm Thầm Trầm Xầm
+– Ẩm Bẩm Cẩm Chẩm Gẩm Hẩm Lẩm Mẩm Ngẩm Nhẩm Phẩm Rẩm Sẩm Tẩm Thẩm Trẩm Xẩm
+– Ẫm Bẫm Cẫm Chẫm Dẫm Đẫm Gẫm Giẫm Lẫm Mẫm Ngẫm Rẫm Sẫm Thẫm Trẫm
+– Ấm Bấm Cấm Chấm Dấm Đấm Gấm Giấm Hấm Khấm Lấm Nấm Ngấm Nhấm Rấm Sấm Tấm Thấm
+– Ậm Bậm Chậm Dậm Đậm Gậm Giậm Hậm Mậm Nậm Ngậm Nhậm Rậm Sậm Tậm Thậm Trậm Vậm
+# ÂN
+– Ân Bân Cân Chân Dân Gân Hân Huân Khân Khuân Lân Luân Mân Ngân Nhân Phân Quân Rân Sân Tân Thân Trân Truân Tuân Vân Xuân
+– Bần Cần Chần Dần Đần Gần Giần Lần Mần Nần Ngần Nhần Nhuần Phần Quần Rần Sần Tần Thần Thuần Trần Tuần Vần
+– Ẩn Bẩn Cẩn Chẩn Chuẩn Dẩn Khẩn Khuẩn Lẩn Luẩn Mẩn Ngẩn Nhẩn Quẩn Sẩn Tẩn Thẩn Vẩn Xẩn Xuẩn Uẩn
+– Cẫn Dẫn Đẫn Lẫn Mẫn Nẫn Nhẫn Phẫn Quẫn Thẫn Thuẫn Tuẫn Vẫn
+– Ấn Bấn Cấn Chấn Dấn Giấn Hấn Huấn Khấn Lấn Luấn Mấn Nấn Ngấn Nhấn Phấn Quấn Rấn Sấn Tấn Trấn Tuấn Vấn
+– Bận Cận Chận Dận Đận Giận Hận Lận Luận Mận Nhận Nhuận Phận Quận Rận Tận Thận Thuận Trận Vận
+# ÂNG
+– Bâng Câng Châng Dâng Khuâng Lâng Nâng Nhâng Tâng Trâng Vâng
+– Quầng Tầng Vầng
+– Hẩng Ngẩng Quẩng
+– Cẫng Hẫng Nẫng
+– Bấng Đấng Nấng
+– Nậng
+# ÂP
+– Ấp Bấp Cấp Chấp Dấp Gấp Giấp Hấp Khấp Lấp Mấp Nấp Ngấp Nhấp Phấp Rấp Sấp Tấp Thấp Trấp Vấp Xấp
+– Ập Bập Cập Chập Dập Đập Gập Giập Hập Khập Lập Mập Nập Ngập Nhập Phập Rập Sập Tập Thập Trập Vập Xập
+# ÂT
+– Ất Bất Cất Chất Đất Hất Khất Khuất Lất Mất Ngất Nhất Phất Quất Rất Sất Suất Tất Thất Truất Tuất Uất Vất Xuất
+– Bật Cật Chật Dật Đật Gật Giật Khật Lật Luật Mật Ngật Nhật Phật Quật Rật Tật Thật Thuật Trật Vật
+# ÂU
+– Âu Bâu Câu Châu Dâu Đâu Gâu Giâu Hâu Khâu Lâu Mâu Nâu Ngâu Nhâu Râu Sâu Tâu Thâu Trâu Xâu
+– Ầu Bầu Cầu Chầu Dầu Đầu Gầu Giầu Hầu Lầu Mầu Ngầu Nhầu Rầu Sầu Tầu Thầu Trầu Vầu Xầu
+– Ẩu Bẩu Cẩu Chẩu Dẩu Đẩu Hẩu Khẩu Lẩu Mẩu Nhẩu Tẩu Thẩu Trẩu Vẩu Xẩu
+– Chẫu Dẫu Gẫu Hẫu Mẫu Nẫu Ngẫu Phẫu
+– Ấu Bấu Cấu Chấu Dấu Đấu Gấu Giấu Hấu Khấu Mấu Nấu Ngấu Sấu Tấu Thấu Trấu Vấu Xấu
+– Ậu Bậu Cậu Chậu Dậu Đậu Giậu Hậu Lậu Mậu Nậu Ngậu Nhậu Sậu Tậu
+# ÂY
+– Bây Cây Chây Dây Đây Gây Giây Hây Khuây Lây Mây Nây Ngây Nguây Nhây Phây Quây Rây Sây Tây Thây Trây Vây Xây
+– Bầy Cầy Chầy Dầy Đầy Gầy Giầy Hầy Lầy Mầy Nầy Ngầy Nhầy Quầy Rầy Sầy Tầy Thầy Trầy Vầy
+– Ẩy Bẩy Dẩy Đẩy Gẩy Hẩy Khẩy Lẩy Mẩy Nẩy Nguẩy Nhẩy Phẩy Quẩy Rẩy Sẩy Tẩy Trẩy Vẩy Xẩy
+– Bẫy Dẫy Đẫy Gẫy Giẫy Lẫy Nẫy Nhẫy Quẫy Rẫy Vẫy
+– Ấy Bấy Cấy Chấy Dấy Đấy Gấy Giấy Hấy Khuấy Lấy Mấy Nấy Ngấy Quấy Sấy Tấy Thấy Vấy
+– Bậy Cậy Dậy Đậy Gậy Lậy Mậy Nậy Ngậy Nguậy Nhậy Quậy Sậy Vậy
+# E
+– Be Che Choe De Đe E Ghe Gie He Hoe Ke Khe Khoe Le Loe Me Ne Nghe Ngoe Nhe Nhoe Oe Phe Que Re Se Te The Toe Tre Ve Xe Xoe
+– Bè Chè Choè Dè Đè È Ghè Hè Hoè Kè Khè Lè Loè Mè Nè Nghè Nhè Nhoè Phè Què Rè Sè Tè Thè Toè Vè Xè Xoè
+– Bẻ Chẻ Dẻ Đẻ Ghẻ Giẻ Kẻ Khẻ Khoẻ Lẻ Mẻ Nẻ Nhẻ Oẻ Quẻ Rẻ Sẻ Tẻ Thẻ Toẻ Trẻ Vẻ Xẻ
+– Bẽ Chẽ Dẽ Đẽ Ghẽ Kẽ Khẽ Lẽ Mẽ Nhẽ Quẽ Rẽ Sẽ Tẽ Thẽ Toẽ Trẽ Vẽ
+– Bé Ché Choé Dé Đé É Ghé Gié Hé Ké Khé Khoé Lé Loé Mé Né Nghé Ngoé Nhé Oé Qué Ré Té Thé Toé Vé Xé
+– Bẹ Choẹ Ẹ Ghẹ Hẹ Hoẹ Kẹ Lẹ Mẹ Nẹ Nghẹ Nhẹ Oẹ Sẹ Trẹ
+# EC
+– Béc Đéc Éc Héc Kéc Léc Méc Phéc Séc Véc
+– Bẹc Ẹc Khẹc Vẹc
+# EM
+– Bem Đem Em Hem Kem Khem Lem Nem Nhem Tem Xem
+– Bèm Chèm Đèm Gièm Hèm Kèm Lèm Mèm Nhèm Rèm Tèm Thèm Trèm
+– Bẻm Hẻm Lẻm Nhẻm
+– Hẽm Kẽm
+– Chém Dém Đém Ém Ghém Kém Lém Mém Ném Sém Tém
+– Lẹm Nhẹm Vẹm
+# EN
+– Ben Chen Choen Den Đen En Ghen Gien Hen Hoen Ken Khen Khoen Len Loen Men Nen Nghen Ngoen Nhen Nhoen Phen Quen Ren Sen Ten Then Toen Ven Xen Xoen
+– Bèn Chèn Choèn Dèn Đèn Ghèn Hèn Kèn Khèn Lèn Mèn Nghèn Nhoèn Phèn Quèn Rèn Thèn Toèn Xèn Xoèn
+– Ẻn Hẻn Hoẻn Lẻn Ngoẻn Nhoẻn Sẻn Vẻn Xẻn
+– Bẽn Chẽn Lẽn Nghẽn Tẽn Trẽn
+– Bén Chén Én Hén Kén Khén Lén Mén Nén Nghén Nhén Quén Rén Vén Xén
+– Bẹn Chẹn Đẹn Hẹn Kẹn Lẹn Nghẹn Nhẹn Thẹn Vẹn
+# ENG
+– Beng Cheng Eng Keng Leng Teng Meng
+– Phèng Xèng
+– Chẻng Kẻng Lẻng Rẻng Xẻng
+– Béng Léng Phéng
+# EO
+– Beo Cheo Deo Đeo Eo Gieo Heo Keo Kheo Khoeo Leo Meo Neo Nheo Pheo Queo Reo Seo Teo Theo Treo Veo Xeo
+– Bèo Chèo Đèo Èo Hèo Kèo Khoèo Lèo Mèo Nèo Nghèo Ngoèo Nhèo Phèo Quèo Sèo Tèo Thèo Trèo Vèo Xèo
+– Bẻo Chẻo Dẻo Ẻo Hẻo Kẻo Khoẻo Lẻo Nẻo Nghẻo Ngoẻo Rẻo Tẻo Thẻo Trẻo Vẻo Xẻo
+– Bẽo Đẽo Ẽo Kẽo Lẽo Nghẽo Nhẽo Xẽo
+– Béo Chéo Đéo Éo Giéo Héo Kéo Khéo Léo Méo Néo Ngoéo Nhéo Quéo Réo Téo Tréo Véo Xéo
+– Bẹo Chẹo Ẹo Ghẹo Giẹo Kẹo Lẹo Mẹo Nghẹo Ngoẹo Nhẹo Quẹo Sẹo Tẹo Thẹo Trẹo Vẹo Xẹo
+# EP
+– Bép Chép Dép Ép Ghép Kép Khép Lép Mép Nép Nhép Phép Tép Thép Xép
+– Bẹp Dẹp Đẹp Ẹp Giẹp Hẹp Kẹp Lẹp Mẹp Nẹp Nhẹp Tẹp Xẹp
+# ET
+– Bét Chét Đét Ét Ghét Hét Hoét Két Khét Khoét Lét Loét Mét Nét Nghét Ngoét Nhét Nhoét Phét Quét Rét Sét Tét Thét Toét Trét Vét Xét Xoét
+– Bẹt Chẹt Choẹt Dẹt Đẹt Ẹt Kẹt Lẹt Loẹt Mẹt Nẹt Nghẹt Nhẹt Nhoẹt Quẹt Rẹt Tẹt Toẹt Trẹt Vẹt Xẹt Xoẹt
+# Ê
+– Bê Chê Dê Đê Ê Ghê Giê Hê Huê Kê Khê Khuê Lê Mê Nê Nghê Pê Phê Quê Rê Sê Suê Tê Thê Thuê Trê Vê Xê Xuê
+– Bề Chề Dề Đề Ề Ghề Hề Huề Kề Khề Lề Mề Nề Nghề Phề Rề Sề Tề Thề Trề Về Xề Xuề
+– Bể Dể Để Hể Kể Lể Nể Nghể Nhể Rể Sể Tể Thể Uể Xể Xuể
+– Bễ Dễ Đễ Hễ Lễ Mễ Nghễ Nhễ Rễ Tễ Trễ
+– Bế Chế Dế Đế Ế Ghế Huế Kế Khế Mế Phế Quế Rế Tế Thế Thuế Tuế Uế Vế Xế
+– Bệ Chệ Dệ Duệ Đệ Hệ Huệ Kệ Khệ Lệ Mệ Nệ Nghệ Nhuệ Phệ Quệ Rệ Sệ Tệ Thệ Trệ Tuệ Vệ Xệ
+# ÊCH
+– Chếch Đếch Ếch Ghếch Hếch Huếch Kếch Khuếch Lếch Mếch Nghếch Nguếch Nhếch Phếch Rếch Tếch Thếch Tuếch Vếch Xếch
+– Bệch Chệch Chuệch Dệch Ệch Ghệch Hệch Kệch Lệch Nghệch Nguệch Nhệch Quệch Rệch Trệch Xệch Xuệch
+# ÊM
+– Chêm Đêm Êm Nêm Rêm Têm Thêm
+– Đềm Kềm Mềm Thềm Xềm
+– Chễm
+– Chếm Đếm Ếm Nếm
+– Đệm Nệm
+# ÊN
+– Bên Hên Kên Lên Mên Nên Phên Quên Rên Sên Tên Trên Vên Xên
+– Bền Dền Đền Giền Kền Mền Nền Rền Sền Vền
+– Bển Hển Nghển Trển
+– Bến Đến Hến Mến Nến Rến Sến
+– Bện Chện Dện Nện Nghện Nhện Quện Rện Thện Vện
+# ÊNH
+– Bênh Chênh Dênh Đênh Hênh Huênh Kênh Khênh Lênh Mênh Nênh Nghênh Nhênh Sênh Tênh Thênh Vênh Xênh
+– Bềnh Chềnh Dềnh Duềnh Đềnh Đuềnh Ềnh Ghềnh Hềnh Kềnh Khềnh Lềnh Rềnh Tuềnh Xềnh Xuềnh
+– Chểnh Đểnh Đuểnh Ghểnh Hểnh Khểnh Nghểnh Sểnh Tểnh Vểnh Xểnh
+– Chễnh Ễnh Kễnh Khễnh Nghễnh Tễnh
+– Chếnh Chuếnh Trếnh
+– Bệnh Chệnh Chuệnh Kệnh Khệnh Lệnh Mệnh Phệnh
+# ÊP
+– Bếp Kếp Nếp Sếp Thếp Xếp
+– Đệp Rệp Tệp Xệp
+# ÊT
+– Bết Chết Dết Hết Kết Lết Mết Nết Phết Quết Rết Tết Thết Trết Vết
+– Bệt Dệt Ghệt Hệt Lệt Mệt Phệt Quệt Rệt Sệt Trệt Vệt Xệt
+# ÊU
+– Bêu Đêu Êu Kêu Khêu Lêu Nêu Nghêu Rêu Sêu Têu Thêu Trêu Vêu Xêu
+– Bều Đều Kều Khều Lều Nghều Phều Quều Rều Sều Thều Vều Xều
+– Đểu Lểu Nghểu Nhểu Thểu
+– Nghễu Phễu
+– Hếu Kếu Lếu Mếu Nếu Nhếu Phếu Sếu Tếu Trếu Vếu
+– Bệu Nghệu Rệu Trệu
+# I
+– Bi Chi Di Duy Đi Ghi Gi Hi Huy I Khi Khuy Ki Li Mi Ni Nghi Nguy Nhi Pi Phi Phuy Quy Ri Si Suy Thi Ti Tri Truy Tuy Uy Vi Xi Y
+– Bì Chì Chuỳ Dì Đì Ghì Gì Hì Ì Khì Kì Lì Mì Nì Nghì Nhì Phì Quỳ Rì Sì Thì Thuỳ Tì Truỳ Trì Tuỳ Vì Xì Xuỳ Ỳ
+– Bỉ Chỉ Gỉ Hỉ Huỷ Ỉ Khỉ Kỉ Mỉ Nghỉ Nhỉ Nỉ Phỉ Quỷ Rỉ Sỉ Thỉ Thuỷ Tỉ Tuỷ Uỷ Vỉ Xỉ Ỷ
+– Bĩ Dĩ Đĩ Hĩ Kĩ Lĩ Luỹ Mĩ Nghĩ Nhĩ Quỹ Rĩ Sĩ Thĩ Tĩ Trĩ Vĩ
+– Bí Chí Dí Gí Hí Huý Í Khí Kí Lí Luý Mí Nghí Nhí Phí Quý Rí Suý Thí Thuý Tí Trí Tuý Uý Ví Xí Xuý Ý
+– Bị Chị Dị Ị Khuỵ Kị Lị Luỵ Mị Nghị Nguỵ Nhị Nhuỵ Phị Quỵ Rị Sị Thị Thuỵ Tị Trị Truỵ Tuỵ Vị Xị
+# IA
+– Bia Chia Hia Khuya Kia Lia Luya Mia Nia Ria Thia Tia Tuya Xuya
+– Bìa Chìa Dìa Đìa Kìa Lìa Phìa Rìa Thìa Xìa
+– Đỉa Ỉa Mỉa Rỉa Sỉa Tỉa Trỉa Vỉa Xỉa
+– Chĩa Dĩa Đĩa Nghĩa Nĩa
+– Khía Mía Nghía Nhía Phía Thía Tía Vía Xía
+– Bịa Chịa Địa Gịa Khịa Lịa Phịa Rịa Sịa Tịa Trịa
+# Ích
+– Bích Chích Đích Gích Hích Huých Ích Khích Kích Lích Luých Mích Nhích Ních Phích Quých Rích Thích Tích Trích Vích Xích
+– Bịch Dịch Địch Hịch Huỵch Ịch Kịch Lịch Mịch Nghịch Nịch Phịch Rịch Thịch Tịch Trịch Uỵch
+# IÊC
+– Biếc Chiếc Diếc Điếc Ghiếc Giếc Liếc Nhiếc Siếc Thiếc Tiếc Xiếc
+– Diệc Tiệc Việc
+# IÊM
+– Chiêm Diêm Điêm Khiêm Kiêm Liêm Nghiêm Niêm Thiêm Tiêm Viêm Xiêm
+– Diềm Điềm Hiềm Kiềm Liềm Niềm Riềm Tiềm
+– Điểm Hiểm Kiểm Siểm Thiểm Xiểm Yểm
+– Diễm Liễm Nghiễm Nhiễm
+– Biếm Chiếm Điếm Giếm Hiếm Khiếm Kiếm Liếm Phiếm Tiếm Yếm
+– Diệm Điệm Kiệm Liệm Niệm Nghiệm Nhiệm Tiệm
+# IÊN
+– Biên Chiên Chuyên Diên Duyên Điên Hiên Huyên Khiên Khuyên Kiên Liên Miên Niên Nghiên Nguyên Nhiên Phiên Quyên Riên Thiên Thuyên Tiên Tuyên Uyên Viên Xiên Xuyên Yên
+– Biền Chiền Chuyền Điền Ghiền Hiền Huyền Khiền Kiền Liền Miền Nghiền Nguyền Phiền Quyền Thiền Thuyền Tiền Tuyền Triền Truyền Viền
+– Biển Chuyển Điển Hiển Khiển Khuyển Quyển Suyển Thiển Triển Tuyển Viển Uyển
+– Diễn Huyễn Liễn Miễn Nhiễn Nhuyễn Suyễn Tiễn Viễn
+– Biến Chiến Chuyến Điến Hiến Khiến Khuyến Kiến Liến Luyến Miến Nghiến Phiến Quyến Tiến Tuyến Xuyến Yến
+– Biện Chiện Chuyện Diện Điện Hiện Huyện Kiện Luyện Miện Nghiện Nguyện Phiện Quyện Thiện Tiện Triện Truyện Viện
+# IÊNG
+– Chiêng Điêng Giêng Hiêng Khiêng Kiêng Liêng Nghiêng Riêng Siêng Thiêng Tiêng Triêng Yêng
+– Chiềng Diềng Giềng Kiềng Niềng Riềng Tiềng Thiềng Triềng Xiềng
+– Kiểng Liểng Xiểng Yểng
+– Khiễng Kiễng Niễng
+– Biếng Chiếng Điếng Giếng Hiếng Kiếng Liếng Miếng Tiếng Viếng
+– Khiệng Liệng Miệng
+# IÊP
+– Chiếp Diếp Hiếp Khiếp Kiếp Liếp Nhiếp Thiếp Tiếp
+– Diệp Điệp Hiệp Liệp Nghiệp Thiệp Tiệp
+# IÊT
+– Biết Chiết Diết Giết Huyết Khiết Khuyết Kiết Miết Niết Phiết Quyết Riết Siết Thiết Thuyết Tiết Triết Tuyết Viết Xiết Xuyết Yết
+– Biệt Diệt Duyệt Hiệt Huyệt Kiệt Liệt Miệt Niệt Nghiệt Nguyệt Nhiệt Phiệt Quyệt Riệt Thiệt Tiệt Triệt Tuyệt Việt
+# IÊU
+– Chiêu Diêu Điêu Khiêu Kiêu Liêu Miêu Niêu Nhiêu Phiêu Riêu Siêu Thiêu Tiêu Xiêu Yêu
+– Chiều Diều Điều Kiều Liều Miều Nhiều Thiều Tiều Triều
+– Biểu Chiểu Điểu Hiểu Kiểu Thiểu Tiểu Yểu
+– Diễu Giễu Liễu Miễu Nhiễu Riễu Tiễu
+– Biếu Chiếu Diếu Điếu Hiếu Khiếu Kiếu Miếu Phiếu Riếu Thiếu Tiếu Yếu
+– Diệu Điệu Hiệu Kiệu Liệu Niệu Phiệu Thiệu Triệu
+# IM
+– Chim Dim Ghim Him Im Kim Lim Phim Rim Sim Tim
+– Bìm Chìm Dìm Ghìm Kìm Lìm Tìm
+– Ỉm Mỉm Nghỉm Tỉm
+– Hĩm Mĩm
+– Bím Chím Dím Mím Nhím Phím Thím Tím
+– Lịm Vịm
+# IN
+– Bin Din Đin Hin In Khin Lin Luyn Min Nin Gin Phin Rin Sin Pin Thin Tin Tuyn Vin Xin
+– Gìn Ìn Khìn Kìn Mìn Nghìn Nhìn Thìn
+– Chỉn Ỉn Xỉn
+– Chĩn Dĩn Rĩn Tĩn
+– Chín Ín Kín Nín Nhín Thín Tín
+– Bịn Mịn Nhịn Rịn Vịn Xịn
+# INH
+– Binh Chinh Dinh Đinh Huynh Inh Khinh Khuynh Kinh Linh Minh Ninh Nghinh Nhinh Phinh Rinh Sinh Thinh Tinh Trinh Vinh Xinh
+– Bình Chình Đình Hình Huỳnh Ình Khuỳnh Kình Lình Mình Phình Quỳnh Rình Sình Thình Tình Trình Uỳnh Xình
+– Bỉnh Chỉnh Đỉnh Hỉnh Khỉnh Khuỷnh Kỉnh Lỉnh Nghỉnh Nhỉnh Phỉnh Quỷnh Rỉnh Thỉnh Tỉnh Xỉnh
+– Bĩnh Chĩnh Dĩnh Đĩnh Hĩnh Ĩnh Nghĩnh Phĩnh Tĩnh Trĩnh Vĩnh Xĩnh
+– Bính Chính Dính Đính Ghính Kính Lính Nính Nhính Phính Quýnh Sính Thính Tính Xính
+– Bịnh Định Lịnh Nịnh Thịnh Tịnh Trịnh Vịnh
+# IP
+– Bíp Chíp Díp Gíp Híp Khuýp Kíp Líp Míp Níp Nhíp Típ Tuýp
+– Bịp Dịp Kịp Nhịp Quỵp Rịp
+# IT
+– Bít Buýt Chít Đít Hít Huýt Ít Khít Kít Lít Mít Nít Nguýt Nhít Pít Quýt Rít Sít Suýt Thít Tít Trít Tuýt Vít Xít Xuýt
+– Bịt Chịt Dịt Địt Ghịt Ịt Khịt Kịt Mịt Nghịt Nhịt Nịt Quỵt Rịt Sịt Suỵt Thịt Tịt Trịt Vịt Xịt Xuỵt
+# IU
+– Chiu Điu Hiu Iu Khiu Liu Niu Nghiu Phiu Riu Thiu Tiu
+– Bìu Dìu Đìu Lìu Rìu Thìu Trìu Xìu
+– Bỉu Ỉu Khuỷu Lỉu Nghỉu Nguỷu Nhỉu Thỉu Xỉu
+– Bĩu Kĩu Tĩu Trĩu
+– Bíu Chíu Díu Khíu Líu Míu Nhíu Níu Quýu Ríu Tíu Tríu Víu Xíu
+– Bịu Chịu Dịu Địu Khuỵu Lịu Nghịu Nhịu Nịu Phịu Tịu Xịu
+# O
+– Bo Cho Co Do Đo Gio Go Ho Kho Lo Mo Ngo Nho No O Pho Ro So Tho To Tro Vo Xo
+– Bò Chò Cò Dò Đò Giò Gò Hò Khò Lò Mò Ngò Nò Phò Rò Sò Thò Tò Trò Vò
+– Bỏ Chỏ Cỏ Dỏ Đỏ Giỏ Hỏ Khỏ Mỏ Ngỏ Nhỏ Nỏ Rỏ Sỏ Thỏ Tỏ Trỏ Vỏ Xỏ
+– Bõ Chõ Đõ Gõ Lõ Mõ Ngõ Nõ Rõ Võ
+– Bó Chó Có Dó Đó Gió Hó Khó Ló Mó Ngó Nhó Nó Ó Phó Ró Thó Tó Vó Xó
+– Bọ Cọ Dọ Đọ Giọ Gọ Họ Lọ Mọ Ngọ Nhọ Nọ Ọ Rọ Sọ Thọ Trọ Vọ Xọ
+# OC
+– Bóc Chóc Cóc Dóc Gióc Góc Hóc Khóc Lóc Móc Ngóc Nhóc Nóc Óc Phóc Róc Sóc Thóc Tóc Tróc Vóc Xóc
+– Bọc Chọc Cọc Dọc Đọc Học Lọc Mọc Ngọc Nhọc Nọc Ọc Rọc Sọc Thọc Tọc Trọc Vọc Xọc
+# OI
+– Choi Coi Doi Gioi Hoi Khoi Loi Moi Ngoi Nhoi Noi Oi Phoi Roi Soi Thoi Toi Voi Xoi
+– Chòi Còi Dòi Đòi Giòi Hòi Lòi Mòi Ngòi Nòi Òi Phòi Ròi Sòi Thòi Tròi Tòi Vòi
+– Bỏi Chỏi Cỏi Đỏi Giỏi Gỏi Hỏi Khỏi Lỏi Mỏi Ỏi Rỏi Sỏi Thỏi Tỏi
+– Cõi Dõi Lõi Rõi Sõi
+– Bói Chói Cói Dói Đói Giói Gói Hói Khói Lói Mói Ngói Nhói Nói Ói Rói Sói Thói Tói Trói Xói
+– Vói Xói
+– Chọi Dọi Đọi Giọi Gọi Lọi Mọi Rọi Trọi Vọi
+# OM
+– Bom Com Dom Đom Gom Hom Khom Lom Mom Nhom Nom Om Pom Thom Tom Trom Xom
+– Chòm Còm Dòm Hòm Khòm Lòm Mòm Ngòm Nhòm Nòm Sòm Thòm Tòm Tròm Vòm
+– Bỏm Chỏm Cỏm Dỏm Đỏm Hỏm Lỏm Mỏm Ngỏm Nhỏm Nỏm Ỏm Rỏm Thỏm
+– Bõm Chõm Hõm Lõm Mõm Nhõm Tõm Trõm
+– Cóm Dóm Đóm Hóm Khóm Lóm Móm Ngóm Nhóm Róm Thóm Tóm Xóm
+– Cọm Khọm Lọm Sọm
+# ON
+– Bon Chon Con Don Đon Gion Gon Hon Lon Mon Ngon Nhon Non Son Thon Ton Von Xon
+– Bòn Còn Đòn Giòn Gòn Hòn Lòn Mòn Ròn Sòn Tòn Tròn Vòn
+– Chỏn Cỏn Giỏn Hỏn Lỏn Ngỏn Ỏn Rỏn Vỏn
+– Nõn
+– Bón Cón Đón Món Ngón Nhón Nón Rón Són Vón Xón
+– Bọn Chọn Cọn Dọn Đọn Gọn Lọn Mọn Ngọn Nhọn Nọn Trọn
+# ONG
+– Bong Chong Cong Dong Đong Giong Hong Long Mong Nhong Nong Ong Phong Rong Song Thong Tong Trong Vong Xong
+– Bòng Chòng Còng Dòng Đòng Hòng Khòng Lòng Mòng Ngòng Nhòng Nòng Òng Phòng Ròng Sòng Thòng Tòng Tròng Vòng
+– Bỏng Chỏng Dỏng Đỏng Giỏng Gỏng Hỏng Khỏng Lỏng Mỏng Ngỏng Nhỏng Ỏng Phỏng Tỏng Trỏng Vỏng
+– Bõng Chõng Cõng Dõng Lõng Ngõng Nhõng Õng Sõng Thõng Võng Xõng
+– Bóng Chóng Cóng Dóng Đóng Gióng Hóng Lóng Móng Ngóng Nhóng Nóng Óng Phóng Róng Sóng Tróng Vóng
+– Bọng Cọng Dọng Đọng Giọng Gọng Họng Lọng Mọng Ngọng Nọng Tọng Trọng Vọng
+# OOC
+– Coóc Moóc Phoóc Soóc
+# OONG
+– Boong Loong Moong Soong Toong Xoong
+– Choòng Goòng Toòng
+– Boóng
+# OP
+– Bóp Chóp Cóp Góp Hóp Lóp Móp Ngóp Nhóp Nóp Óp Thóp Tóp
+– Cọp Dọp Họp Lọp Mọp Ọp Tọp Vọp Xọp
+# OT
+– Bót Chót Cót Đót Gót Hót Lót Mót Ngót Nhót Nót Ót Phót Rót Sót Thót Tót Trót Vót Xót
+– Bọt Chọt Cọt Đọt Giọt Gọt Lọt Mọt Ngọt Nhọt Nọt Phọt Rọt Sọt Thọt Tọt Trọt Vọt
+# Ô
+– Bô Cô Dô Đô Giô Gô Hô Khô Lô Mô Ngô Nhô Nô Ô Phô Pô Rô Sô Thô Tô Trô Vô Xô
+– Bồ Chồ Cồ Dồ Đồ Giồ Gồ Hồ Lồ Mồ Ngồ Ồ Rồ Sồ Thồ Tồ Trồ Vồ Xồ
+– Bổ Cổ Đổ Gổ Hổ Khổ Lổ Mổ Ngổ Nhổ Nổ Ổ Phổ Rổ Sổ Thổ Tổ Trổ Vổ Xổ
+– Bỗ Chỗ Cỗ Dỗ Đỗ Giỗ Gỗ Hỗ Lỗ Mỗ Ngỗ Nỗ Rỗ Sỗ Trỗ Vỗ
+– Bố Cố Đố Hố Khố Lố Mố Ngố Nhố Ố Phố Số Thố Tố Trố Vố Xố
+– Bộ Chộ Cộ Độ Gộ Hộ Lộ Mộ Ngộ Nộ Rộ Sộ Tộ Trộ
+# ÔC
+– Bốc Chốc Cốc Dốc Đốc Gốc Hốc Khốc Lốc Mốc Ngốc Nhốc Nốc Ốc Phốc Rốc Sốc Thốc Tốc Trốc Vốc Xốc
+– Bộc Cộc Dộc Độc Gộc Hộc Lộc Mộc Ngộc Ộc Rộc Thộc Tộc Xộc
+# ÔI
+– Bôi Côi Dôi Đôi Hôi Khôi Lôi Môi Ngôi Nhôi Nôi Ôi Phôi Sôi Thôi Tôi Trôi Vôi Xôi
+– Bồi Chồi Dồi Đồi Giồi Gồi Hồi Lồi Mồi Ngồi Nhồi Nồi Rồi Sồi Tồi Trồi
+– Bổi Chổi Cổi Dổi Đổi Giổi Hổi Nổi Ổi Phổi Sổi Thổi Trổi Xổi
+– Chỗi Cỗi Dỗi Đỗi Giỗi Lỗi Mỗi Nỗi Rỗi Trỗi
+– Bối Chối Cối Dối Đối Giối Gối Hối Khối Lối Mối Nhối Nối Ối Phối Rối Thối Tối Trối Vối Xối
+– Bội Chội Cội Dội Đội Giội Gội Hội Lội Mội Nhội Nội Tội Trội Vội
+# ÔM
+– Bôm Chôm Côm Đôm Gôm Hôm Lôm Môm Nhôm Nôm Ôm Phôm Rôm Tôm Xôm
+– Bồm Chồm Cồm Đồm Gồm Lồm Mồm Nhồm Nồm Ồm Thồm Xồm
+– Dổm Hổm Lổm Ngổm Nhổm Xổm
+– Chỗm
+– Cốm Đốm Gốm Lốm Ốm
+– Cộm Lộm Nộm Rộm Trộm
+# ÔN
+– Bôn Chôn Côn Đôn Giôn Gôn Hôn Khôn Môn Ngôn Nhôn Nôn Ôn Phôn Thôn Tôn Trôn Vôn Xôn
+– Bồn Chồn Cồn Dồn Đồn Hồn Lồn Mồn Ngồn Nhồn Ồn Phồn Sồn Thồn Tồn Vồn Xồn
+– Bổn Cổn Hổn Lổn Ngổn Nhổn Ổn Rổn Thổn Tổn
+– Hỗn Thỗn
+– Bốn Chốn Cốn Đốn Khốn Lốn Ngốn Nhốn Rốn Thốn Tốn Trốn Vốn Xốn
+– Bộn Chộn Cộn Độn Hộn Lộn Nộn Ngộn Nhộn Rộn Thộn Trộn Xộn
+# ÔNG
+– Bông Chông Công Dông Đông Giông Gông Hông Không Lông Mông Ngông Nhông Nông Ông Phông Rông Sông Thông Tông Trông Vông Xông
+– Bồng Chồng Cồng Dồng Đồng Giồng Gồng Hồng Lồng Mồng Ngồng Nhồng Nồng Ồng Phồng Rồng Sồng Tồng Trồng Vồng Xồng
+– Bổng Chổng Cổng Đổng Hổng Khổng Lổng Mổng Nổng Ổng Phổng Sổng Tổng Trổng Vổng Xổng
+– Bỗng Hỗng Ngỗng Nỗng Phỗng Rỗng
+– Bống Chống Cống Đống Giống Hống Khống Mống Nống Ống Rống Sống Thống Tống Trống Vống Xống
+– Bộng Cộng Dộng Động Lộng Mộng Nhộng Phộng Rộng Trộng
+# ÔP
+– Bốp Chốp Cốp Đốp Lốp Ốp Phốp Sốp Tốp Xốp
+– Bộp Chộp Cộp Dộp Độp Giộp Gộp Hộp Lộp Nộp Ộp Rộp Sộp Thộp Xộp
+# ÔT
+– Bốt Chốt Cốt Dốt Đốt Giốt Hốt Lốt Mốt Ngốt Nhốt Nốt Ốt Phốt Rốt Sốt Thốt Tốt Trốt Xốt
+– Bột Chột Cột Dột Đột Gột Hột Lột Một Ngột Nhột Nột Sột Thột Tột
+# Ơ
+– Bơ Chơ Cơ Dơ Đơ Giơ Gơ Hơ Huơ Khơ Khuơ Lơ Mơ Ngơ Nhơ Nơ Ơ Phơ Quơ Rơ Sơ Thơ Tơ Trơ Vơ Xơ
+– Bờ Chờ Cờ Dờ Đờ Giờ Gờ Hờ Khờ Lờ Mờ Ngờ Nhờ Ờ Phờ Quờ Rờ Sờ Thờ Tờ Trờ Vờ Xờ
+– Bở Chở Dở Giở Gở Hở Lở Mở Nhở Nở Ở Phở Quở Rở Sở Thở Thuở Tở Trở Vở Xở
+– Bỡ Cỡ Dỡ Đỡ Gỡ Hỡ Lỡ Mỡ Ngỡ Nhỡ Nỡ Rỡ Sỡ Vỡ Xỡ
+– Bớ Chớ Cớ Dớ Đớ Hớ Khớ Lớ Mớ Ngớ Nhớ Nớ Ớ Quớ Rớ Sớ Thớ Tớ Trớ Vớ Xớ
+– Bợ Chợ Dợ Đợ Lợ Mợ Ngợ Nhợ Nợ Ợ Rợ Sợ Thợ Tợ Trợ Vợ
+# ƠI
+– Bơi Chơi Cơi Dơi Hơi Khơi Lơi Ngơi Nhơi Nơi Ơi Phơi Rơi Thơi Tơi Trơi Vơi Xơi
+– Bời Cời Dời Đời Giời Hời Lời Mời Ngời Nhời Rời Thời Tời Trời Vời
+– Bởi Cởi Gởi Hởi Khởi Lởi Nhởi Sởi Xởi
+– Cỡi Hỡi Lỡi
+– Bới Chới Đới Giới Khới Lới Mới Nới Ới Phới Sới Thới Tới Với Xới
+– Đợi Gợi Hợi Lợi Ngợi Rợi Sợi Vợi
+# ƠM
+– Bơm Cơm Chơm Đơm Ngơm Nhơm Nơm Rơm Sơm Thơm Xơm
+– Bờm Chờm Đờm Gờm Hờm Lờm Mờm Ngờm Nhờm Nờm Rờm Sờm Xờm
+– Chởm Đởm Lởm Rởm Tởm
+– Cỡm Lỡm Nỡm Ỡm
+– Cớm Chớm Gớm Hớm Mớm Nhớm Ớm Rớm Sớm Thớm
+– Bợm Cợm Dợm Hợm Lợm Ngợm
+# ƠN
+– Bơn Chơn Cơn Dơn Đơn Hơn Lơn Mơn Nhơn Ơn Phơn Rơn Sơn Thơn Trơn Xơn
+– Chờn Dờn Đờn Giờn Gờn Hờn Lờn Nhờn Rờn Sờn Vờn
+– Đởn Hởn Lởn Mởn Nhởn Phởn Rởn Sởn Tởn Vởn
+– Bỡn Cỡn Giỡn Nhỡn Phỡn Rỡn
+– Chớn Cớn Dớn Đớn Hớn Lớn Mớn Ngớn Nhớn Ớn Phớn Sớn Tớn Trớn
+– Bợn Chợn Cợn Dợn Gợn Lợn Rợn Tợn Trợn
+# ƠP
+– Bớp Chớp Dớp Đớp Hớp Khớp Lớp Ngớp Nhớp Nớp Rớp
+– Bợp Chợp Cợp Hợp Lợp Ngợp Nợp Rợp Tợp
+# ƠT
+– Bớt Chớt Cớt Chớt Đớt Hớt Lớt Ngớt Nhớt Nớt Ớt Phớt Rớt Sớt Thớt Trớt Vớt Xớt
+– Bợt Chợi Cợt Đợt Gợt Hợt Lợt Nhợt Ợt Trợt Vợt
+# U
+– Bu Chu Cu Du Đu Gu Hu Khu Lu Mu Ngu Nhu Nu Phu Pu Ru Su Thu Tru Tu U Vu Xu
+– Bù Chù Cù Dù Đù Gù Hù Khù Lù Mù Ngù Phù Rù Sù Thù Trù Tù Ù Vù Xù
+– Bủ Chủ Củ Đủ Hủ Khủ Lủ Mủ Ngủ Nhủ Phủ Rủ Thủ Trủ Tủ Ủ
+– Cũ Giũ Hũ Lũ Mũ Ngũ Nhũ Phũ Rũ Vũ Xũ
+– Bú Chú Cú Đú Giú Gú Hú Khú Lú Mú Nhú Phú Rú Sú Thú Trú Tú Ú Vú Xú
+– Bụ Cụ Dụ Đụ Gụ Hụ Khụ Lụ Mụ Ngụ Nhụ Nụ Phụ Sụ Thụ Trụ Tụ Ụ Vụ Xụ
+# UA
+– Bua Chua Cua Dua Đua Hua Khua Lua Mua Nua Phua Rua Thua Tua Vua Xua
+– Bùa Chùa Dùa Đùa Gùa Hùa Lùa Mùa Rùa Thùa Ùa Vùa
+– Bủa Của Nủa Rủa Sủa Thủa Tủa Ủa
+– Dũa Đũa Giũa Lũa Rũa
+– Búa Chúa Dúa Đúa Lúa Múa Nhúa Túa Úa
+– Bụa Giụa Lụa Ngụa Nhụa Pụa Rụa Sụa Trụa
+# UC
+– Cúc Chúc Đúc Húc Khúc Lúc Múc Ngúc Nhúc Núc Phúc Rúc Súc Thúc Trúc Túc Úc Vúc Xúc
+– Bục Chục Cục Dục Đục Giục Gục Hục Khục Lục Mục Ngục Nhục Nục Phục Rục Sục Thục Trục Tục Ục Vục Xục
+# UI
+– Chui Cui Đui Hui Khui Lui Mui Phui Rui Sui Thui Trui Tui Ui Vui Xui
+– Bùi Chùi Cùi Dùi Đùi Giùi Gùi Hùi Lùi Mùi Ngùi Nhùi Nùi Sùi Thùi Trùi Vùi Xùi
+– Củi Dủi Đủi Giủi Hủi Lủi Mủi Ngủi Nhủi Phủi Rủi Sủi Thủi Tủi Ủi
+– Chũi Cũi Dũi Đũi Gũi Lũi Mũi Trũi
+– Búi Chúi Cúi Dúi Giúi Húi Lúi Múi Nhúi Núi Thúi Túi Úi Xúi
+– Bụi Cụi Dụi Giụi Gụi Hụi Lụi Mụi Nhụi Rụi Thụi Trụi Tụi Xụi
+# UM
+– Chum Cum Đum Hum Khum Lum Nhum Rum Sum Thum Tum Um Xum
+– Bùm Chùm Cùm Đùm Giùm Hùm Lùm Rùm Sùm Thùm Trùm Tùm Ùm Xùm
+– Củm Lủm Mủm Ngủm Thủm Tủm
+– Chũm Hũm Lũm Mũm Tũm Vũm
+– Chúm Cúm Dúm Đúm Khúm Lúm Múm Nhúm Núm Rúm Trúm Túm Úm Xúm
+– Bụm Chụm Cụm Dụm Hụm Lụm Ngụm Rụm Sụm Trụm Tụm
+# UN
+– Chun Cun Dun Đun Giun Hun Mun Phun Run Sun Thun Tun Un Vun Xun
+– Bùn Chùn Cùn Dùn Đùn Gùn Hùn Lùn Mùn Ngùn Nùn Phùn Rùn Trùn Ùn Vùn
+– Bủn Chủn Củn Hủn Lủn Mủn Ngủn Nhủn Rủn Tủn Ủn
+– Chũn Cũn Lũn Nhũn
+– Bún Cún Dún Lún Mún Ngún Nhún Phún Rún Sún
+– Đụn Lụn Mụn Sụn Vụn
+# UNG
+– Bung Chung Cung Dung Đung Hung Khung Lung Mung Nhung Nung Phung Rung Sung Thung Trung Tung Ung Vung Xung
+– Bùng Chùng Cùng Dùng Đùng Gùng Hùng Khùng Lùng Mùng Ngùng Nhùng Nùng Phùng Rùng Sùng Thùng Trùng Tùng Ùng Vùng Xùng
+– Bủng Chủng Củng Đủng Khủng Lủng Mủng Ngủng Nhủng Rủng Sủng Thủng Ủng Xủng
+– Cũng Dũng Đũng Lũng Nhũng Nũng Sũng Thũng Trũng Vũng
+– Búng Chúng Cúng Dúng Đúng Húng Khúng Lúng Ngúng Nhúng Núng Phúng Rúng Súng Thúng Trúng Túng Úng Xúng
+– Bụng Cụng Dụng Đụng Khụng Lụng Nhụng Phụng Rụng Thụng Trụng Tụng Vụng
+# UÔC
+– Chuốc Cuốc Duốc Đuốc Guốc Luốc Nhuốc Puốc Quốc Ruốc Thuốc Tuốc
+– Buộc Chuộc Cuộc Duộc Giuộc Guộc Luộc Nuộc Thuộc Tuộc
+# UÔI
+– Chuôi Duôi Đuôi Muôi Nguôi Nuôi Xuôi
+– Buồi Chuồi Muồi Ruồi Tuồi
+– Buổi Đuổi Ruổi Tuổi
+– Chuỗi Duỗi Muỗi
+– Chuối Cuối Duối Đuối Muối Nuối Ruối Suối
+– Chuội Cuội Muội Nguội
+# UÔM
+– Chuôm Luôm Nhuôm Uôm
+– Buồm
+– Cuỗm Muỗm
+– Nhuốm Nuốm
+– Buộm Luộm Nhuộm Ruộm Thuộm Xuộm
+# UÔN
+– Buôn Khuôn Luôn Muôn Ruôn Suôn Thuôn Tuôn
+– Buồn Chuồn Cuồn Đuồn Luồn Nguồn Thuồn Tuồn
+– Đuỗn Thuỗn
+– Cuốn Muốn Thuốn Tuốn Uốn
+– Cuộn Guộn Muộn
+# UÔNG
+– Buông Chuông Cuông Khuông Luông Muông Nuông Suông Truông Tuông Vuông
+– Buồng Chuồng Cuồng Guồng Luồng Muồng Ruồng Suồng Thuồng Truồng Tuồng Xuồng
+– Thuổng Uổng Xuổng
+– Luỗng Muỗng Ruỗng
+– Cuống Đuống Huống Luống Muống Uống Xuống
+– Chuộng Cuộng Ruộng
+# UÔT
+– Buốt Chuốt Huốt Luốt Muốt Nuốt Ruốt Suốt Tuốt Vuốt
+– Buột Chuột Đuột Guột Nuột Ruột Tuột Uột Vuột
+# UP
+– Búp Cúp Đúp Giúp Húp Lúp Múp Núp Rúp Súp Túp Úp
+– Bụp Chụp Cụp Đụp Hụp Lụp Ngụp Sụp Thụp Ụp Xụp
+# UT
+– Bút Chút Cút Dút Đút Gút Hút Lút Mút Ngút Nhút Nút Phút Rút Sút Thút Trút Tút Út Vút Xút
+– Bụt Chụt Cụt Dụt Đụt Hụt Khụt Lụt Mụt Ngụt Nhụt Phụt Rụt Sụt Thụt Trụt Tụt Ụt Vụt
+# Ư
+– Chư Cư Dư Hư Khư Lư Ngư Như Nư Sư Thư Tư Ư
+– Chừ Cừ Dừ Đừ Gừ Hừ Khừ Lừ Ngừ Nhừ Thừ Trừ Từ Ừ Xừ
+– Cử Dử Đử Hử Khử Lử Nhử Sử Thử Tử Ử Xử
+– Chữ Cữ Dữ Giữ Hữ Lữ Ngữ Nữ Trữ
+– Bứ Chứ Cứ Dứ Đứ Hứ Khứ Ngứ Nhứ Sứ Thứ Trứ Tứ Ứ Xứ
+– Bự Cự Dự Hự Lự Ngự Nhự Nự Sự Thự Trự Tự Xự
+# ƯA
+– Chưa Cưa Dưa Đưa Lưa Mưa Ngưa Nưa Rưa Sưa Thưa Trưa Tưa Ưa Xưa
+– Bừa Chừa Dừa Lừa Ngừa Thừa Vừa
+– Bửa Chửa Cửa Lửa Mửa Ngửa Nửa Rửa Sửa Thửa Xửa
+– Bữa Chữa Giữa Lữa Nữa Rữa Sữa Vữa
+– Bứa Chứa Cứa Dứa Đứa Hứa Khứa Lứa Mứa Ngứa Nứa Phứa Rứa Sứa Tứa Ứa
+– Bựa Cựa Dựa Lựa Mựa Ngựa Nhựa Phựa Rựa Tựa Ựa Vựa
+# ƯC
+– Bức Chức Cức Dức Đức Hức Lức Mức Nhức Nức Phức Rức Sức Thức Tức Ức Vức Xức
+– Bực Chực Cực Dực Đực Hực Lực Mực Ngực Nực Rực Sực Thực Trực Ực Vực Xực
+# ƯI
+– Chửi Cửi Gửi Ngửi
+# ƯM
+– Hừm
+# ƯN
+– Chưn
+# ƯNG
+– Bưng Chưng Cưng Dưng Đưng Hưng Lưng Mưng Ngưng Nhưng Phưng Rưng Sưng Thưng Trưng Tưng Ưng Xưng
+– Bừng Chừng Dừng Đừng Gừng Hừng Khừng Lừng Mừng Ngừng Phừng Rừng Sừng Thừng Trừng Từng Ừng Vừng Xừng
+– Bửng Chửng Dửng Hửng Lửng Mửng Ngửng Tửng Sửng Trửng Ửng Vửng Xửng
+– Chững Hững Lững Những Sững Thững Vững
+– Bứng Chứng Cứng Dứng Đứng Hứng Khứng Trứng Ứng Xứng
+– Bựng Chựng Dựng Đựng Khựng Lựng Nựng Sựng Vựng
+# ƯƠC
+– Bước Chước Cước Đước Hước Khước Ngước Nước Phước Rước Thước Trước Tước Ước Xước
+– Chược Cược Dược Được Lược Mược Ngược Nhược Thược Tược Vược Xược
+# ƯƠI
+– Bươi Khươi Mươi Ngươi Rươi Tươi Ươi
+– Cười Đười Lười Mười Người Rười
+– Bưởi Mưởi Rưởi Sưởi Tưởi
+– Cưỡi Lưỡi Rưỡi Thưỡi
+– Cưới Dưới Lưới Rưới Tưới
+– Dượi Rượi
+# ƯƠM
+– Bươm Gươm Hươm Lươm Tươm Ươm
+– Chườm Cườm Gườm Hườm Lườm Nườm Rườm
+– Bướm Rướm Ướm
+– Đượm Gượm Hượm Lượm
+# ƯƠN
+– Bươn Hươn Khươn Lươn Ươn Vươn
+– Đườn Lườn Sườn Thườn Trườn Ườn Vườn
+– Đưỡn Phưỡn Thưỡn Ưỡn
+– Dướn Mướn Nhướn Phướn Rướn
+– Lượn Mượn Rượn Vượn
+# ƯƠNG
+– Bương Chương Cương Dương Đương Giương Gương Hương Lương Mương Nhương Nương Phương Rương Sương Thương Trương Tương Ương Vương Xương
+– Chường Cường Dường Đường Giường Hường Lường Mường Ngường Nhường Nường Phường Rường Thường Trường Tường Xường
+– Chưởng Hưởng Khưởng Ngưởng Thưởng Trưởng Tưởng Vưởng Xưởng
+– Chưỡng Cưỡng Dưỡng Gưỡng Khưỡng Lưỡng Ngưỡng Nhưỡng Trưỡng
+– Bướng Chướng Dướng Giướng Hướng Lướng Nhướng Nướng Phướng Sướng Trướng Tướng Vướng Xướng
+– Dượng Gượng Lượng Ngượng Nhượng Phượng Sượng Thượng Trượng Tượng Vượng
+# ƯƠP
+– Bướp Cướp Mướp Tướp Ướp
+– Chượp Nượp
+# ƯƠT
+– Khướt Lướt Mướt Sướt Thướt Tướt Ướt
+– Dượt Khượt Lượt Mượt Rượt Sượt Thượt Trượt Tượt Vượt
+# ƯƠU
+– Bươu Hươu
+– Tườu
+– Mưỡu
+– Bướu Khướu
+– Rượu
+# ƯT
+– Bứt Cứt Dứt Đứt Lứt Mứt Ngứt Nhứt Nứt Phứt Rứt Sứt Vứt
+– Bựt Giựt Nhựt
+# ƯU
+– Bưu Cưu Hưu Lưu Mưu Ngưu Sưu Ưu
+– Cừu Trừu
+– Bửu Cửu Sửu Tửu
+– Cữu Hữu
+– Cứu Khứu Mứu
+– Cựu Lựu Tựu
