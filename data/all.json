@@ -2900,6 +2900,18 @@
         "accent": {
           "level": "950"
         }
+      },
+      {
+        "isCap": false,
+        "prev": [
+          "Ê"
+        ],
+        "next": [
+          null
+        ],
+        "accent": {
+          "level": "537,104"
+        }
       }
     ]
   },
@@ -3459,6 +3471,7 @@
           "m",
           "n",
           "ch",
+          "nh",
           null
         ],
         "accent": {
@@ -4115,8 +4128,8 @@
         ],
         "accent": {
           "level": "85",
-          "acute": "217",
-          "lower": "218",
+          "acute": "218",
+          "lower": "217",
           "rising": "7910",
           "raised": "360",
           "heavy": "7908"

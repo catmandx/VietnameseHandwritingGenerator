@@ -19,9 +19,6 @@ model.getUnicodeStr = function(word){
         let currChar = charArr[i];
         let nextChar = charArr[i+1];
         if ("kh nh ch gh ph th Gh".split(' ').indexOf(currChar+nextChar) >= 0){
-            if ((currChar+nextChar) === "nh" && i === 1 && utils.isUpperCase(charArr[i-1])){
-                break;
-            }
             charArr[i] = currChar+nextChar;
             charArr.splice(i+1,1);
         }
