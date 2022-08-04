@@ -1,0 +1,88 @@
+
+.board{
+    margin-top: 10px;
+}
+
+.board.black{
+    color: white;
+    background-image: linear-gradient(#496e53, #496e53)
+}
+
+.board.white{
+    color: black;
+    background-image: linear-gradient(#fff, #fff)
+}
+
+.grid {
+    background-size: 
+        calc(14.4pt * 4) calc(14.4pt * 4), 
+        calc(14.4pt * 4) calc(14.4pt * 4), 
+        14.4pt 14.4pt, 
+        14.4pt 14.4pt;
+    background-position: 14.4pt 28.8pt
+} 
+
+.grid.italics {
+    transform: skewX(-17deg);
+}
+
+.black .grid {
+    background-image:
+      repeating-linear-gradient(#ccc 0 2px, transparent 2px 100%),
+      repeating-linear-gradient(90deg, #ccc 0 2px, transparent 2px 100%),
+      repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
+}
+
+.white .grid {
+    background-image:
+      repeating-linear-gradient(rgb(100, 100, 100) 0 1.5px, transparent 1.5px 100%),
+      repeating-linear-gradient(90deg, rgb(100, 100, 100) 0 1.5px, transparent 1.5px 100%),
+      repeating-linear-gradient(rgb(186, 186, 186) 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(90deg, rgb(186, 186, 186) 0 1px, transparent 1px 100%);
+}
+
+#result {
+    padding-left: 14.4pt;
+    padding-top: calc(14.4pt * 0.7);
+    font-size: 72pt;
+    font-family: HP001;
+    line-height: calc(72pt + 14.4pt * 3);
+    margin-top: 10px;
+}
+
+#result.bold {
+    font-weight: bold;
+}
+
+#result.small{
+    padding-top: calc(14.4pt *3.35);
+    font-size: 37pt; /* to fit to the height of the line, might need to be reversed */
+    line-height: calc(36pt + 14.4pt * 1.5);
+}
+
+#result>p:last-child::after{
+    content: ' ';
+    display: block;
+    height: calc(14.4pt * 3);
+}
+
+p{
+    margin: 0;
+}
+
+p.line{
+    position: relative;
+}
+p.line > div {
+    user-select: none;
+    position: absolute;
+    left: 0;
+    top: -16pt;
+    font-size: 10pt;
+    line-height: normal;
+}
+
+p.line > div > i:hover{
+    text-shadow: 1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue;
+}

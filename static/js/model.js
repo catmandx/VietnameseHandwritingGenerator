@@ -38,7 +38,6 @@ model.getUnicodeStr = function(word){
         i++;
     }
 
-    // let baseChars = charArr.map(char => utils.removeAccents(char.toLowerCase()));
     let baseChars = charArr.map(char => utils.removeAccents(char));
     let unicodeString = "";
     let base = null;

@@ -4,7 +4,6 @@ view.addHandler = function () {
     var $input = $('#input');
     var $result = $('#result');
     $input.on('keyup', function (e) {
-        //type
         let lines = $input.val().split('\n');
         let linesResult = lines.map(input => {
             let words = input.replace(/[\s]/g, " ").split(" ");
@@ -15,8 +14,6 @@ view.addHandler = function () {
             }
             return result.join(' ');
         });
-
-        // $result.html("<p>" + linesResult.join("</p><p>") + "</p>")
         let $lines = $result.children('p');
         view.addOrRemoveLines($lines, linesResult)
         view.addLineHandler($result)
@@ -134,12 +131,10 @@ view.addLineHandler = function($result) {
         })
 
         $(document.body).on('mouseup', $line, function(event){
-            //drag, todo, now its just reset button
             $('.dragging').removeClass('dragging');
         })
 
         $(document.body).on('mousemove', function(event){
-            //drag, todo, now its just reset button
             $line = $('.dragging')
             if($line){
                 let origX = $line.attr('x-cord');

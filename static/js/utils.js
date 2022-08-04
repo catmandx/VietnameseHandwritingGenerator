@@ -96,32 +96,3 @@ utils.removeAccents = function (str) {
 utils.stripHtml = function (str) {
     return str.replace(/(<([^>]+)>)/gi, "");
 }
-
-utils.decodeHTMLEntities = function (text) {
-    // Create a new element or use one from cache, to save some element creation overhead
-    const el = decodeHTMLEntities.__cache_data_element
-        = decodeHTMLEntities.__cache_data_element
-        || document.createElement('div');
-
-    const enc = text
-        // Prevent any mixup of existing pattern in text
-        .replace(/⪪/g, '⪪#')
-        // Encode entities in special format. This will prevent native element encoder to replace any amp characters
-        .replace(/&([a-z1-8]{2,31}|#x[0-9a-f]+|#\d+);/gi, '⪪$1⪫');
-
-    // Encode any HTML tags in the text to prevent script injection
-    el.textContent = enc;
-
-    // Decode entities from special format, back to their original HTML entities format
-    el.innerHTML = el.innerHTML
-        .replace(/⪪([a-z1-8]{2,31}|#x[0-9a-f]+|#\d+)⪫/gi, '&$1;')
-        .replace(/#⪫/g, '⪫');
-
-    // Get the decoded HTML entities
-    const dec = el.textContent;
-
-    // Clear the element content, in order to preserve a bit of memory (it is just the text may be pretty big)
-    el.textContent = '';
-
-    return dec;
-}
