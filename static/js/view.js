@@ -8,8 +8,6 @@ view.sampleTexts = {
     "sample5": "a ă â b c d đ e ê g h i k l m n o ô ơ p q r s t u ư v x y\nA Ă Â B C D Đ E Ê G H I K L M N O Ô Ơ P Q R S T U Ư V X Y"
 };
 
-view.activeLine = null;
-
 view.init = function () {
     const $input = $('#input');
 
@@ -48,155 +46,206 @@ view.init = function () {
         view.changeStyle(this.checked);
     });
 
-    // Setup floating line toolbar on the grid (never alters p.line DOM -> no jumping!)
-    view.setupLineInteractions();
+    // Setup word drag interactions (drag handle at top left of word)
+    view.setupDragInteractions();
 
     // Trigger initial render
     view.render();
 };
 
+view.escapeHtml = function (str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+};
+
 view.render = function () {
     if (!model.isLoaded) return;
     const $input = $('#input');
-    const lines = $input.val().split('\n');
-    const linesResult = lines.map(line => {
-        const words = line.replace(/[\t]/g, "    ").split(" ");
-        const result = [];
-        for (const word of words) {
-            result.push(model.getUnicodeStr(word));
+    const rawLines = $input.val().split('\n');
+
+    const linesData = rawLines.map(rawLine => {
+        // Expand tabs to 4 spaces
+        const line = rawLine.replace(/[\t]/g, "    ");
+        const tokens = line.split(/(\s+)/);
+        const lineTokens = [];
+        for (const token of tokens) {
+            if (!token) continue;
+            if (/^\s+$/.test(token)) {
+                lineTokens.push({ type: 'space', text: token });
+            } else {
+                const converted = model.getUnicodeStr(token);
+                lineTokens.push({ type: 'word', text: converted, raw: token });
+            }
         }
-        return result.join(' ');
+        return lineTokens;
     });
 
-    view.updateLines(linesResult);
+    view.updateLines(linesData);
 };
 
-view.updateLines = function (linesResult) {
+view.updateLines = function (linesData) {
     const $result = $('#result');
     const $existingLines = $result.children('p.line');
 
     // 1. Remove excess lines if text was deleted
-    if ($existingLines.length > linesResult.length) {
-        $existingLines.slice(linesResult.length).remove();
+    if ($existingLines.length > linesData.length) {
+        $existingLines.slice(linesData.length).remove();
     }
     // 2. Add new lines if text has more lines
-    else if ($existingLines.length < linesResult.length) {
-        for (let i = $existingLines.length; i < linesResult.length; i++) {
+    else if ($existingLines.length < linesData.length) {
+        for (let i = $existingLines.length; i < linesData.length; i++) {
             const $newLine = $('<p class="line" id="line-' + i + '"></p>');
             $result.append($newLine);
         }
     }
 
-    // 3. Update line content while preserving existing inline margins
+    // 3. Update line content while preserving existing word margins
     $result.children('p.line').each(function (index, el) {
         const $el = $(el);
         $el.attr('id', 'line-' + index);
-        const text = linesResult[index];
-        if (text && text.trim().length > 0) {
-            $el.text(text);
-        } else {
-            // Non-breaking space keeps the empty line height intact on the grid
-            $el.html('&nbsp;');
-        }
-    });
+        const lineTokens = linesData[index] || [];
 
-    // Hide line toolbar if active line was removed
-    if (view.activeLine && !$.contains(document, view.activeLine[0])) {
-        $('#line-toolbar').hide();
-        view.activeLine = null;
-    }
+        // Collect existing word margins to preserve user adjustments across re-renders
+        const existingMargins = [];
+        $el.children('.word').each(function () {
+            const ml = this.style.marginLeft;
+            existingMargins.push(ml || null);
+        });
+
+        const wordTokens = lineTokens.filter(t => t.type === 'word');
+
+        if (wordTokens.length === 0) {
+            // Non-breaking space keeps the empty line height intact on the grid
+            $el.empty().html('&nbsp;');
+            return;
+        }
+
+        let wordIndex = 0;
+        let html = '';
+        for (const token of lineTokens) {
+            if (token.type === 'space') {
+                html += `<span class="word-space">${view.escapeHtml(token.text)}</span>`;
+            } else {
+                const preserved = existingMargins[wordIndex];
+                const styleAttr = preserved ? ` style="margin-left: ${preserved};"` : '';
+                html += `<span class="word" data-word-idx="${wordIndex}"${styleAttr}>` +
+                    `<span class="word-handle no-print">` +
+                        `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
+                        `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
+                    `</span>` +
+                    `<span class="word-text">${view.escapeHtml(token.text)}</span>` +
+                `</span>`;
+                wordIndex++;
+            }
+        }
+        $el.empty().html(html);
+    });
 };
 
-view.setupLineInteractions = function () {
-    const $grid = $('.grid');
-    
-    // Create single floating toolbar once inside .grid
-    let $toolbar = $('#line-toolbar');
-    if ($toolbar.length === 0) {
-        $toolbar = $(`
-            <div id="line-toolbar" class="line-toolbar no-print">
-                <button type="button" class="btn-nudge btn-reset" title="Đặt lại vị trí ban đầu">
-                    <i class="fa-solid fa-arrow-rotate-left"></i>
-                </button>
-                <button type="button" class="btn-nudge btn-left" title="Dịch sang trái">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </button>
-                <button type="button" class="btn-nudge btn-right" title="Dịch sang phải">
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-            </div>
-        `);
-        $grid.append($toolbar);
+view.setupDragInteractions = function () {
+    const $result = $('#result');
+    let dragState = null;
+
+    // Pointer down on .btn-word-drag: start dragging word
+    $result.on('pointerdown', '.btn-word-drag', function (e) {
+        if (e.button !== undefined && e.button !== 0) return;
+
+        const handleEl = this;
+        const $word = $(handleEl).closest('.word');
+        const wordEl = $word[0];
+        const $line = $word.closest('p.line');
+        const wordIdx = parseInt($word.attr('data-word-idx'), 10) || 0;
+
+        if (typeof handleEl.setPointerCapture === 'function') {
+            try {
+                handleEl.setPointerCapture(e.pointerId);
+            } catch (_) {}
+        }
+
+        const startMargin = parseFloat(wordEl.style.marginLeft) || 0;
+
+        // Determine minMargin so word cannot overlap previous word or go beyond line origin
+        let minMargin = 0;
+        if (wordIdx === 0) {
+            minMargin = 0;
+        } else {
+            const $prevWord = $line.find(`.word[data-word-idx="${wordIdx - 1}"]`);
+            if ($prevWord.length) {
+                const prevRect = $prevWord[0].getBoundingClientRect();
+                const currentRect = wordEl.getBoundingClientRect();
+                const gap = currentRect.left - prevRect.right;
+                minMargin = startMargin - (gap - 2);
+                minMargin = Math.min(minMargin, startMargin);
+            } else {
+                minMargin = 0;
+            }
+        }
+
+        dragState = {
+            pointerId: e.pointerId,
+            handleEl: handleEl,
+            wordEl: wordEl,
+            $word: $word,
+            startX: e.clientX,
+            startMargin: startMargin,
+            minMargin: minMargin
+        };
+
+        $word.addClass('is-dragging');
+        $('body').addClass('is-word-dragging');
+
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    // Pointer move: update word margin-left
+    function handlePointerMove(e) {
+        if (!dragState || dragState.pointerId !== e.pointerId) return;
+
+        const deltaX = e.clientX - dragState.startX;
+        let newMargin = dragState.startMargin + deltaX;
+        newMargin = Math.max(dragState.minMargin, newMargin);
+        dragState.wordEl.style.marginLeft = Math.round(newMargin) + 'px';
     }
 
-    let hideTimer = null;
+    $result.on('pointermove', '.btn-word-drag', handlePointerMove);
+    $(window).on('pointermove', handlePointerMove);
 
-    function positionToolbar($line) {
-        if (!$line || $line.length === 0) return;
-        view.activeLine = $line;
-        const linePos = $line.position();
-        const marginLeft = parseFloat($line.css('margin-left')) || 0;
-        
-        $toolbar.css({
-            top: (linePos.top - 24) + 'px',
-            left: (linePos.left + marginLeft + 14) + 'px',
-            display: 'inline-flex'
+    // Pointer up / cancel: finish drag
+    function endDrag(e) {
+        if (!dragState || dragState.pointerId !== e.pointerId) return;
+
+        if (typeof dragState.handleEl.releasePointerCapture === 'function') {
+            try {
+                dragState.handleEl.releasePointerCapture(e.pointerId);
+            } catch (_) {}
+        }
+
+        dragState.$word.removeClass('is-dragging');
+        $('body').removeClass('is-word-dragging');
+        dragState = null;
+    }
+
+    $(window).on('pointerup pointercancel', endDrag);
+
+    // Reset icon click: reset word margin to 0
+    $result.on('click', '.btn-word-reset', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $word = $(this).closest('.word');
+        $word.css('margin-left', '0px');
+    });
+
+    // Double-click empty line background: reset all words on that line
+    $result.on('dblclick', 'p.line', function (e) {
+        if ($(e.target).closest('.word').length) return;
+        $(this).find('.word').each(function () {
+            this.style.marginLeft = '0px';
         });
-    }
-
-    $grid.on('mouseenter', 'p.line', function () {
-        if (hideTimer) clearTimeout(hideTimer);
-        positionToolbar($(this));
-    });
-
-    $grid.on('mouseleave', 'p.line', function (e) {
-        const toEl = e.relatedTarget;
-        if ($(toEl).closest('#line-toolbar').length) return;
-        hideTimer = setTimeout(() => {
-            $toolbar.hide();
-        }, 200);
-    });
-
-    $toolbar.on('mouseenter', function () {
-        if (hideTimer) clearTimeout(hideTimer);
-    });
-
-    $toolbar.on('mouseleave', function (e) {
-        const toEl = e.relatedTarget;
-        if ($(toEl).closest('p.line').length) return;
-        hideTimer = setTimeout(() => {
-            $toolbar.hide();
-        }, 200);
-    });
-
-    $toolbar.on('click', '.btn-reset', function (e) {
-        e.stopPropagation();
-        if (view.activeLine && view.activeLine.length) {
-            view.activeLine.css('margin-left', '0px');
-            positionToolbar(view.activeLine);
-        }
-    });
-
-    $toolbar.on('click', '.btn-left', function (e) {
-        e.stopPropagation();
-        if (view.activeLine && view.activeLine.length) {
-            const step = $('#result').hasClass('small') ? 4.8 : 9.6;
-            const currentMargin = parseFloat(view.activeLine.css('margin-left')) || 0;
-            const newMargin = currentMargin - step;
-            view.activeLine.css('margin-left', newMargin + 'px');
-            positionToolbar(view.activeLine);
-        }
-    });
-
-    $toolbar.on('click', '.btn-right', function (e) {
-        e.stopPropagation();
-        if (view.activeLine && view.activeLine.length) {
-            const step = $('#result').hasClass('small') ? 4.8 : 9.6;
-            const currentMargin = parseFloat(view.activeLine.css('margin-left')) || 0;
-            const newMargin = currentMargin + step;
-            view.activeLine.css('margin-left', newMargin + 'px');
-            positionToolbar(view.activeLine);
-        }
     });
 };
 
@@ -284,12 +333,23 @@ view.exportToPng = async function () {
 
     const lines = [];
     $result.children('p.line').each(function () {
-        const text = $(this).text().replace(/\u00a0/g, ' ');
-        const marginLeft = parseFloat($(this).css('margin-left')) || 0;
-        lines.push({ text: text, marginLeft: marginLeft });
+        const $line = $(this);
+        const lineWords = [];
+        $line.children('.word').each(function () {
+            const wordEl = this;
+            const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+            lineWords.push({
+                text: wordText,
+                offsetLeft: wordEl.offsetLeft,
+                offsetWidth: wordEl.offsetWidth
+            });
+        });
+        lines.push({
+            words: lineWords
+        });
     });
 
-    if (lines.length === 0) {
+    if (lines.length === 0 || !lines.some(l => l.words.length > 0)) {
         alert("Chưa có nội dung để xuất ảnh!");
         return;
     }
@@ -314,11 +374,13 @@ view.exportToPng = async function () {
 
     let maxLineRight = 0;
     lines.forEach(l => {
-        const textW = measureCtx.measureText(l.text).width;
-        const lineRight = subGridPx + l.marginLeft + textW;
-        if (lineRight > maxLineRight) {
-            maxLineRight = lineRight;
-        }
+        l.words.forEach(w => {
+            const textW = Math.max(w.offsetWidth, measureCtx.measureText(w.text).width);
+            const wordRight = subGridPx + w.offsetLeft + textW;
+            if (wordRight > maxLineRight) {
+                maxLineRight = wordRight;
+            }
+        });
     });
 
     // Grid origins matching CSS background-position: var(--grid-unit) calc(var(--grid-unit) * 2.5)
@@ -399,8 +461,10 @@ view.exportToPng = async function () {
 
     lines.forEach((lineObj, idx) => {
         const yPos = firstBaselineY + (idx * lineHeightPx);
-        const xPos = gridOriginX + lineObj.marginLeft;
-        ctx.fillText(lineObj.text, xPos, yPos);
+        lineObj.words.forEach(word => {
+            const xPos = gridOriginX + word.offsetLeft;
+            ctx.fillText(word.text, xPos, yPos);
+        });
     });
     ctx.restore();
 

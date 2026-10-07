@@ -143,53 +143,122 @@ p.line {
     padding: 0;
     position: relative;
     white-space: pre;
-    transition: margin-left 0.1s ease;
 }
 
-/* Floating toolbar for line adjustments (outside of p.line so no layout shift/jumping!) */
-#line-toolbar {
+/* 
+ * Word-level inline layout & dragging controls:
+ * Each word is an inline-block container with selectable text.
+ * A neat handle with a drag icon and reset icon appears at the top left of the word on hover.
+ * No text glow on hover; full line & word text selection is preserved!
+ */
+.word {
+    display: inline-block;
+    position: relative;
+    vertical-align: baseline;
+    user-select: text;
+    -webkit-user-select: text;
+    padding: 0;
+    margin: 0;
+}
+
+.word-text {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.word-handle {
+    position: absolute;
+    top: -12px;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(24, 24, 27, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 4px;
+    padding: 2px 4px;
+    z-index: 50;
     user-select: none;
     -webkit-user-select: none;
-    position: absolute;
     font-size: 11px;
-    line-height: normal;
-    display: none;
-    gap: 4px;
+    line-height: 1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+.white .word-handle {
     background: rgba(255, 255, 255, 0.95);
-    padding: 3px 6px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
-    z-index: 100;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.word:hover .word-handle,
+.word.is-dragging .word-handle {
+    opacity: 1;
     pointer-events: auto;
-    transition: left 0.1s ease;
 }
 
-.black #line-toolbar {
-    background: rgba(30, 30, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-}
-
-.btn-nudge {
-    background: transparent;
-    border: none;
-    color: #333333;
-    padding: 2px 6px;
-    cursor: pointer;
-    font-size: 11px;
-    border-radius: 3px;
-    display: flex;
+.btn-word-drag,
+.btn-word-reset {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    color: #e2e8f0;
+    background: transparent;
+    border: none;
+    padding: 0;
     transition: background 0.15s, color 0.15s;
+    touch-action: none;
 }
 
-.black .btn-nudge {
-    color: #f0f0f0;
+.white .btn-word-drag,
+.white .btn-word-reset {
+    color: #334155;
 }
 
-.btn-nudge:hover {
-    background: #0d6efd;
+.btn-word-drag {
+    cursor: grab;
+    cursor: -webkit-grab;
+}
+
+.btn-word-drag:hover {
+    background: #2563eb;
     color: #ffffff;
+}
+
+.btn-word-drag.is-dragging,
+.word.is-dragging .btn-word-drag {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.btn-word-reset {
+    cursor: pointer;
+}
+
+.btn-word-reset:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+body.is-word-dragging {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+.word-space {
+    display: inline;
+    white-space: pre;
+    vertical-align: baseline;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 /* Print Styles */
@@ -225,9 +294,7 @@ p.line {
         padding-right: 0 !important;
     }
 
-    #line-toolbar {
-        display: none !important;
-    }
+
 
     @page {
         size: A4 portrait;
