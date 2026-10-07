@@ -47,21 +47,24 @@ view.showComponents = function(name){
 }
 
 view.populateEditForm = function (e){
-    let baseCard = $(e.target);
-    let baseCardEditorModal = $('#editBaseModal').find('.modal-body')
-    let editFormHtml = components.baseEditForm
+    let baseCard = $(e.target).closest('.baseCard');
+    let baseChar = baseCard.find('.card-header').text().trim();
+    if (!baseChar || baseChar === '+') return;
+    let baseCardEditorModal = $('#editBaseModal').find('.modal-body');
+    let editFormHtml = components.baseEditForm;
     //form header
     baseCardEditorModal.html(editFormHtml);
-    baseCardEditorModal.find('#baseCharacter').val(baseCard.text())
-    baseCardEditorModal.find('#baseUnicode').val(baseCard.text().charCodeAt(0))
+    baseCardEditorModal.find('#baseCharacter').val(baseChar);
+    baseCardEditorModal.find('#baseUnicode').val(baseChar.charCodeAt(0));
     //list types
-    let types = model.glyphData[baseCard.text()].types;
-    $('#numberOfTypes').val(types.length)
+    let charData = model.glyphData[baseChar] || { types: [] };
+    let types = charData.types || [];
+    $('#numberOfTypes').val(types.length);
     for (let i = 0; i < types.length; i++) {
         const type = types[i];
         let numOfTypes = i + 1;
-        view.addNewTypeEditor(numOfTypes)
-        view.populateTypeEditor(type, numOfTypes)
+        view.addNewTypeEditor(numOfTypes);
+        view.populateTypeEditor(type, numOfTypes);
     }
 }
 

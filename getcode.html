@@ -1,99 +1,140 @@
-<html>
+<!DOCTYPE html>
+<html lang="vi">
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Char to Codepoint Inspector - Viết Chữ Đẹp</title>
+        <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon/favicon-32x32.png">
         <script src="/static/js/jquery-3.6.0.min.js"></script>
         <style>
             @font-face {
-                font-family: HP001-Normal;
+                font-family: HP001;
+                font-weight: normal;
                 src: url(/static/font/HP001N30.ttf);
             }
             @font-face {
-                font-family: HP001-Bold;
+                font-family: HP001;
+                font-weight: bold;
                 src: url(/static/font/HP001B30.ttf);
             }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                margin: 0;
+                padding: 24px;
+                background: #f8fafc;
+                color: #1e293b;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background: #ffffff;
+                padding: 24px;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            }
+            h1 {
+                font-size: 1.4rem;
+                margin-top: 0;
+            }
+            .nav-link {
+                color: #1976d2;
+                text-decoration: none;
+                margin-right: 16px;
+                font-weight: 500;
+            }
+            .nav-link:hover {
+                text-decoration: underline;
+            }
+            input#text-input {
+                width: 100%;
+                font-size: 1.8rem;
+                padding: 10px 14px;
+                font-family: HP001, serif;
+                border: 2px solid #cbd5e1;
+                border-radius: 8px;
+                box-sizing: border-box;
+                margin-top: 16px;
+            }
+            input#text-input:focus {
+                border-color: #1976d2;
+                outline: none;
+            }
+            .char-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            .char-table th, .char-table td {
+                border: 1px solid #e2e8f0;
+                padding: 10px 14px;
+                text-align: center;
+            }
+            .char-table th {
+                background: #f1f5f9;
+                font-weight: 600;
+            }
+            .glyph-cell {
+                font-family: HP001, serif;
+                font-size: 2.5rem;
+                color: #1976d2;
+            }
         </style>
-        <script>
-            //utils
-            function stripHtml(str){
-                return str.replace(/(<([^>]+)>)/gi, "");
-            }
-            const decodeHTMLEntities = text => {
-                // Create a new element or use one from cache, to save some element creation overhead
-                const el = decodeHTMLEntities.__cache_data_element 
-                        = decodeHTMLEntities.__cache_data_element 
-                        || document.createElement('div');
-                
-                const enc = text
-                    // Prevent any mixup of existing pattern in text
-                    .replace(/⪪/g, '⪪#')
-                    // Encode entities in special format. This will prevent native element encoder to replace any amp characters
-                    .replace(/&([a-z1-8]{2,31}|#x[0-9a-f]+|#\d+);/gi, '⪪$1⪫');
-
-                // Encode any HTML tags in the text to prevent script injection
-                el.textContent = enc;
-
-                // Decode entities from special format, back to their original HTML entities format
-                el.innerHTML = el.innerHTML
-                    .replace(/⪪([a-z1-8]{2,31}|#x[0-9a-f]+|#\d+)⪫/gi, '&$1;')
-                    .replace(/#⪫/g, '⪫');
-            
-                // Get the decoded HTML entities
-                const dec = el.textContent;
-                
-                // Clear the element content, in order to preserve a bit of memory (it is just the text may be pretty big)
-                el.textContent = '';
-
-                return dec;
-            }
-        </script>
     </head>
     <body>
-        <h1 id="container" style="font-family: HP001-Bold; display: none;" contenteditable="true">Hoàng nè, Ύɐ</h1>
-        <h1 id="input" style="font-family: HP001-Bold;border: 2pt black; min-width: 100px;" contenteditable="true" ></h1>
-        <h1 id="result"></h1>
-        <script>
-            var $input = $('#input');
-            var $result = $('#result');
-            $input.on('keyup',function(e){
-                let result = $input.text().split('').map(char => char.charCodeAt(0)).join(' ')
-                $result.html(result)
-            })
-        </script>
-        <script>
-            var $node = $('#container'), 
-            text = $.trim($node.text()),
-            characters = text.split('');
+        <div class="container">
+            <nav style="margin-bottom: 16px;">
+                <a href="/" class="nav-link">&larr; Quay lại Trang chủ</a>
+                <a href="/editor/" class="nav-link">Glyph Editor</a>
+            </nav>
+            <h1>Tra cứu Mã Ký tự & Điểm Unicode (Char to Codepoint)</h1>
+            <p style="color: #64748b; font-size: 0.95rem;">
+                Nhập hoặc dán ký tự bất kỳ để xem mã Unicode thập phân (Decimal) và hệ thập lục phân (Hexadecimal) hiển thị trong font HP001:
+            </p>
+            <input type="text" id="text-input" placeholder="Nhập ký tự cần tra cứu..." value="Hoàng nè" autofocus>
+            
+            <table class="char-table">
+                <thead>
+                    <tr>
+                        <th>Ký tự</th>
+                        <th>Hiển thị (Font HP001)</th>
+                        <th>Decimal (charCodeAt)</th>
+                        <th>Hexadecimal (Unicode Hex)</th>
+                    </tr>
+                </thead>
+                <tbody id="char-rows">
+                </tbody>
+            </table>
+        </div>
 
-            text = '<span>' + characters.join('</span><span>') + '</span>';
-            $node.html(text).on('click', 'span', function(e) {
-                // abort on empty node
-                if (this.innerHTML == ' ') {
+        <script>
+            function updateTable() {
+                const text = $('#text-input').val();
+                const $tbody = $('#char-rows');
+                $tbody.empty();
+                
+                if (!text) {
+                    $tbody.append('<tr><td colspan="4" style="color: #94a3b8;">Chưa có dữ liệu</td></tr>');
                     return;
                 }
-                console.log(this.innerHTML.charCodeAt(0).toString(16));
-                // this.innerHTML = this.innerHTML == '1' ? '0' : '1';
-            });
-            $node.on('onfocus', function(e){
-                
-            })
-            $node.focusout(function(e){
-                let $node = $('#container');
-                let text = $.trim(stripHtml($node.html()));
-                text = decodeHTMLEntities(text)
-                let characters = text.split('');
-                text = '<span>' + characters.join('</span><span>') + '</span>';
-                this.innerHTML = text;
-            })
-        </script>
-        <script>
-            $('.input').on('change', function(e){
-                let $this = $(this)
-                let word = $this.val();
-                for (const char of word) {
-                    
+
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    const code = char.charCodeAt(0);
+                    const hex = 'U+' + code.toString(16).toUpperCase().padStart(4, '0');
+                    const row = `
+                        <tr>
+                            <td style="font-size: 1.5rem;">${char === ' ' ? '<i>[khoảng trắng]</i>' : char}</td>
+                            <td class="glyph-cell">${char}</td>
+                            <td><code>${code}</code></td>
+                            <td><code>${hex}</code></td>
+                        </tr>
+                    `;
+                    $tbody.append(row);
                 }
-            })
-            
-            // funtion getUnicodeStr(word)
+            }
+
+            $('#text-input').on('input propertychange', updateTable);
+            $(document).ready(updateTable);
         </script>
     </body>
 </html>

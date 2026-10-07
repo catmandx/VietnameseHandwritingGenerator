@@ -4,8 +4,8 @@ const components = {
 
 components.loading = `
 <div class="loading-container">
-    <img src="./img/loading.gif" >
-  </div>
+    <img src="/static/img/loading.gif" alt="Đang tải...">
+</div>
 `
 
 components.baseListPage = `
@@ -16,17 +16,13 @@ components.baseListPage = `
                 <a class="navbar-brand" href="javascript:void(0)">Glyph Editor</a>
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="../">Home</a>
+                        <a class="nav-link" href="/">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="../getcode.html">Char to point</a>
+                        <a class="nav-link" href="/getcode.html">Char to point</a>
                     </li>
                 </ul>
-                <form class="d-flex">
-                    
-                </form>
                 <button id="downloadJson" class="btn btn-success">Download JSON</button>
-                </div>
             </div>
         </nav>
     </div>
@@ -53,7 +49,7 @@ components.baseListPage = `
         <!-- Modal body -->
         <div class="modal-body">
             <form id="newBaseCardForm" action="#">
-                <input name="newBase" id="newBaseCardInput" name="newBaseCardInput" maxlength=3 type="text" class="form-control glyph-input" placeholder="Character" aria-label="Character">
+                <input name="newBase" id="newBaseCardInput" maxlength=3 type="text" class="form-control glyph-input" placeholder="Character" aria-label="Character">
             </form>
         </div>
 

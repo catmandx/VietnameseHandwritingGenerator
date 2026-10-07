@@ -1,88 +1,172 @@
-
-.board{
-    margin-top: 10px;
+.board {
+    margin: 20px auto;
+    width: 100%;
+    max-width: 1200px;
+    min-height: 500px;
+    border-radius: 8px;
+    overflow-x: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transition: background 0.25s ease, color 0.25s ease;
 }
 
-.board.black{
-    color: white;
-    background-image: linear-gradient(#496e53, #496e53)
+.board.black {
+    color: #ffffff;
+    background-color: #496e53;
+    border: 12px solid #364f3c;
 }
 
-.board.white{
-    color: black;
-    background-image: linear-gradient(#fff, #fff)
+.board.white {
+    color: #2b1055;
+    background-color: #ffffff;
+    border: 12px solid #e0dfd5;
 }
 
 .grid {
+    min-width: 900px;
+    min-height: 500px;
     background-size: 
         calc(14.4pt * 4) calc(14.4pt * 4), 
         calc(14.4pt * 4) calc(14.4pt * 4), 
         14.4pt 14.4pt, 
         14.4pt 14.4pt;
-    background-position: 14.4pt 28.8pt
+    background-position: 14.4pt 28.8pt;
+    transition: transform 0.2s ease;
 } 
 
 .grid.italics {
     transform: skewX(-17deg);
+    transform-origin: top left;
 }
 
 .black .grid {
     background-image:
-      repeating-linear-gradient(#ccc 0 2px, transparent 2px 100%),
-      repeating-linear-gradient(90deg, #ccc 0 2px, transparent 2px 100%),
-      repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
-      repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
+      repeating-linear-gradient(rgba(220, 220, 220, 0.7) 0 2px, transparent 2px 100%),
+      repeating-linear-gradient(90deg, rgba(220, 220, 220, 0.7) 0 2px, transparent 2px 100%),
+      repeating-linear-gradient(rgba(200, 200, 200, 0.35) 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(90deg, rgba(200, 200, 200, 0.35) 0 1px, transparent 1px 100%);
 }
 
 .white .grid {
     background-image:
-      repeating-linear-gradient(rgb(100, 100, 100) 0 1.5px, transparent 1.5px 100%),
-      repeating-linear-gradient(90deg, rgb(100, 100, 100) 0 1.5px, transparent 1.5px 100%),
-      repeating-linear-gradient(rgb(186, 186, 186) 0 1px, transparent 1px 100%),
-      repeating-linear-gradient(90deg, rgb(186, 186, 186) 0 1px, transparent 1px 100%);
+      repeating-linear-gradient(rgba(100, 110, 140, 0.45) 0 1.5px, transparent 1.5px 100%),
+      repeating-linear-gradient(90deg, rgba(100, 110, 140, 0.45) 0 1.5px, transparent 1.5px 100%),
+      repeating-linear-gradient(rgba(140, 160, 200, 0.28) 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(90deg, rgba(140, 160, 200, 0.28) 0 1px, transparent 1px 100%);
 }
 
 #result {
     padding-left: 14.4pt;
     padding-top: calc(14.4pt * 0.7);
     font-size: 72pt;
-    font-family: HP001;
+    font-family: HP001, serif;
     line-height: calc(72pt + 14.4pt * 3);
     margin-top: 10px;
+    letter-spacing: 0;
+    user-select: text;
 }
 
 #result.bold {
     font-weight: bold;
 }
 
-#result.small{
-    padding-top: calc(14.4pt *3.35);
-    font-size: 37pt; /* to fit to the height of the line, might need to be reversed */
+#result.small {
+    padding-top: calc(14.4pt * 3.35);
+    font-size: 37pt;
     line-height: calc(36pt + 14.4pt * 1.5);
 }
 
-#result>p:last-child::after{
+#result > p.line:last-child::after {
     content: ' ';
     display: block;
     height: calc(14.4pt * 3);
 }
 
-p{
+p.line {
     margin: 0;
+    position: relative;
+    white-space: pre;
+    transition: margin-left 0.1s ease;
 }
 
-p.line{
-    position: relative;
-}
-p.line > div {
+/* Floating toolbar for individual lines */
+.line-toolbar {
     user-select: none;
     position: absolute;
     left: 0;
-    top: -16pt;
-    font-size: 10pt;
+    top: -22px;
+    font-size: 11px;
     line-height: normal;
+    display: inline-flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 2px 6px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    z-index: 10;
 }
 
-p.line > div > i:hover{
-    text-shadow: 1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue;
+.black .line-toolbar {
+    background: rgba(40, 40, 40, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-nudge {
+    background: transparent;
+    border: none;
+    color: #333333;
+    padding: 2px 5px;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.black .btn-nudge {
+    color: #f0f0f0;
+}
+
+.btn-nudge:hover {
+    background: #0d6efd;
+    color: #ffffff;
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .board {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .grid {
+        min-width: 100% !important;
+    }
+
+    .line-toolbar {
+        display: none !important;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
 }

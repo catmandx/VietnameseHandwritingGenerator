@@ -1,113 +1,132 @@
-<html>
+<!DOCTYPE html>
+<html lang="vi">
   <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
-    <title>Viết chữ đẹp - HN</title>
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="/static/img/favicon/apple-touch-icon.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="/static/img/favicon/favicon-32x32.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="/static/img/favicon/favicon-16x16.png"
-    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Viết Chữ Đẹp - Tạo Mẫu Chữ Ô Ly Tiểu Học (HP001)</title>
+    
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/img/favicon/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon/favicon-16x16.png" />
     <link rel="manifest" href="/static/img/favicon/site.webmanifest" />
-    <link
-      rel="mask-icon"
-      href="/static/img/favicon/safari-pinned-tab.svg"
-      color="#5bbad5"
-    />
     <link rel="shortcut icon" href="/static/img/favicon/favicon.ico" />
-    <meta name="msapplication-TileColor" content="#da532c" />
-    <meta
-      name="msapplication-config"
-      content="/static/img/favicon/browserconfig.xml"
-    />
     <meta name="theme-color" content="#ffffff" />
+
+    <!-- Preload primary handwriting font -->
+    <link rel="preload" href="/static/font/HP001N30.ttf" as="font" type="font/ttf" crossorigin />
+
+    <link rel="stylesheet" href="/static/css/main.css" />
+    <link rel="stylesheet" href="/static/css/board.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.2/css/all.min.css" />
+
     <script src="/static/js/jquery-3.6.0.min.js"></script>
-    <link rel="stylesheet" href="./static/css/main.css" />
-    <link rel="stylesheet" href="./static/css/board.css" />
-    <link rel="stylesheet" 
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.2/css/all.min.css">
-    <script src="./static/js/model.js"></script>
-    <script src="./static/js/view.js"></script>
-    <script src="./static/js/controller.js"></script>
-    <script src="./static/js/utils.js"></script>
-    <script src="./static/js/index.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prefixfree/1.0.7/prefixfree.min.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/model.js"></script>
+    <script src="/static/js/view.js"></script>
+    <script src="/static/js/controller.js"></script>
+    <script src="/static/js/index.js"></script>
   </head>
   <body>
-    <div id="rulesformitem" class="formitem">
-      <div class="textwrapper">
-        <textarea id="input" cols="2" rows="2" id="rules"></textarea>
-      </div>
-      <div id="option" class="option">
+    <header class="app-header no-print">
+      <div class="brand">
+        <i class="fa-solid fa-pen-nib" style="color: #1976d2; font-size: 1.4rem;"></i>
         <div>
-          <form id="font-size-form" class="font-size-form" onsubmit="return false">
-            <label id="font-size-label" class="font-size-label">Cỡ chữ</label>
-            <select id="font-size-select" class="font-size-select" oninput="view.changeFontSize(this)" >
-              <option value="36">36</option>
-              <option selected value="72">72</option>
-            </select>
-            <input type="submit" hidden>
-          </form>
-
-          <form id="font-color-form" class="font-color-form">
-            <label id="font-color-lable" class="font-color-label">Màu chữ</label>
-            <input
-              type="color"
-              id="font-color-input"
-              class="font-color-input"
-              value="#000"
-              onchange="view.changeColorText()"
-            />
-          </form>
-
-          <form id="board-color-form" class="board-color-form">
-            <label id="board-color-label" class="board-color-label">Màu bảng</label>
-            <select id="board-color-select" class="board-color-select" oninput="view.changeBoardColor(this)" >
-              <option selected value="black">Bảng đen</option>
-              <option value="white">Bảng trắng</option>
-            </select>
-          </form>
-
-          <form id="weight-form" class="weight-form">
-            <label id="weight-label" class="weight-label">Chữ đậm</label>
-            <input
-              type="checkbox"
-              checked
-              onchange="view.changeWeight(this)"
-            />
-          </form>
-
-          <form id="style-form" class="style-form">
-            <label id="style-label" class="style-label">Chữ nghiêng</label>
-            <input
-              type="checkbox"
-              onchange="view.changeStyle(this)"
-            />
-          </form>
-
+          <h1>Viết Chữ Đẹp</h1>
+          <span>Tạo mẫu chữ ô ly tiểu học chuẩn font HP001</span>
         </div>
-
-        <div id="font-color" class="font-color"></div>
       </div>
-    </div>
+      <nav class="nav-links">
+        <a href="/editor/" title="Công cụ chỉnh sửa các quy tắc nối chữ"><i class="fa-solid fa-sliders"></i> Glyph Editor</a>
+        <a href="/getcode.html" title="Tra cứu mã ký tự Unicode"><i class="fa-solid fa-code"></i> Char to Code</a>
+      </nav>
+    </header>
 
-    <div class="board black">
-        <div class="grid">
-            <div id="result" class="bold">
-                
+    <main class="main-container">
+      <div class="panel no-print">
+        <div class="input-section">
+          <div class="input-header">
+            <label for="input"><i class="fa-solid fa-keyboard"></i> Nhập văn bản cần luyện chữ:</label>
+            <div class="sample-select-wrapper">
+              <span><i class="fa-solid fa-bookmark"></i> Bài mẫu:</span>
+              <select id="sample-select" onchange="view.loadSample(this.value)">
+                <option value="">-- Chọn bài mẫu --</option>
+                <option value="sample1">Nét chữ nết người</option>
+                <option value="sample2">Công cha như núi Thái Sơn (Thơ lục bát)</option>
+                <option value="sample3">Học ăn, học nói...</option>
+                <option value="sample4">Trường của em be bé (Bài thơ tiểu học)</option>
+                <option value="sample5">Bảng chữ cái tiếng Việt</option>
+              </select>
             </div>
+          </div>
+          <textarea id="input" placeholder="Nhập chữ cần luyện viết tại đây (ví dụ: Nét chữ nết người)..." rows="3">Nét chữ nết người</textarea>
         </div>
-    </div>
+
+        <div class="toolbar">
+          <div class="tool-group">
+            <div class="tool-item">
+              <label for="font-size-select"><i class="fa-solid fa-text-height"></i> Cỡ chữ:</label>
+              <select id="font-size-select">
+                <option selected value="72">Cỡ 2 ô ly (72pt)</option>
+                <option value="36">Cỡ 1 ô ly (36pt)</option>
+              </select>
+            </div>
+
+            <div class="tool-item">
+              <label for="board-color-select"><i class="fa-solid fa-palette"></i> Kiểu bảng:</label>
+              <select id="board-color-select">
+                <option selected value="black">Bảng đen phấn trắng</option>
+                <option value="white">Vở ô ly (Giấy trắng)</option>
+              </select>
+            </div>
+
+            <div class="tool-item">
+              <label for="font-color-input"><i class="fa-solid fa-droplet"></i> Màu chữ:</label>
+              <input type="color" id="font-color-input" value="#ffffff" title="Chọn màu chữ" />
+            </div>
+
+            <div class="tool-item">
+              <input type="checkbox" id="weight-checkbox" checked />
+              <label for="weight-checkbox">Chữ đậm</label>
+            </div>
+
+            <div class="tool-item">
+              <input type="checkbox" id="style-checkbox" />
+              <label for="style-checkbox">Chữ nghiêng</label>
+            </div>
+          </div>
+
+          <div class="action-group">
+            <button type="button" class="btn btn-outline" onclick="window.print()" title="In ra giấy A4 hoặc lưu PDF">
+              <i class="fa-solid fa-print"></i> In bài viết
+            </button>
+            <button type="button" class="btn btn-success" onclick="view.exportToPng()" title="Tải hình ảnh nét cao PNG">
+              <i class="fa-solid fa-image"></i> Tải ảnh (PNG)
+            </button>
+
+            <!-- Download Font Dropdown -->
+            <div class="dropdown">
+              <button type="button" class="btn btn-primary" title="Tải font chữ HP001 để cài đặt trên máy tính">
+                <i class="fa-solid fa-download"></i> Tải Font HP001 <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem;"></i>
+              </button>
+              <div class="dropdown-content">
+                <button type="button" class="dropdown-item" onclick="view.downloadFont('normal')">
+                  <i class="fa-solid fa-font"></i> Font Thường (HP001N30.ttf)
+                </button>
+                <button type="button" class="dropdown-item" onclick="view.downloadFont('bold')">
+                  <i class="fa-solid fa-bold"></i> Font Đậm (HP001B30.ttf)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Handwriting board display -->
+      <div class="board black">
+        <div class="grid">
+          <div id="result" class="bold"></div>
+        </div>
+      </div>
+    </main>
   </body>
 </html>

@@ -3,9 +3,11 @@ const controller = {}
 controller.doLog = false;
 
 controller.initEditor = function(){
-    controller.initLogging()
-    model.getData()
-    view.addHandler()
+    controller.initLogging();
+    view.init();
+    model.getData(function(){
+        view.render();
+    });
 }
 
 controller.initLogging = function() {

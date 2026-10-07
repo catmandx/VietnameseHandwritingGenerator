@@ -1,101 +1,32 @@
-<html>
+<!DOCTYPE html>
+<html lang="vi">
     <head>
-        <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Glyph Editor - Viết Chữ Đẹp</title>
+        <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon/favicon-32x32.png">
         <script src="/static/js/jquery-3.6.0.min.js"></script>
-        <!-- Latest compiled and minified CSS -->
+        <!-- Bootstrap 5 CSS & JS -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-        <!-- Latest compiled JavaScript -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Toastr -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+        
         <script src="./js/model.js"></script>
         <script src="./js/view.js"></script>
         <script src="./js/controller.js"></script>
         <script src="./js/components.js"></script>
         <script src="./js/index.js"></script>
         <link rel="stylesheet" href="./css/main.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     </head>
     <body>
-        <div id="app" class="container-fluid pl-5 pt-2 pb-2">
-            <div class="row">
-                <div class="col">
-                    <h1 class="display-5">Base list</h1>
-                    <button id="downloadJson" class="btn btn-success"></button>
+        <div id="app" class="container-fluid p-4">
+            <div class="d-flex justify-content-center align-items-center" style="min-height: 50vh;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang tải...</span>
                 </div>
             </div>
-           
-            <div class="row">
-                <div class="col-md-12 d-flex flex-wrap" id="baseList">
-                    <div class="card m-3 px-5 base-card" data-bs-toggle="modal" data-bs-target="#editBaseModal">
-                        <div class="card-header bg-white text-center" style="font-size:72pt;">m</div>
-                        <div class="card-body"></div>
-                    </div>
-
-                    <div class="card m-3 px-5 base-card" data-bs-toggle="modal" data-bs-target="#editBaseModal">
-                        <div class="card-header bg-white text-center" style="font-size:72pt;">s</div>
-                        <div class="card-body"></div>
-                    </div>
-
-                    <div class="card m-3 px-5 base-card" data-bs-toggle="modal" data-bs-target="#addNewBaseCardModal">
-                        <div class="card-header bg-white text-center" style="font-size:72pt;">+</div>
-                        <div class="card-body"></div>
-                    </div>
-                </div>
-            </div>
-
-            
-            <div class="modal fade" id="addNewBaseCardModal">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-
-                        <!-- Modal Header -->
-                        <div class="modal-header">
-                            <h4 class="modal-title">Modal Heading</h4>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-
-                        <!-- Modal body -->
-                        <div class="modal-body">
-                            <form id="newBaseCardForm" action="#">
-                                <input name="newBase" type="text" class="form-control" placeholder="Character" aria-label="Character">
-                            </form>
-                        </div>
-
-                        <!-- Modal footer -->
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal fade" id="editBaseModal" tabindex="-1">
-                <div class="modal-dialog modal-fullscreen">
-                    <div class="modal-content">
-            
-                    <!-- Modal Header -->
-                    <div class="modal-header">
-                        <h4 class="modal-title">Change base </h4>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-            
-                    <!-- Modal body -->
-                    <div class="modal-body">
-                        
-                    </div>
-            
-                    <!-- Modal footer -->
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-success" data-bs-dismiss="modal">Save</button>
-                        <button type="button" class="btn btn-warning" >Add new type</button>
-                    </div>
-            
-                    </div>
-                </div>
-            </div>
-
         </div>
     </body>
 </html>

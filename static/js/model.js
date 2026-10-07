@@ -1,12 +1,19 @@
 const model = {}
 
 model.glyphs = {}
+model.isLoaded = false;
 
-model.getData = function(){
-    $.getJSON("/data/all.json", {_: new Date().getTime()} , function(data){
-        model.glyphs = data
-        utils.log(data)
-    })
+model.getData = function(callback){
+    return $.getJSON("/data/all.json", function(data){
+        model.glyphs = data;
+        model.isLoaded = true;
+        utils.log('Loaded glyph definitions:', Object.keys(data).length);
+        if (typeof callback === 'function') {
+            callback(data);
+        }
+    }).fail(function(err){
+        console.error("Failed to load /data/all.json", err);
+    });
 }
 
 model.getUnicodeStr = function(word){

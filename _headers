@@ -1,0 +1,23 @@
+# Cloudflare Pages Caching & Headers configuration
+
+/static/font/*
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *
+
+/static/img/*
+  Cache-Control: public, max-age=2592000
+
+/static/css/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/static/js/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/data/all.json
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+  Content-Type: application/json; charset=utf-8
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+
