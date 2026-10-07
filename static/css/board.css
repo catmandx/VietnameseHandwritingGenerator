@@ -143,53 +143,63 @@ p.line {
     padding: 0;
     position: relative;
     white-space: pre;
-    transition: margin-left 0.1s ease;
 }
 
-/* Floating toolbar for line adjustments (outside of p.line so no layout shift/jumping!) */
-#line-toolbar {
+/* 
+ * Word Dragging Interactions:
+ * Each word is an inline-block element.
+ * Dragging any word adjusts its margin-left,
+ * which naturally flows all subsequent words on the same line along with it!
+ */
+.word {
+    display: inline-block;
+    cursor: grab;
+    cursor: -webkit-grab;
     user-select: none;
     -webkit-user-select: none;
-    position: absolute;
-    font-size: 11px;
-    line-height: normal;
-    display: none;
-    gap: 4px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 3px 6px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
-    z-index: 100;
-    pointer-events: auto;
-    transition: left 0.1s ease;
-}
-
-.black #line-toolbar {
-    background: rgba(30, 30, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-}
-
-.btn-nudge {
-    background: transparent;
+    touch-action: none;
+    position: relative;
+    vertical-align: baseline;
+    padding: 0;
     border: none;
-    color: #333333;
-    padding: 2px 6px;
-    cursor: pointer;
-    font-size: 11px;
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s, color 0.15s;
+    transition: filter 0.15s ease, opacity 0.15s ease;
 }
 
-.black .btn-nudge {
-    color: #f0f0f0;
+.word:hover {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.45));
 }
 
-.btn-nudge:hover {
-    background: #0d6efd;
-    color: #ffffff;
+.white .word:hover {
+    filter: drop-shadow(0 0 2px rgba(43, 16, 85, 0.35));
+}
+
+.word.is-dragging {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7));
+}
+
+.white .word.is-dragging {
+    filter: drop-shadow(0 0 4px rgba(43, 16, 85, 0.6));
+}
+
+body.is-word-dragging {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+body.is-word-dragging * {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+}
+
+.word-space {
+    display: inline;
+    white-space: pre;
+    vertical-align: baseline;
 }
 
 /* Print Styles */
@@ -225,9 +235,6 @@ p.line {
         padding-right: 0 !important;
     }
 
-    #line-toolbar {
-        display: none !important;
-    }
 
     @page {
         size: A4 portrait;
