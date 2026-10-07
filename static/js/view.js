@@ -8,6 +8,8 @@ view.sampleTexts = {
     "sample5": "a ă â b c d đ e ê g h i k l m n o ô ơ p q r s t u ư v x y\nA Ă Â B C D Đ E Ê G H I K L M N O Ô Ơ P Q R S T U Ư V X Y"
 };
 
+view.activeLine = null;
+
 view.init = function () {
     const $input = $('#input');
 
@@ -46,7 +48,7 @@ view.init = function () {
         view.changeStyle(this.checked);
     });
 
-    // Setup delegated hover & nudge controls on the result board (never duplicated!)
+    // Setup floating line toolbar on the grid (never alters p.line DOM -> no jumping!)
     view.setupLineInteractions();
 
     // Trigger initial render
@@ -97,62 +99,104 @@ view.updateLines = function (linesResult) {
             $el.html('&nbsp;');
         }
     });
+
+    // Hide line toolbar if active line was removed
+    if (view.activeLine && !$.contains(document, view.activeLine[0])) {
+        $('#line-toolbar').hide();
+        view.activeLine = null;
+    }
 };
 
 view.setupLineInteractions = function () {
-    const $result = $('#result');
+    const $grid = $('.grid');
+    
+    // Create single floating toolbar once inside .grid
+    let $toolbar = $('#line-toolbar');
+    if ($toolbar.length === 0) {
+        $toolbar = $(`
+            <div id="line-toolbar" class="line-toolbar no-print">
+                <button type="button" class="btn-nudge btn-reset" title="Đặt lại vị trí ban đầu">
+                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                </button>
+                <button type="button" class="btn-nudge btn-left" title="Dịch sang trái">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button type="button" class="btn-nudge btn-right" title="Dịch sang phải">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        `);
+        $grid.append($toolbar);
+    }
 
-    // Menu HTML template
-    const menuHtml = `
-        <div class="line-toolbar no-print">
-            <button type="button" class="btn-nudge btn-reset" title="Đặt lại vị trí ban đầu">
-                <i class="fa-solid fa-arrow-rotate-left"></i>
-            </button>
-            <button type="button" class="btn-nudge btn-left" title="Dịch sang trái">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>
-            <button type="button" class="btn-nudge btn-right" title="Dịch sang phải">
-                <i class="fa-solid fa-arrow-right"></i>
-            </button>
-        </div>
-    `;
+    let hideTimer = null;
 
-    // Show menu on hover
-    $result.on('mouseenter', 'p.line', function () {
-        const $line = $(this);
-        if ($line.children('.line-toolbar').length === 0) {
-            $line.append(menuHtml);
+    function positionToolbar($line) {
+        if (!$line || $line.length === 0) return;
+        view.activeLine = $line;
+        const linePos = $line.position();
+        const marginLeft = parseFloat($line.css('margin-left')) || 0;
+        
+        $toolbar.css({
+            top: (linePos.top - 24) + 'px',
+            left: (linePos.left + marginLeft + 14) + 'px',
+            display: 'inline-flex'
+        });
+    }
+
+    $grid.on('mouseenter', 'p.line', function () {
+        if (hideTimer) clearTimeout(hideTimer);
+        positionToolbar($(this));
+    });
+
+    $grid.on('mouseleave', 'p.line', function (e) {
+        const toEl = e.relatedTarget;
+        if ($(toEl).closest('#line-toolbar').length) return;
+        hideTimer = setTimeout(() => {
+            $toolbar.hide();
+        }, 200);
+    });
+
+    $toolbar.on('mouseenter', function () {
+        if (hideTimer) clearTimeout(hideTimer);
+    });
+
+    $toolbar.on('mouseleave', function (e) {
+        const toEl = e.relatedTarget;
+        if ($(toEl).closest('p.line').length) return;
+        hideTimer = setTimeout(() => {
+            $toolbar.hide();
+        }, 200);
+    });
+
+    $toolbar.on('click', '.btn-reset', function (e) {
+        e.stopPropagation();
+        if (view.activeLine && view.activeLine.length) {
+            view.activeLine.css('margin-left', '0px');
+            positionToolbar(view.activeLine);
         }
     });
 
-    // Remove menu on leave
-    $result.on('mouseleave', 'p.line', function () {
-        $(this).children('.line-toolbar').remove();
+    $toolbar.on('click', '.btn-left', function (e) {
+        e.stopPropagation();
+        if (view.activeLine && view.activeLine.length) {
+            const step = $('#result').hasClass('small') ? 4.8 : 9.6;
+            const currentMargin = parseFloat(view.activeLine.css('margin-left')) || 0;
+            const newMargin = currentMargin - step;
+            view.activeLine.css('margin-left', newMargin + 'px');
+            positionToolbar(view.activeLine);
+        }
     });
 
-    // Reset line position
-    $result.on('click', '.btn-reset', function (e) {
+    $toolbar.on('click', '.btn-right', function (e) {
         e.stopPropagation();
-        const $line = $(this).closest('p.line');
-        $line.css('margin-left', '0px');
-    });
-
-    // Move left
-    $result.on('click', '.btn-left', function (e) {
-        e.stopPropagation();
-        const $line = $(this).closest('p.line');
-        const step = $('#result').hasClass('small') ? 4.8 : 9.6; // in pt
-        const currentMargin = parseFloat($line.css('margin-left')) || 0;
-        $line.css('margin-left', (currentMargin - step) + 'px');
-    });
-
-    // Move right
-    $result.on('click', '.btn-right', function (e) {
-        e.stopPropagation();
-        const $line = $(this).closest('p.line');
-        const step = $('#result').hasClass('small') ? 4.8 : 9.6; // in pt
-        const currentMargin = parseFloat($line.css('margin-left')) || 0;
-        $line.css('margin-left', (currentMargin + step) + 'px');
+        if (view.activeLine && view.activeLine.length) {
+            const step = $('#result').hasClass('small') ? 4.8 : 9.6;
+            const currentMargin = parseFloat(view.activeLine.css('margin-left')) || 0;
+            const newMargin = currentMargin + step;
+            view.activeLine.css('margin-left', newMargin + 'px');
+            positionToolbar(view.activeLine);
+        }
     });
 };
 
@@ -255,20 +299,45 @@ view.exportToPng = async function () {
         await document.fonts.ready;
     }
 
-    // High resolution scaling (2x for retina sharpness)
-    const scale = 2;
-    const ptToPx = 1.3333; // 96 / 72
-    const subGridPt = 14.4;
-    const subGridPx = subGridPt * ptToPx; // 19.2px
+    const scale = 2; // Retina sharpness
+    const ptToPx = 96 / 72; // 1.3333333333333333
+    const subGridPx = 14.4 * ptToPx; // 19.2px
     const bigGridPx = subGridPx * 4; // 76.8px
 
     const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
-    const lineHeightPx = (isSmall ? (36 + 14.4 * 1.5) : (72 + 14.4 * 3)) * ptToPx;
-    const topPaddingPx = (isSmall ? (14.4 * 3.35) : (14.4 * 0.7)) * ptToPx + (isSmall ? 20 : 35);
+    const lineHeightPx = (isSmall ? (36 + 14.4 * 1.5) : (72 + 14.4 * 3)) * ptToPx; // 76.8px or 153.6px
 
-    // Calculate dimensions
-    const widthPx = Math.max(900, Math.ceil(900 / bigGridPx) * bigGridPx);
-    const heightPx = Math.max(600, Math.ceil((lines.length * lineHeightPx + topPaddingPx + 80) / bigGridPx) * bigGridPx);
+    // 1. Accurately measure the widest line
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d');
+    measureCtx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
+
+    let maxLineRight = 0;
+    lines.forEach(l => {
+        const textW = measureCtx.measureText(l.text).width;
+        const lineRight = subGridPx + l.marginLeft + textW;
+        if (lineRight > maxLineRight) {
+            maxLineRight = lineRight;
+        }
+    });
+
+    // Grid origins matching CSS background-position: var(--grid-unit) calc(var(--grid-unit) * 2.5)
+    const gridOriginX = subGridPx; // 19.2px
+    const gridOriginY = subGridPx * 2.5; // 48px (shifted half cell lower)
+
+    // Dynamic width so long text is NEVER cut off
+    const minViewportWidth = Math.max(window.innerWidth || 1200, 1000);
+    const slantExtra = isItalics ? 140 : 0;
+    const neededWidth = Math.max(minViewportWidth, maxLineRight + bigGridPx * 2 + slantExtra);
+    const widthPx = Math.ceil(neededWidth / bigGridPx) * bigGridPx;
+
+    // First line baseline rests on major line:
+    // In 72pt mode: gridOriginY + 8 sub-grids = 192px (Major line 2)
+    // In 36pt mode: gridOriginY + 4 sub-grids = 115.2px (Major line 1)
+    const firstBaselineY = gridOriginY + (isSmall ? 4 : 8) * subGridPx;
+    const lastBaselineY = firstBaselineY + (lines.length - 1) * lineHeightPx;
+    const neededHeight = lastBaselineY + bigGridPx * 2;
+    const heightPx = Math.ceil(neededHeight / bigGridPx) * bigGridPx;
 
     const canvas = document.createElement('canvas');
     canvas.width = widthPx * scale;
@@ -276,7 +345,7 @@ view.exportToPng = async function () {
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
 
-    // 1. Draw Background
+    // 2. Draw Background
     if (isWhiteBoard) {
         ctx.fillStyle = '#ffffff';
     } else {
@@ -284,14 +353,16 @@ view.exportToPng = async function () {
     }
     ctx.fillRect(0, 0, widthPx, heightPx);
 
-    // 2. Draw Grid Lines
-    const majorColor = isWhiteBoard ? 'rgba(100, 100, 100, 0.45)' : 'rgba(220, 220, 220, 0.65)';
-    const minorColor = isWhiteBoard ? 'rgba(180, 180, 180, 0.28)' : 'rgba(220, 220, 220, 0.3)';
+    // 3. Draw Grid Lines synchronized with CSS gridOrigin
+    const majorColor = isWhiteBoard ? 'rgba(100, 110, 140, 0.5)' : 'rgba(220, 220, 220, 0.7)';
+    const minorColor = isWhiteBoard ? 'rgba(140, 160, 200, 0.28)' : 'rgba(200, 200, 200, 0.32)';
 
     // Horizontal grid lines
-    for (let y = 0; y <= heightPx; y += subGridPx) {
+    const startY = gridOriginY % subGridPx;
+    for (let y = startY; y <= heightPx; y += subGridPx) {
+        const k = Math.round((y - gridOriginY) / subGridPx);
+        const isMajor = (k % 4 === 0);
         ctx.beginPath();
-        const isMajor = Math.round(y % bigGridPx) === 0;
         ctx.strokeStyle = isMajor ? majorColor : minorColor;
         ctx.lineWidth = isMajor ? 1.5 : 0.75;
         ctx.moveTo(0, y);
@@ -301,9 +372,14 @@ view.exportToPng = async function () {
 
     // Vertical grid lines (respecting slant if italics)
     const slantOffset = isItalics ? Math.tan(17 * Math.PI / 180) : 0;
-    for (let x = -heightPx * slantOffset; x <= widthPx + heightPx * slantOffset; x += subGridPx) {
+    const xMin = -heightPx * slantOffset;
+    const xMax = widthPx + heightPx * slantOffset;
+    const startX = (gridOriginX % subGridPx) - heightPx * slantOffset;
+
+    for (let x = startX; x <= xMax; x += subGridPx) {
+        const k = Math.round((x - gridOriginX) / subGridPx);
+        const isMajor = (k % 4 === 0);
         ctx.beginPath();
-        const isMajor = Math.round(Math.abs(x) % bigGridPx) === 0;
         ctx.strokeStyle = isMajor ? majorColor : minorColor;
         ctx.lineWidth = isMajor ? 1.5 : 0.75;
         ctx.moveTo(x, 0);
@@ -311,7 +387,7 @@ view.exportToPng = async function () {
         ctx.stroke();
     }
 
-    // 3. Draw Text
+    // 4. Draw Text
     ctx.save();
     if (isItalics) {
         ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
@@ -321,15 +397,14 @@ view.exportToPng = async function () {
     ctx.fillStyle = textColor;
     ctx.textBaseline = 'alphabetic';
 
-    const leftBasePx = subGridPx;
     lines.forEach((lineObj, idx) => {
-        const yPos = topPaddingPx + (idx * lineHeightPx) + fontSizePx * 0.75;
-        const xPos = leftBasePx + lineObj.marginLeft;
+        const yPos = firstBaselineY + (idx * lineHeightPx);
+        const xPos = gridOriginX + lineObj.marginLeft;
         ctx.fillText(lineObj.text, xPos, yPos);
     });
     ctx.restore();
 
-    // 4. Trigger Download
+    // 5. Trigger Download
     canvas.toBlob(function (blob) {
         if (!blob) return;
         const url = URL.createObjectURL(blob);

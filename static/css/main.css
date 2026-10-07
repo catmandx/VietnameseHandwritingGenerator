@@ -87,11 +87,25 @@ body {
     background: #e2e8f0;
 }
 
-/* Main Container */
-.main-container {
+/* Layout Containers */
+.app-main {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.panel-container {
     max-width: 1240px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 16px 20px 0 20px;
+    box-sizing: border-box;
+}
+
+.board-container {
+    width: 100%;
+    padding: 0 16px 24px 16px;
+    box-sizing: border-box;
 }
 
 /* Control Panel */

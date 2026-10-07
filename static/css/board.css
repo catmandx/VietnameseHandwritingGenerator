@@ -1,68 +1,123 @@
+:root {
+    --grid-unit: 14.4pt;
+    --grid-size: calc(var(--grid-unit) * 4);
+}
+
 .board {
-    margin: 20px auto;
+    margin: 12px 0 24px 0;
     width: 100%;
-    max-width: 1200px;
-    min-height: 500px;
+    max-width: 100%;
+    min-height: 520px;
     border-radius: 8px;
     overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     transition: background 0.25s ease, color 0.25s ease;
+    background-clip: padding-box;
+    /* Safari clipping stabilization */
+    isolation: isolate;
+    position: relative;
+    box-sizing: border-box;
 }
 
 .board.black {
     color: #ffffff;
     background-color: #496e53;
     border: 12px solid #364f3c;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .board.white {
     color: #2b1055;
     background-color: #ffffff;
     border: 12px solid #e0dfd5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
+/* 
+ * UNIFIED GRID TILE ARCHITECTURE:
+ * Both the major lines and minor lines are defined within the EXACT SAME 4x4 repeating tile.
+ * display: inline-block + width: max-content ensures the grid expands dynamically with long text,
+ * so scrolling to the right NEVER ends early!
+ */
 .grid {
-    min-width: 900px;
-    min-height: 500px;
-    background-size: 
-        calc(14.4pt * 4) calc(14.4pt * 4), 
-        calc(14.4pt * 4) calc(14.4pt * 4), 
-        14.4pt 14.4pt, 
-        14.4pt 14.4pt;
-    background-position: 14.4pt 28.8pt;
+    display: inline-block;
+    width: max-content;
+    min-width: 100%;
+    min-height: 520px;
+    padding-right: 200px; /* Ample grid space after the last character so it never cuts off */
+    box-sizing: border-box;
+    vertical-align: top;
+    position: relative;
+
+    background-size: var(--grid-size) var(--grid-size);
+    background-position: var(--grid-unit) calc(var(--grid-unit) * 2.5);
+    background-repeat: repeat;
     transition: transform 0.2s ease;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+
+    background-image:
+      /* Vertical lines: Major line at 0, Minor lines at 14.4pt, 28.8pt, 43.2pt */
+      linear-gradient(to right,
+        var(--grid-major-color) 0, var(--grid-major-color) 1.5px, transparent 1.5px,
+        transparent calc(var(--grid-unit) - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) + 0.5px), transparent calc(var(--grid-unit) + 0.5px),
+        transparent calc(var(--grid-unit) * 2 - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) * 2 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 2 + 0.5px), transparent calc(var(--grid-unit) * 2 + 0.5px),
+        transparent calc(var(--grid-unit) * 3 - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) * 3 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 3 + 0.5px), transparent calc(var(--grid-unit) * 3 + 0.5px),
+        transparent var(--grid-size)
+      ),
+      /* Horizontal lines: Major line at 0, Minor lines at 14.4pt, 28.8pt, 43.2pt */
+      linear-gradient(to bottom,
+        var(--grid-major-color) 0, var(--grid-major-color) 1.5px, transparent 1.5px,
+        transparent calc(var(--grid-unit) - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) + 0.5px), transparent calc(var(--grid-unit) + 0.5px),
+        transparent calc(var(--grid-unit) * 2 - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) * 2 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 2 + 0.5px), transparent calc(var(--grid-unit) * 2 + 0.5px),
+        transparent calc(var(--grid-unit) * 3 - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) * 3 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 3 + 0.5px), transparent calc(var(--grid-unit) * 3 + 0.5px),
+        transparent var(--grid-size)
+      );
 } 
 
-.grid.italics {
-    transform: skewX(-17deg);
-    transform-origin: top left;
-}
-
 .black .grid {
-    background-image:
-      repeating-linear-gradient(rgba(220, 220, 220, 0.7) 0 2px, transparent 2px 100%),
-      repeating-linear-gradient(90deg, rgba(220, 220, 220, 0.7) 0 2px, transparent 2px 100%),
-      repeating-linear-gradient(rgba(200, 200, 200, 0.35) 0 1px, transparent 1px 100%),
-      repeating-linear-gradient(90deg, rgba(200, 200, 200, 0.35) 0 1px, transparent 1px 100%);
+    --grid-major-color: rgba(220, 220, 220, 0.7);
+    --grid-minor-color: rgba(200, 200, 200, 0.32);
 }
 
 .white .grid {
-    background-image:
-      repeating-linear-gradient(rgba(100, 110, 140, 0.45) 0 1.5px, transparent 1.5px 100%),
-      repeating-linear-gradient(90deg, rgba(100, 110, 140, 0.45) 0 1.5px, transparent 1.5px 100%),
-      repeating-linear-gradient(rgba(140, 160, 200, 0.28) 0 1px, transparent 1px 100%),
-      repeating-linear-gradient(90deg, rgba(140, 160, 200, 0.28) 0 1px, transparent 1px 100%);
+    --grid-major-color: rgba(100, 110, 140, 0.5);
+    --grid-minor-color: rgba(140, 160, 200, 0.28);
+}
+
+.grid.italics {
+    -webkit-transform: skewX(-17deg);
+    transform: skewX(-17deg);
+    -webkit-transform-origin: top left;
+    transform-origin: top left;
+    will-change: transform;
 }
 
 #result {
-    padding-left: 14.4pt;
-    padding-top: calc(14.4pt * 0.7);
+    width: max-content;
+    min-width: 100%;
+    padding-left: var(--grid-unit);
+    padding-top: calc(var(--grid-unit) * 0.7);
     font-size: 72pt;
     font-family: HP001, serif;
-    line-height: calc(72pt + 14.4pt * 3);
+    line-height: calc(72pt + var(--grid-unit) * 3);
     margin-top: 10px;
     letter-spacing: 0;
     user-select: text;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    box-sizing: border-box;
 }
 
 #result.bold {
@@ -70,51 +125,55 @@
 }
 
 #result.small {
-    padding-top: calc(14.4pt * 3.35);
+    padding-top: calc(var(--grid-unit) * 3.35);
     font-size: 37pt;
-    line-height: calc(36pt + 14.4pt * 1.5);
+    line-height: calc(36pt + var(--grid-unit) * 1.5);
 }
 
 #result > p.line:last-child::after {
     content: ' ';
     display: block;
-    height: calc(14.4pt * 3);
+    height: calc(var(--grid-unit) * 3);
 }
 
 p.line {
     margin: 0;
+    -webkit-margin-before: 0;
+    -webkit-margin-after: 0;
+    padding: 0;
     position: relative;
     white-space: pre;
     transition: margin-left 0.1s ease;
 }
 
-/* Floating toolbar for individual lines */
-.line-toolbar {
+/* Floating toolbar for line adjustments (outside of p.line so no layout shift/jumping!) */
+#line-toolbar {
     user-select: none;
+    -webkit-user-select: none;
     position: absolute;
-    left: 0;
-    top: -22px;
     font-size: 11px;
     line-height: normal;
-    display: inline-flex;
+    display: none;
     gap: 4px;
-    background: rgba(255, 255, 255, 0.92);
-    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 3px 6px;
     border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    z-index: 100;
+    pointer-events: auto;
+    transition: left 0.1s ease;
 }
 
-.black .line-toolbar {
-    background: rgba(40, 40, 40, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+.black #line-toolbar {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .btn-nudge {
     background: transparent;
     border: none;
     color: #333333;
-    padding: 2px 5px;
+    padding: 2px 6px;
     cursor: pointer;
     font-size: 11px;
     border-radius: 3px;
@@ -145,6 +204,10 @@ p.line {
         display: none !important;
     }
 
+    .board-container {
+        padding: 0 !important;
+    }
+
     .board {
         box-shadow: none !important;
         border: none !important;
@@ -159,9 +222,10 @@ p.line {
 
     .grid {
         min-width: 100% !important;
+        padding-right: 0 !important;
     }
 
-    .line-toolbar {
+    #line-toolbar {
         display: none !important;
     }
 

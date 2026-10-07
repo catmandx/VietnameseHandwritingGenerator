@@ -41,90 +41,94 @@
       </nav>
     </header>
 
-    <main class="main-container">
-      <div class="panel no-print">
-        <div class="input-section">
-          <div class="input-header">
-            <label for="input"><i class="fa-solid fa-keyboard"></i> Nhập văn bản cần luyện chữ:</label>
-            <div class="sample-select-wrapper">
-              <span><i class="fa-solid fa-bookmark"></i> Bài mẫu:</span>
-              <select id="sample-select" onchange="view.loadSample(this.value)">
-                <option value="">-- Chọn bài mẫu --</option>
-                <option value="sample1">Nét chữ nết người</option>
-                <option value="sample2">Công cha như núi Thái Sơn (Thơ lục bát)</option>
-                <option value="sample3">Học ăn, học nói...</option>
-                <option value="sample4">Trường của em be bé (Bài thơ tiểu học)</option>
-                <option value="sample5">Bảng chữ cái tiếng Việt</option>
-              </select>
+    <main class="app-main">
+      <div class="panel-container no-print">
+        <div class="panel">
+          <div class="input-section">
+            <div class="input-header">
+              <label for="input"><i class="fa-solid fa-keyboard"></i> Nhập văn bản cần luyện chữ:</label>
+              <div class="sample-select-wrapper">
+                <span><i class="fa-solid fa-bookmark"></i> Bài mẫu:</span>
+                <select id="sample-select" onchange="view.loadSample(this.value)">
+                  <option value="">-- Chọn bài mẫu --</option>
+                  <option value="sample1">Nét chữ nết người</option>
+                  <option value="sample2">Công cha như núi Thái Sơn (Thơ lục bát)</option>
+                  <option value="sample3">Học ăn, học nói...</option>
+                  <option value="sample4">Trường của em be bé (Bài thơ tiểu học)</option>
+                  <option value="sample5">Bảng chữ cái tiếng Việt</option>
+                </select>
+              </div>
             </div>
-          </div>
-          <textarea id="input" placeholder="Nhập chữ cần luyện viết tại đây (ví dụ: Nét chữ nết người)..." rows="3">Nét chữ nết người</textarea>
-        </div>
-
-        <div class="toolbar">
-          <div class="tool-group">
-            <div class="tool-item">
-              <label for="font-size-select"><i class="fa-solid fa-text-height"></i> Cỡ chữ:</label>
-              <select id="font-size-select">
-                <option selected value="72">Cỡ 2 ô ly (72pt)</option>
-                <option value="36">Cỡ 1 ô ly (36pt)</option>
-              </select>
-            </div>
-
-            <div class="tool-item">
-              <label for="board-color-select"><i class="fa-solid fa-palette"></i> Kiểu bảng:</label>
-              <select id="board-color-select">
-                <option selected value="black">Bảng đen phấn trắng</option>
-                <option value="white">Vở ô ly (Giấy trắng)</option>
-              </select>
-            </div>
-
-            <div class="tool-item">
-              <label for="font-color-input"><i class="fa-solid fa-droplet"></i> Màu chữ:</label>
-              <input type="color" id="font-color-input" value="#ffffff" title="Chọn màu chữ" />
-            </div>
-
-            <div class="tool-item">
-              <input type="checkbox" id="weight-checkbox" checked />
-              <label for="weight-checkbox">Chữ đậm</label>
-            </div>
-
-            <div class="tool-item">
-              <input type="checkbox" id="style-checkbox" />
-              <label for="style-checkbox">Chữ nghiêng</label>
-            </div>
+            <textarea id="input" placeholder="Nhập chữ cần luyện viết tại đây (ví dụ: Nét chữ nết người)..." rows="3">Nét chữ nết người</textarea>
           </div>
 
-          <div class="action-group">
-            <button type="button" class="btn btn-outline" onclick="window.print()" title="In ra giấy A4 hoặc lưu PDF">
-              <i class="fa-solid fa-print"></i> In bài viết
-            </button>
-            <button type="button" class="btn btn-success" onclick="view.exportToPng()" title="Tải hình ảnh nét cao PNG">
-              <i class="fa-solid fa-image"></i> Tải ảnh (PNG)
-            </button>
+          <div class="toolbar">
+            <div class="tool-group">
+              <div class="tool-item">
+                <label for="font-size-select"><i class="fa-solid fa-text-height"></i> Cỡ chữ:</label>
+                <select id="font-size-select">
+                  <option selected value="72">Cỡ 2 ô ly (72pt)</option>
+                  <option value="36">Cỡ 1 ô ly (36pt)</option>
+                </select>
+              </div>
 
-            <!-- Download Font Dropdown -->
-            <div class="dropdown">
-              <button type="button" class="btn btn-primary" title="Tải font chữ HP001 để cài đặt trên máy tính">
-                <i class="fa-solid fa-download"></i> Tải Font HP001 <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem;"></i>
+              <div class="tool-item">
+                <label for="board-color-select"><i class="fa-solid fa-palette"></i> Kiểu bảng:</label>
+                <select id="board-color-select">
+                  <option selected value="black">Bảng đen phấn trắng</option>
+                  <option value="white">Vở ô ly (Giấy trắng)</option>
+                </select>
+              </div>
+
+              <div class="tool-item">
+                <label for="font-color-input"><i class="fa-solid fa-droplet"></i> Màu chữ:</label>
+                <input type="color" id="font-color-input" value="#ffffff" title="Chọn màu chữ" />
+              </div>
+
+              <div class="tool-item">
+                <input type="checkbox" id="weight-checkbox" checked />
+                <label for="weight-checkbox">Chữ đậm</label>
+              </div>
+
+              <div class="tool-item">
+                <input type="checkbox" id="style-checkbox" />
+                <label for="style-checkbox">Chữ nghiêng</label>
+              </div>
+            </div>
+
+            <div class="action-group">
+              <button type="button" class="btn btn-outline" onclick="window.print()" title="In ra giấy A4 hoặc lưu PDF">
+                <i class="fa-solid fa-print"></i> In bài viết
               </button>
-              <div class="dropdown-content">
-                <button type="button" class="dropdown-item" onclick="view.downloadFont('normal')">
-                  <i class="fa-solid fa-font"></i> Font Thường (HP001N30.ttf)
+              <button type="button" class="btn btn-success" onclick="view.exportToPng()" title="Tải hình ảnh nét cao PNG">
+                <i class="fa-solid fa-image"></i> Tải ảnh (PNG)
+              </button>
+
+              <!-- Download Font Dropdown -->
+              <div class="dropdown">
+                <button type="button" class="btn btn-primary" title="Tải font chữ HP001 để cài đặt trên máy tính">
+                  <i class="fa-solid fa-download"></i> Tải Font HP001 <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem;"></i>
                 </button>
-                <button type="button" class="dropdown-item" onclick="view.downloadFont('bold')">
-                  <i class="fa-solid fa-bold"></i> Font Đậm (HP001B30.ttf)
-                </button>
+                <div class="dropdown-content">
+                  <button type="button" class="dropdown-item" onclick="view.downloadFont('normal')">
+                    <i class="fa-solid fa-font"></i> Font Thường (HP001N30.ttf)
+                  </button>
+                  <button type="button" class="dropdown-item" onclick="view.downloadFont('bold')">
+                    <i class="fa-solid fa-bold"></i> Font Đậm (HP001B30.ttf)
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Handwriting board display -->
-      <div class="board black">
-        <div class="grid">
-          <div id="result" class="bold"></div>
+      <!-- Handwriting board display: fills viewport horizontally -->
+      <div class="board-container">
+        <div class="board black">
+          <div class="grid">
+            <div id="result" class="bold"></div>
+          </div>
         </div>
       </div>
     </main>
