@@ -5,11 +5,21 @@ utils.log = function (...args) {
 }
 
 utils.isLetter = function (c) {
-    return !/[`~!@#$%^&*()_+\-=\[\]\{\};':",./<>?\\|0-9]+/.test(c)
+    if (!c || typeof c !== "string") return false;
+    return /^[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]+$/i.test(c);
 }
 
 utils.getAccent = function (char) {
+    if (!char) return 'level';
     char = char.toLowerCase();
+    // Special cases
+    if (/ooc/.test(char)) { return "level"; }
+    if (/oon/.test(char)) { return "level"; }
+    if (/oòn/.test(char)) { return "lower"; }
+    if (/oón/.test(char)) { return "acute"; }
+    if (/oóc/.test(char)) { return "acute"; }
+    if (/oọc/.test(char)) { return "heavy"; }
+
     let accentList = {
         'acute': 'áắấóốớéếíúứý',
         'lower': 'àằầòồờèềìùừỳ',
@@ -18,15 +28,7 @@ utils.getAccent = function (char) {
         'heavy': 'ạặậọộợẹệịụựỵ',
     }
     for (const [accent, characters] of Object.entries(accentList)) {
-        //special cases
-        if (/ooc/.test(char)) { return "level"; }
-        if (/oon/.test(char)) { return "level"; }
-        if (/oòn/.test(char)) { return "lower"; }
-        if (/oón/.test(char)) { return "acute"; }
-        if (/oóc/.test(char)) { return "acute"; }
-        if (/oọc/.test(char)) { return "heavy"; }
-        //normal cases
-        var re = new RegExp('[' + characters + ']', 'g');
+        var re = new RegExp('[' + characters + ']');
         if (re.test(char)) {
             return accent;
         }

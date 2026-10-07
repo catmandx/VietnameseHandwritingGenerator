@@ -87,17 +87,24 @@ model.saveBaseData = function(formData){
         })
         newBaseTypesData.push(newTypeData);
     }
+    if (!this.glyphData[baseCharacter]) {
+        this.glyphData[baseCharacter] = {};
+    }
     this.glyphData[baseCharacter].types = newBaseTypesData;
     toastr.success('Save success!')
 }
 
 function validatePrevAndNext(text){
+    if (!text) return '';
     text = text.replace(/[;,.:]/g,' ').replace(/\s{2,}/g,' ').trim();
-    let re = /^([aâăằắẳẵặbcdđeêghiklmnoôơpqrstuưvxy]\s?)*$/gi
-    if (re.test(text)){
-        return text;
+    let tokens = text.split(' ').filter(Boolean);
+    let validTokenRe = /^[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]+$/i;
+    for (const token of tokens) {
+        if (!validTokenRe.test(token)) {
+            return false;
+        }
     }
-    return false;
+    return tokens.join(' ');
 }
 
 function handleGlyphInput(e){

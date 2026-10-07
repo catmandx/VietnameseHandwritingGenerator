@@ -1,88 +1,243 @@
-
-.board{
-    margin-top: 10px;
+:root {
+    --grid-unit: 14.4pt;
+    --grid-size: calc(var(--grid-unit) * 4);
 }
 
-.board.black{
-    color: white;
-    background-image: linear-gradient(#496e53, #496e53)
+.board {
+    margin: 12px 0 24px 0;
+    width: 100%;
+    max-width: 100%;
+    min-height: 520px;
+    border-radius: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transition: background 0.25s ease, color 0.25s ease;
+    background-clip: padding-box;
+    /* Safari clipping stabilization */
+    isolation: isolate;
+    position: relative;
+    box-sizing: border-box;
 }
 
-.board.white{
-    color: black;
-    background-image: linear-gradient(#fff, #fff)
+.board.black {
+    color: #ffffff;
+    background-color: #496e53;
+    border: 12px solid #364f3c;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
+.board.white {
+    color: #2b1055;
+    background-color: #ffffff;
+    border: 12px solid #e0dfd5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 
+ * UNIFIED GRID TILE ARCHITECTURE:
+ * Both the major lines and minor lines are defined within the EXACT SAME 4x4 repeating tile.
+ * display: inline-block + width: max-content ensures the grid expands dynamically with long text,
+ * so scrolling to the right NEVER ends early!
+ */
 .grid {
-    background-size: 
-        calc(14.4pt * 4) calc(14.4pt * 4), 
-        calc(14.4pt * 4) calc(14.4pt * 4), 
-        14.4pt 14.4pt, 
-        14.4pt 14.4pt;
-    background-position: 14.4pt 28.8pt
+    display: inline-block;
+    width: max-content;
+    min-width: 100%;
+    min-height: 520px;
+    padding-right: 200px; /* Ample grid space after the last character so it never cuts off */
+    box-sizing: border-box;
+    vertical-align: top;
+    position: relative;
+
+    background-size: var(--grid-size) var(--grid-size);
+    background-position: var(--grid-unit) calc(var(--grid-unit) * 2.5);
+    background-repeat: repeat;
+    transition: transform 0.2s ease;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+
+    background-image:
+      /* Vertical lines: Major line at 0, Minor lines at 14.4pt, 28.8pt, 43.2pt */
+      linear-gradient(to right,
+        var(--grid-major-color) 0, var(--grid-major-color) 1.5px, transparent 1.5px,
+        transparent calc(var(--grid-unit) - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) + 0.5px), transparent calc(var(--grid-unit) + 0.5px),
+        transparent calc(var(--grid-unit) * 2 - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) * 2 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 2 + 0.5px), transparent calc(var(--grid-unit) * 2 + 0.5px),
+        transparent calc(var(--grid-unit) * 3 - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) * 3 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 3 + 0.5px), transparent calc(var(--grid-unit) * 3 + 0.5px),
+        transparent var(--grid-size)
+      ),
+      /* Horizontal lines: Major line at 0, Minor lines at 14.4pt, 28.8pt, 43.2pt */
+      linear-gradient(to bottom,
+        var(--grid-major-color) 0, var(--grid-major-color) 1.5px, transparent 1.5px,
+        transparent calc(var(--grid-unit) - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) + 0.5px), transparent calc(var(--grid-unit) + 0.5px),
+        transparent calc(var(--grid-unit) * 2 - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) * 2 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 2 + 0.5px), transparent calc(var(--grid-unit) * 2 + 0.5px),
+        transparent calc(var(--grid-unit) * 3 - 0.5px),
+        var(--grid-minor-color) calc(var(--grid-unit) * 3 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 3 + 0.5px), transparent calc(var(--grid-unit) * 3 + 0.5px),
+        transparent var(--grid-size)
+      );
 } 
 
-.grid.italics {
-    transform: skewX(-17deg);
-}
-
 .black .grid {
-    background-image:
-      repeating-linear-gradient(#ccc 0 2px, transparent 2px 100%),
-      repeating-linear-gradient(90deg, #ccc 0 2px, transparent 2px 100%),
-      repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
-      repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
+    --grid-major-color: rgba(220, 220, 220, 0.7);
+    --grid-minor-color: rgba(200, 200, 200, 0.32);
 }
 
 .white .grid {
-    background-image:
-      repeating-linear-gradient(rgb(100, 100, 100) 0 1.5px, transparent 1.5px 100%),
-      repeating-linear-gradient(90deg, rgb(100, 100, 100) 0 1.5px, transparent 1.5px 100%),
-      repeating-linear-gradient(rgb(186, 186, 186) 0 1px, transparent 1px 100%),
-      repeating-linear-gradient(90deg, rgb(186, 186, 186) 0 1px, transparent 1px 100%);
+    --grid-major-color: rgba(100, 110, 140, 0.5);
+    --grid-minor-color: rgba(140, 160, 200, 0.28);
+}
+
+.grid.italics {
+    -webkit-transform: skewX(-17deg);
+    transform: skewX(-17deg);
+    -webkit-transform-origin: top left;
+    transform-origin: top left;
+    will-change: transform;
 }
 
 #result {
-    padding-left: 14.4pt;
-    padding-top: calc(14.4pt * 0.7);
+    width: max-content;
+    min-width: 100%;
+    padding-left: var(--grid-unit);
+    padding-top: calc(var(--grid-unit) * 0.7);
     font-size: 72pt;
-    font-family: HP001;
-    line-height: calc(72pt + 14.4pt * 3);
+    font-family: HP001, serif;
+    line-height: calc(72pt + var(--grid-unit) * 3);
     margin-top: 10px;
+    letter-spacing: 0;
+    user-select: text;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    box-sizing: border-box;
 }
 
 #result.bold {
     font-weight: bold;
 }
 
-#result.small{
-    padding-top: calc(14.4pt *3.35);
-    font-size: 37pt; /* to fit to the height of the line, might need to be reversed */
-    line-height: calc(36pt + 14.4pt * 1.5);
+#result.small {
+    padding-top: calc(var(--grid-unit) * 3.35);
+    font-size: 37pt;
+    line-height: calc(36pt + var(--grid-unit) * 1.5);
 }
 
-#result>p:last-child::after{
+#result > p.line:last-child::after {
     content: ' ';
     display: block;
-    height: calc(14.4pt * 3);
+    height: calc(var(--grid-unit) * 3);
 }
 
-p{
+p.line {
     margin: 0;
-}
-
-p.line{
+    -webkit-margin-before: 0;
+    -webkit-margin-after: 0;
+    padding: 0;
     position: relative;
-}
-p.line > div {
-    user-select: none;
-    position: absolute;
-    left: 0;
-    top: -16pt;
-    font-size: 10pt;
-    line-height: normal;
+    white-space: pre;
 }
 
-p.line > div > i:hover{
-    text-shadow: 1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue;
+/* 
+ * Word Dragging Interactions:
+ * Each word is an inline-block element.
+ * Dragging any word adjusts its margin-left,
+ * which naturally flows all subsequent words on the same line along with it!
+ */
+.word {
+    display: inline-block;
+    cursor: grab;
+    cursor: -webkit-grab;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    position: relative;
+    vertical-align: baseline;
+    padding: 0;
+    border: none;
+    transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.word:hover {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.45));
+}
+
+.white .word:hover {
+    filter: drop-shadow(0 0 2px rgba(43, 16, 85, 0.35));
+}
+
+.word.is-dragging {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7));
+}
+
+.white .word.is-dragging {
+    filter: drop-shadow(0 0 4px rgba(43, 16, 85, 0.6));
+}
+
+body.is-word-dragging {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+body.is-word-dragging * {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+}
+
+.word-space {
+    display: inline;
+    white-space: pre;
+    vertical-align: baseline;
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .board-container {
+        padding: 0 !important;
+    }
+
+    .board {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .grid {
+        min-width: 100% !important;
+        padding-right: 0 !important;
+    }
+
+
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
 }

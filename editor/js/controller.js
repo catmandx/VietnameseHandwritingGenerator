@@ -7,15 +7,17 @@ controller.initEditor = function(){
 }
 
 controller.addNewBase = function(base){
-    if(base.length > 3 || base.length < 1 
-        // || model.glyphData.hasOwnProperty(base.toLowerCase())
-        ){
-        $('#newBaseCardInput').val('')
+    base = (base || '').trim();
+    if (base.length > 3 || base.length < 1){
+        $('#newBaseCardInput').val('');
         return;
     }
-    console.log('add new base', base)
-    model.glyphData[base] = {};
-    document.getElementById("btnCloseNewBaseModal").click();
-    view.showComponents('baseList')
-
+    console.log('add new base', base);
+    if (!model.glyphData) model.glyphData = {};
+    if (!model.glyphData[base]) {
+        model.glyphData[base] = { types: [] };
+    }
+    const closeBtn = document.getElementById("btnCloseNewBaseModal");
+    if (closeBtn) closeBtn.click();
+    view.showComponents('baseList');
 }
