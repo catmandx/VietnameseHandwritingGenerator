@@ -146,60 +146,119 @@ p.line {
 }
 
 /* 
- * Word Dragging Interactions:
- * Each word is an inline-block element.
- * Dragging any word adjusts its margin-left,
- * which naturally flows all subsequent words on the same line along with it!
+ * Word-level inline layout & dragging controls:
+ * Each word is an inline-block container with selectable text.
+ * A neat handle with a drag icon and reset icon appears at the top left of the word on hover.
+ * No text glow on hover; full line & word text selection is preserved!
  */
 .word {
     display: inline-block;
-    cursor: grab;
-    cursor: -webkit-grab;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: none;
     position: relative;
     vertical-align: baseline;
+    user-select: text;
+    -webkit-user-select: text;
     padding: 0;
+    margin: 0;
+}
+
+.word-text {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.word-handle {
+    position: absolute;
+    top: -12px;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(24, 24, 27, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 4px;
+    padding: 2px 4px;
+    z-index: 50;
+    user-select: none;
+    -webkit-user-select: none;
+    font-size: 11px;
+    line-height: 1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+.white .word-handle {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.word:hover .word-handle,
+.word.is-dragging .word-handle {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.btn-word-drag,
+.btn-word-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    color: #e2e8f0;
+    background: transparent;
     border: none;
-    transition: filter 0.15s ease, opacity 0.15s ease;
+    padding: 0;
+    transition: background 0.15s, color 0.15s;
+    touch-action: none;
 }
 
-.word:hover {
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.45));
+.white .btn-word-drag,
+.white .btn-word-reset {
+    color: #334155;
 }
 
-.white .word:hover {
-    filter: drop-shadow(0 0 2px rgba(43, 16, 85, 0.35));
+.btn-word-drag {
+    cursor: grab;
+    cursor: -webkit-grab;
 }
 
-.word.is-dragging {
+.btn-word-drag:hover {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.btn-word-drag.is-dragging,
+.word.is-dragging .btn-word-drag {
     cursor: grabbing !important;
     cursor: -webkit-grabbing !important;
-    opacity: 0.85;
-    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7));
+    background: #2563eb;
+    color: #ffffff;
 }
 
-.white .word.is-dragging {
-    filter: drop-shadow(0 0 4px rgba(43, 16, 85, 0.6));
+.btn-word-reset {
+    cursor: pointer;
+}
+
+.btn-word-reset:hover {
+    background: #ef4444;
+    color: #ffffff;
 }
 
 body.is-word-dragging {
-    cursor: grabbing !important;
-    cursor: -webkit-grabbing !important;
     user-select: none !important;
     -webkit-user-select: none !important;
-}
-
-body.is-word-dragging * {
-    cursor: grabbing !important;
-    cursor: -webkit-grabbing !important;
 }
 
 .word-space {
     display: inline;
     white-space: pre;
     vertical-align: baseline;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 /* Print Styles */
@@ -234,6 +293,7 @@ body.is-word-dragging * {
         min-width: 100% !important;
         padding-right: 0 !important;
     }
+
 
 
     @page {

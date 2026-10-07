@@ -46,7 +46,7 @@ view.init = function () {
         view.changeStyle(this.checked);
     });
 
-    // Setup word drag interactions (drag any word to move it and all subsequent words)
+    // Setup word drag interactions (drag handle at top left of word)
     view.setupDragInteractions();
 
     // Trigger initial render
@@ -132,7 +132,13 @@ view.updateLines = function (linesData) {
             } else {
                 const preserved = existingMargins[wordIndex];
                 const styleAttr = preserved ? ` style="margin-left: ${preserved};"` : '';
-                html += `<span class="word" data-word-idx="${wordIndex}"${styleAttr}>${view.escapeHtml(token.text)}</span>`;
+                html += `<span class="word" data-word-idx="${wordIndex}"${styleAttr}>` +
+                    `<span class="word-handle no-print">` +
+                        `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
+                        `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
+                    `</span>` +
+                    `<span class="word-text">${view.escapeHtml(token.text)}</span>` +
+                `</span>`;
                 wordIndex++;
             }
         }
@@ -144,19 +150,19 @@ view.setupDragInteractions = function () {
     const $result = $('#result');
     let dragState = null;
 
-    // Pointer down on a word: start dragging
-    $result.on('pointerdown', '.word', function (e) {
-        // Only primary pointer (left mouse click or single touch)
+    // Pointer down on .btn-word-drag: start dragging word
+    $result.on('pointerdown', '.btn-word-drag', function (e) {
         if (e.button !== undefined && e.button !== 0) return;
 
-        const wordEl = this;
-        const $word = $(wordEl);
+        const handleEl = this;
+        const $word = $(handleEl).closest('.word');
+        const wordEl = $word[0];
         const $line = $word.closest('p.line');
         const wordIdx = parseInt($word.attr('data-word-idx'), 10) || 0;
 
-        if (typeof wordEl.setPointerCapture === 'function') {
+        if (typeof handleEl.setPointerCapture === 'function') {
             try {
-                wordEl.setPointerCapture(e.pointerId);
+                handleEl.setPointerCapture(e.pointerId);
             } catch (_) {}
         }
 
@@ -172,7 +178,6 @@ view.setupDragInteractions = function () {
                 const prevRect = $prevWord[0].getBoundingClientRect();
                 const currentRect = wordEl.getBoundingClientRect();
                 const gap = currentRect.left - prevRect.right;
-                // Allow reducing gap down to 2px, but prevent overlapping
                 minMargin = startMargin - (gap - 2);
                 minMargin = Math.min(minMargin, startMargin);
             } else {
@@ -182,6 +187,7 @@ view.setupDragInteractions = function () {
 
         dragState = {
             pointerId: e.pointerId,
+            handleEl: handleEl,
             wordEl: wordEl,
             $word: $word,
             startX: e.clientX,
@@ -193,6 +199,7 @@ view.setupDragInteractions = function () {
         $('body').addClass('is-word-dragging');
 
         e.preventDefault();
+        e.stopPropagation();
     });
 
     // Pointer move: update word margin-left
@@ -205,16 +212,16 @@ view.setupDragInteractions = function () {
         dragState.wordEl.style.marginLeft = Math.round(newMargin) + 'px';
     }
 
-    $result.on('pointermove', '.word', handlePointerMove);
+    $result.on('pointermove', '.btn-word-drag', handlePointerMove);
     $(window).on('pointermove', handlePointerMove);
 
     // Pointer up / cancel: finish drag
     function endDrag(e) {
         if (!dragState || dragState.pointerId !== e.pointerId) return;
 
-        if (typeof dragState.wordEl.releasePointerCapture === 'function') {
+        if (typeof dragState.handleEl.releasePointerCapture === 'function') {
             try {
-                dragState.wordEl.releasePointerCapture(e.pointerId);
+                dragState.handleEl.releasePointerCapture(e.pointerId);
             } catch (_) {}
         }
 
@@ -225,13 +232,15 @@ view.setupDragInteractions = function () {
 
     $(window).on('pointerup pointercancel', endDrag);
 
-    // Double-click word: reset that word's margin to 0
-    $result.on('dblclick', '.word', function (e) {
+    // Reset icon click: reset word margin to 0
+    $result.on('click', '.btn-word-reset', function (e) {
         e.stopPropagation();
-        this.style.marginLeft = '0px';
+        e.preventDefault();
+        const $word = $(this).closest('.word');
+        $word.css('margin-left', '0px');
     });
 
-    // Double-click line empty space: reset all words on that line
+    // Double-click empty line background: reset all words on that line
     $result.on('dblclick', 'p.line', function (e) {
         if ($(e.target).closest('.word').length) return;
         $(this).find('.word').each(function () {
@@ -328,7 +337,7 @@ view.exportToPng = async function () {
         const lineWords = [];
         $line.children('.word').each(function () {
             const wordEl = this;
-            const wordText = $(wordEl).text();
+            const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
             lineWords.push({
                 text: wordText,
                 offsetLeft: wordEl.offsetLeft,
