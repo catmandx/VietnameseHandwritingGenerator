@@ -129,38 +129,18 @@ view.adjustBlackboardFontSize = function () {
     if (!$line.length) return;
 
     const isSmall = $result.hasClass('small');
-    // Exact Illustrator metrics from Bang-a-a.ai:
-    // 2 ô ly (Cỡ chữ nhỡ): 281pt (body height = 40mm = 2 cells of 20mm each)
-    // 1 ô ly (Cỡ chữ nhỏ): 140.5pt (body height = 20mm = 1 cell of 20mm)
-    const baseSize = isSmall ? 140.5 : 281;
-
-    // Reset inline styles before measurement
-    $result.css({ 'font-size': baseSize + 'px', 'top': '0px' });
-
-    // Measure total width of words on line
-    let maxRight = 0;
-    $line.children('.word').each(function () {
-        const right = this.offsetLeft + this.offsetWidth;
-        if (right > maxRight) maxRight = right;
-    });
-
-    // Available width between startX (96.09px) and right margin (825px) is 728px
-    const maxAllowedWidth = 728;
-    let finalSize = baseSize;
-
-    if (maxRight > maxAllowedWidth && maxRight > 0) {
-        const ratio = Math.min(1.0, maxAllowedWidth / maxRight);
-        finalSize = Math.max(36, Math.floor(baseSize * ratio));
-    }
+    // Large font: capitalized glyphs like I are 5 cells high, normal glyphs like o are 2 cells high -> font size = 281.5px
+    // Small font: capitalized glyphs like I are 2.5 cells high, normal glyphs like o are 1 cell high -> font size = 140.75px
+    const finalSize = isSmall ? 140.75 : 281.5;
 
     // Baseline calculation:
-    // In font HP001 (HP001N30.ttf), ascender is 2781, unitsPerEm is 2048.
-    // Distance from top of CSS line box (line-height: 1) to baseline is 1.35791 * finalSize.
-    // Target Line 2 baseline in Bang-a-a.ai is y = 407.45px.
-    // Exact mathematical formula ensures baseline is anchored at 407.45px reliably without layout probe glitches.
-    const topPx = Math.round(407.45 - (1.35791 * finalSize));
+    // Target Line 2 baseline is anchored on y = 408.05px (thick horizontal grid line).
+    // In font HP001 (line-height: 1), baseline offset from top of CSS line box is ~0.769 * finalSize.
+    // 281.5px: baseline offset = 216px -> top = 192px.
+    // 140.75px: baseline offset = 108px -> top = 300px.
+    const topPx = Math.round(408.05 - (0.769 * finalSize));
 
-    const baselineOffset = 407.45 - topPx;
+    const baselineOffset = 408.05 - topPx;
     if ($result[0]) {
         $result[0].style.setProperty('--baseline-offset', baselineOffset + 'px');
     }
@@ -436,8 +416,8 @@ view.exportBlackboardToPng = async function () {
     const S = 2;
     const widthPx = 1684;
     const heightPx = 1190;
-    const baselineY = 407.446 * S; // 814.89px
-    const startX = 96.092 * S;     // 192.18px
+    const baselineY = 408.05 * S; // 816.1px (Line 2 baseline)
+    const startX = 96.092 * S;    // 192.18px
 
     // Ensure custom font is ready before drawing
     if (document.fonts) {
@@ -471,11 +451,12 @@ view.exportBlackboardToPng = async function () {
             return;
         }
 
-        // Read final font size from DOM (already includes auto-scaling if text is long)
-        const domFontSize = parseFloat($result.css('font-size')) || ($result.hasClass('small') ? 140.5 : 281);
+        // Font size: 281.5px (Large: I is 5 cells high, o is 2 cells high) or 140.75px (Small: 2.5 / 1 cell)
+        const isSmall = $result.hasClass('small');
+        const domFontSize = parseFloat($result.css('font-size')) || (isSmall ? 140.75 : 281.5);
         const exportFontSize = domFontSize * S;
 
-        // 3. Draw text anchored on line 2 baseline (y = 814.89)
+        // 3. Draw text anchored on Line 2 baseline (y = 816.1px at 2x)
         ctx.save();
         if (isItalics) {
             ctx.translate(0, baselineY);

@@ -74,12 +74,11 @@
 .board.blackboard #result {
     position: absolute;
     left: 96.09px;
-    top: 25.88px; /* Calibrated for 281px font size; dynamically adjusted by view.adjustBlackboardFontSize */
-    width: 728px;
-    max-width: 728px;
+    top: 192px; /* Calibrated for 281.5px large font size; baseline at y = 408.05px */
+    width: max-content;
     padding: 0;
     margin: 0;
-    font-size: 281px;
+    font-size: 281.5px;
     line-height: 1;
     font-family: HP001, serif;
     color: #ffffff;
@@ -88,8 +87,8 @@
 }
 
 .board.blackboard #result.small {
-    font-size: 140.5px;
-    top: 216.66px;
+    font-size: 140.75px;
+    top: 300px; /* Calibrated for 140.75px small font size; baseline at y = 408.05px */
 }
 
 .board.blackboard #result > p.line {
@@ -106,7 +105,7 @@
 .board.blackboard .grid.italics #result,
 .board.blackboard.italics #result {
     transform: skewX(-17deg);
-    transform-origin: 0 var(--baseline-offset, 381.57px);
+    transform-origin: 0 var(--baseline-offset, 216px);
 }
 
 .board.blackboard .word-handle {
