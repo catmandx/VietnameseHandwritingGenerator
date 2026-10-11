@@ -70,6 +70,7 @@ view.render = function () {
     if (!model.isLoaded) return;
     const $input = $('#input');
     const $board = $('.board');
+    const $result = $('#result');
     const isBlackboard = $board.hasClass('blackboard');
     const rawLines = $input.val().split('\n');
 
@@ -99,6 +100,9 @@ view.render = function () {
         }
         linesData = [lineTokens];
     } else {
+        // Normal layout: clean all blackboard inline styles so CSS classes take full control
+        $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
+
         linesData = rawLines.map(rawLine => {
             const line = rawLine.replace(/[\t]/g, "    ");
             const tokens = line.split(/(\s+)/);
@@ -120,6 +124,8 @@ view.render = function () {
 
     if (isBlackboard) {
         view.adjustBlackboardFontSize();
+    } else {
+        $result.css({ 'font-size': '', 'top': '' });
     }
 };
 
@@ -128,13 +134,8 @@ view.adjustBlackboardFontSize = function () {
     const $line = $result.children('p.line').first();
     if (!$line.length) return;
 
-    const isFit = $result.hasClass('fit');
-    const isSize72 = $result.hasClass('size-72');
-
-    let baseSize = 169;
-    if (isSize72) {
-        baseSize = 338;
-    }
+    const isSmall = $result.hasClass('small');
+    let baseSize = isSmall ? 169 : 338;
 
     // Reset inline styles before measurement
     $result.css({ 'font-size': baseSize + 'px', 'top': '' });
@@ -149,7 +150,7 @@ view.adjustBlackboardFontSize = function () {
     const maxAllowedWidth = 888;
     let finalSize = baseSize;
 
-    if (isFit || (maxRight > maxAllowedWidth && maxRight > 0)) {
+    if (maxRight > maxAllowedWidth && maxRight > 0) {
         const ratio = Math.min(1.0, maxAllowedWidth / maxRight);
         finalSize = Math.max(72, Math.floor(baseSize * ratio));
     }
@@ -328,15 +329,17 @@ view.setupDragInteractions = function () {
 
 view.changeFontSize = function (fontSize) {
     const $result = $("#result");
-    $result.removeClass('small size-72 fit');
     if (fontSize === "36") {
         $result.addClass('small');
-    } else if (fontSize === "72") {
-        $result.addClass('size-72');
-    } else if (fontSize === "fit") {
-        $result.addClass('fit');
+    } else {
+        $result.removeClass('small');
     }
-    view.render();
+    const isBlackboard = $('.board').hasClass('blackboard');
+    if (isBlackboard) {
+        view.adjustBlackboardFontSize();
+    } else {
+        $result.css({ 'font-size': '', 'top': '' });
+    }
 };
 
 view.changeColorText = function (color) {
@@ -350,27 +353,30 @@ view.changeColorText = function (color) {
 view.changeBoardColor = function (boardColor) {
     const $board = $(".board");
     const $colorInput = $("#font-color-input");
+    const $result = $("#result");
 
-    $board.removeClass('blackboard white black_infinite black');
+    $board.removeClass('blackboard white black');
+    // Clear any inline styles from blackboard mode immediately!
+    $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
 
     if (boardColor === "white") {
         $board.addClass('white');
         // Default ink purple for paper
         const paperInk = "#2b1055";
         $colorInput.val(paperInk);
-        $("#result").css('color', paperInk);
-    } else if (boardColor === "black_infinite") {
-        $board.addClass('black_infinite black');
-        // Default chalk white for chalkboard
-        const chalkWhite = "#ffffff";
-        $colorInput.val(chalkWhite);
-        $("#result").css('color', chalkWhite);
-    } else {
+        $result.css('color', paperInk);
+    } else if (boardColor === "blackboard") {
         $board.addClass('blackboard');
         // Default chalk white for chalkboard
         const chalkWhite = "#ffffff";
         $colorInput.val(chalkWhite);
-        $("#result").css('color', chalkWhite);
+        $result.css('color', chalkWhite);
+    } else {
+        // Standard infinite chalkboard
+        $board.addClass('black');
+        const chalkWhite = "#ffffff";
+        $colorInput.val(chalkWhite);
+        $result.css('color', chalkWhite);
     }
     view.render();
 };
