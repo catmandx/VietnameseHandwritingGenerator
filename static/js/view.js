@@ -76,17 +76,11 @@ view.render = function () {
 
     let linesData;
     if (isBlackboard) {
-        // In blackboard mode, text should only be on line 2 only!
-        // Determine line text: line 2 of textarea if non-empty, otherwise first non-empty line
-        let line2Text = '';
-        if (rawLines.length > 1 && rawLines[1].trim()) {
-            line2Text = rawLines[1];
-        } else {
-            const firstNonEmpty = rawLines.find(l => l.trim().length > 0);
-            line2Text = firstNonEmpty !== undefined ? firstNonEmpty : (rawLines[0] || '');
-        }
+        // In blackboard mode, text renders on Line 2 of the blackboard slate!
+        // Select input line: use first non-empty line of the input
+        const targetLine = rawLines.find(l => l.trim().length > 0) || rawLines[0] || '';
 
-        const line = line2Text.replace(/[\t]/g, "    ");
+        const line = targetLine.replace(/[\t]/g, "    ");
         const tokens = line.split(/(\s+)/);
         const lineTokens = [];
         for (const token of tokens) {
@@ -131,7 +125,6 @@ view.render = function () {
 
 view.adjustBlackboardFontSize = function () {
     const $result = $('#result');
-    const $board = $('.board');
     const $line = $result.children('p.line').first();
     if (!$line.length) return;
 
@@ -160,33 +153,22 @@ view.adjustBlackboardFontSize = function () {
         finalSize = Math.max(36, Math.floor(baseSize * ratio));
     }
 
-    $result.css('font-size', finalSize + 'px');
-
     // Baseline calculation:
     // In font HP001 (HP001N30.ttf), ascender is 2781, unitsPerEm is 2048.
     // Distance from top of CSS line box (line-height: 1) to baseline is 1.35791 * finalSize.
     // Target Line 2 baseline in Bang-a-a.ai is y = 407.45px.
-    let topPx = 407.45 - (1.35791 * finalSize);
-
-    // Calibrate with DOM baseline probe if available for sub-pixel precision across all browsers
-    const gridEl = $board.find('.grid')[0];
-    const probeEl = $line.find('.baseline-probe')[0];
-    if (gridEl && probeEl) {
-        const gridRect = gridEl.getBoundingClientRect();
-        const probeRect = probeEl.getBoundingClientRect();
-        if (gridRect.height > 0) {
-            const currentBaseline = probeRect.bottom - gridRect.top;
-            const delta = 407.45 - currentBaseline;
-            topPx = topPx + delta;
-        }
-    }
+    // Exact mathematical formula ensures baseline is anchored at 407.45px reliably without layout probe glitches.
+    const topPx = Math.round(407.45 - (1.35791 * finalSize));
 
     const baselineOffset = 407.45 - topPx;
     if ($result[0]) {
         $result[0].style.setProperty('--baseline-offset', baselineOffset + 'px');
     }
 
-    $result.css('top', topPx + 'px');
+    $result.css({
+        'font-size': finalSize + 'px',
+        'top': topPx + 'px'
+    });
 };
 
 view.updateLines = function (linesData) {
@@ -229,9 +211,6 @@ view.updateLines = function (linesData) {
 
         let wordIndex = 0;
         let html = '';
-        if (isBlackboard && index === 0) {
-            html += '<span class="baseline-probe" style="display:inline-block;width:0;height:0;vertical-align:baseline;overflow:hidden;pointer-events:none;"></span>';
-        }
         for (const token of lineTokens) {
             if (token.type === 'space') {
                 html += `<span class="word-space">${view.escapeHtml(token.text)}</span>`;
