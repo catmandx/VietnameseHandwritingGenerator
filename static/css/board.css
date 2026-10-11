@@ -21,12 +21,99 @@
     box-sizing: border-box;
 }
 
-.board.black {
+.board.black,
+.board.black_infinite {
     color: #ffffff;
     background-color: #496e53;
     border: 12px solid #364f3c;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * BLACKBOARD SLATE ARCHITECTURE:
+ * Fixed 1024x724 chalkboard containing exactly 10 rows and 15 columns,
+ * with guide numbers 4, 3, 2, 1 in the left margin of Line 2.
+ * Text is placed on Line 2 only, anchored at baseline y = 496px.
+ */
+.board.blackboard {
+    width: 1024px;
+    height: 724px;
+    min-width: 1024px;
+    min-height: 724px;
+    max-width: 100%;
+    margin: 12px auto 24px auto;
+    background-color: #4e6956;
+    background-image: url('/static/img/blackboard.png');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 1024px 724px;
+    border: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    color: #ffffff;
+    border-radius: 4px;
+}
+
+.board.blackboard .grid {
+    width: 1024px;
+    height: 724px;
+    min-width: 1024px;
+    min-height: 724px;
+    background-image: none !important;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    transform: none !important;
+}
+
+.board.blackboard #result {
+    position: absolute;
+    left: 112px;
+    top: 266px;
+    width: 896px;
+    min-width: 896px;
+    padding: 0;
+    margin: 0;
+    font-size: 169px;
+    line-height: 1;
+    font-family: HP001, serif;
+    color: #ffffff;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.board.blackboard #result.small {
+    font-size: 169px;
+    top: 266px;
+}
+
+.board.blackboard #result.size-72 {
+    font-size: 338px;
+    top: 36px;
+}
+
+.board.blackboard #result > p.line {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    white-space: pre;
+}
+
+.board.blackboard #result > p.line:last-child::after {
+    display: none !important;
+}
+
+.board.blackboard .grid.italics #result,
+.board.blackboard.italics #result {
+    transform: skewX(-17deg);
+    transform-origin: 0 230px;
+}
+
+.board.blackboard .word-handle {
+    top: -24px;
 }
 
 .board.white {
@@ -85,7 +172,8 @@
       );
 } 
 
-.black .grid {
+.black .grid,
+.black_infinite .grid {
     --grid-major-color: rgba(220, 220, 220, 0.7);
     --grid-minor-color: rgba(200, 200, 200, 0.32);
 }

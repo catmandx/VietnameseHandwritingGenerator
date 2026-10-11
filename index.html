@@ -12,8 +12,9 @@
     <link rel="shortcut icon" href="/static/img/favicon/favicon.ico" />
     <meta name="theme-color" content="#ffffff" />
 
-    <!-- Preload primary handwriting font -->
+    <!-- Preload primary handwriting font & blackboard image -->
     <link rel="preload" href="/static/font/HP001N30.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/static/img/blackboard.png" as="image" />
 
     <link rel="stylesheet" href="/static/css/main.css" />
     <link rel="stylesheet" href="/static/css/board.css" />
@@ -67,16 +68,18 @@
               <div class="tool-item">
                 <label for="font-size-select"><i class="fa-solid fa-text-height"></i> Cỡ chữ:</label>
                 <select id="font-size-select">
-                  <option selected value="72">Cỡ 2 ô ly (72pt)</option>
-                  <option value="36">Cỡ 1 ô ly (36pt)</option>
+                  <option selected value="36">Cỡ 1 ô ly (Chuẩn dòng 2)</option>
+                  <option value="72">Cỡ 2 ô ly (Chữ nhỡ)</option>
+                  <option value="fit">Tự động vừa bảng</option>
                 </select>
               </div>
 
               <div class="tool-item">
                 <label for="board-color-select"><i class="fa-solid fa-palette"></i> Kiểu bảng:</label>
                 <select id="board-color-select">
-                  <option selected value="black">Bảng đen phấn trắng</option>
+                  <option selected value="blackboard">Bảng con tiểu học (Blackboard)</option>
                   <option value="white">Vở ô ly (Giấy trắng)</option>
+                  <option value="black_infinite">Bảng vô cực (Nhiều dòng)</option>
                 </select>
               </div>
 
@@ -128,9 +131,9 @@
 
       <!-- Handwriting board display: fills viewport horizontally -->
       <div class="board-container">
-        <div class="board black">
+        <div class="board blackboard">
           <div class="grid">
-            <div id="result" class="bold"></div>
+            <div id="result" class="bold small"></div>
           </div>
         </div>
       </div>

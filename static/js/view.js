@@ -11,6 +11,10 @@ view.sampleTexts = {
 view.init = function () {
     const $input = $('#input');
 
+    // Preload blackboard background image
+    view.blackboardImg = new Image();
+    view.blackboardImg.src = '/static/img/blackboard.png';
+
     // Default text if empty
     if (!$input.val().trim()) {
         $input.val("Nét chữ nết người");
@@ -65,11 +69,23 @@ view.escapeHtml = function (str) {
 view.render = function () {
     if (!model.isLoaded) return;
     const $input = $('#input');
+    const $board = $('.board');
+    const isBlackboard = $board.hasClass('blackboard');
     const rawLines = $input.val().split('\n');
 
-    const linesData = rawLines.map(rawLine => {
-        // Expand tabs to 4 spaces
-        const line = rawLine.replace(/[\t]/g, "    ");
+    let linesData;
+    if (isBlackboard) {
+        // In blackboard mode, text should only be on line 2 only!
+        // Determine line text: line 2 of textarea if non-empty, otherwise first non-empty line
+        let line2Text = '';
+        if (rawLines.length > 1 && rawLines[1].trim()) {
+            line2Text = rawLines[1];
+        } else {
+            const firstNonEmpty = rawLines.find(l => l.trim().length > 0);
+            line2Text = firstNonEmpty !== undefined ? firstNonEmpty : (rawLines[0] || '');
+        }
+
+        const line = line2Text.replace(/[\t]/g, "    ");
         const tokens = line.split(/(\s+)/);
         const lineTokens = [];
         for (const token of tokens) {
@@ -81,10 +97,71 @@ view.render = function () {
                 lineTokens.push({ type: 'word', text: converted, raw: token });
             }
         }
-        return lineTokens;
-    });
+        linesData = [lineTokens];
+    } else {
+        linesData = rawLines.map(rawLine => {
+            const line = rawLine.replace(/[\t]/g, "    ");
+            const tokens = line.split(/(\s+)/);
+            const lineTokens = [];
+            for (const token of tokens) {
+                if (!token) continue;
+                if (/^\s+$/.test(token)) {
+                    lineTokens.push({ type: 'space', text: token });
+                } else {
+                    const converted = model.getUnicodeStr(token);
+                    lineTokens.push({ type: 'word', text: converted, raw: token });
+                }
+            }
+            return lineTokens;
+        });
+    }
 
     view.updateLines(linesData);
+
+    if (isBlackboard) {
+        view.adjustBlackboardFontSize();
+    }
+};
+
+view.adjustBlackboardFontSize = function () {
+    const $result = $('#result');
+    const $line = $result.children('p.line').first();
+    if (!$line.length) return;
+
+    const isFit = $result.hasClass('fit');
+    const isSize72 = $result.hasClass('size-72');
+
+    let baseSize = 169;
+    if (isSize72) {
+        baseSize = 338;
+    }
+
+    // Reset inline styles before measurement
+    $result.css({ 'font-size': baseSize + 'px', 'top': '' });
+
+    // Measure total width of words on line
+    let maxRight = 0;
+    $line.children('.word').each(function () {
+        const right = this.offsetLeft + this.offsetWidth;
+        if (right > maxRight) maxRight = right;
+    });
+
+    const maxAllowedWidth = 888;
+    let finalSize = baseSize;
+
+    if (isFit || (maxRight > maxAllowedWidth && maxRight > 0)) {
+        const ratio = Math.min(1.0, maxAllowedWidth / maxRight);
+        finalSize = Math.max(72, Math.floor(baseSize * ratio));
+    }
+
+    // Baseline is always anchored at y = 496px
+    // top = 496 - (2781 / 2048 * finalSize) = 496 - 1.3579 * finalSize
+    const topPx = Math.round(496 - 1.3579 * finalSize);
+
+    $result.css({
+        'font-size': finalSize + 'px',
+        'top': topPx + 'px'
+    });
 };
 
 view.updateLines = function (linesData) {
@@ -251,11 +328,15 @@ view.setupDragInteractions = function () {
 
 view.changeFontSize = function (fontSize) {
     const $result = $("#result");
+    $result.removeClass('small size-72 fit');
     if (fontSize === "36") {
         $result.addClass('small');
-    } else {
-        $result.removeClass('small');
+    } else if (fontSize === "72") {
+        $result.addClass('size-72');
+    } else if (fontSize === "fit") {
+        $result.addClass('fit');
     }
+    view.render();
 };
 
 view.changeColorText = function (color) {
@@ -270,19 +351,28 @@ view.changeBoardColor = function (boardColor) {
     const $board = $(".board");
     const $colorInput = $("#font-color-input");
 
+    $board.removeClass('blackboard white black_infinite black');
+
     if (boardColor === "white") {
-        $board.removeClass('black').addClass('white');
+        $board.addClass('white');
         // Default ink purple for paper
         const paperInk = "#2b1055";
         $colorInput.val(paperInk);
         $("#result").css('color', paperInk);
+    } else if (boardColor === "black_infinite") {
+        $board.addClass('black_infinite black');
+        // Default chalk white for chalkboard
+        const chalkWhite = "#ffffff";
+        $colorInput.val(chalkWhite);
+        $("#result").css('color', chalkWhite);
     } else {
-        $board.removeClass('white').addClass('black');
+        $board.addClass('blackboard');
         // Default chalk white for chalkboard
         const chalkWhite = "#ffffff";
         $colorInput.val(chalkWhite);
         $("#result").css('color', chalkWhite);
     }
+    view.render();
 };
 
 view.changeWeight = function (isBold) {
@@ -323,7 +413,122 @@ view.downloadFont = function (fontType) {
     document.body.removeChild(link);
 };
 
+view.exportBlackboardToPng = function () {
+    const $result = $('#result');
+    const isBold = $result.hasClass('bold');
+    const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
+    const textColor = $('#font-color-input').val() || '#ffffff';
+    const isSize72 = $result.hasClass('size-72');
+    const isFit = $result.hasClass('fit');
+
+    const widthPx = 1024;
+    const heightPx = 724;
+    const baselineY = 496;
+    const startX = 112;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = widthPx;
+    canvas.height = heightPx;
+    const ctx = canvas.getContext('2d');
+
+    const doExport = function (bgImg) {
+        // 1. Draw exact blackboard background
+        ctx.drawImage(bgImg, 0, 0, widthPx, heightPx);
+
+        // 2. Collect words
+        const $line = $result.children('p.line').first();
+        const words = [];
+        $line.children('.word').each(function () {
+            const wordEl = this;
+            const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+            words.push({
+                text: wordText,
+                offsetLeft: wordEl.offsetLeft,
+                offsetWidth: wordEl.offsetWidth
+            });
+        });
+
+        if (words.length === 0) {
+            triggerDownload(canvas);
+            return;
+        }
+
+        // Determine base font size
+        let baseFontSize = 169;
+        if (isSize72) {
+            baseFontSize = 338;
+        }
+
+        let maxWordRight = 0;
+        words.forEach(w => {
+            const right = w.offsetLeft + w.offsetWidth;
+            if (right > maxWordRight) maxWordRight = right;
+        });
+
+        const maxAllowedWidth = 888;
+        let scaleRatio = 1.0;
+        let finalFontSize = baseFontSize;
+
+        if (isFit || (maxWordRight > maxAllowedWidth && maxWordRight > 0)) {
+            scaleRatio = Math.min(1.0, maxAllowedWidth / maxWordRight);
+            finalFontSize = Math.max(72, Math.floor(baseFontSize * scaleRatio));
+        }
+
+        // 3. Draw text anchored on line 2 baseline (y = 496)
+        ctx.save();
+        if (isItalics) {
+            ctx.translate(0, baselineY);
+            ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
+            ctx.translate(0, -baselineY);
+        }
+
+        ctx.font = `${isBold ? 'bold' : 'normal'} ${finalFontSize}px HP001, serif`;
+        ctx.fillStyle = textColor;
+        ctx.textBaseline = 'alphabetic';
+
+        words.forEach(word => {
+            const xPos = startX + (word.offsetLeft * scaleRatio);
+            ctx.fillText(word.text, xPos, baselineY);
+        });
+
+        ctx.restore();
+
+        triggerDownload(canvas);
+    };
+
+    const triggerDownload = function (cvs) {
+        cvs.toBlob(function (blob) {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bang-den-chudep.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 'image/png');
+    };
+
+    if (view.blackboardImg && view.blackboardImg.complete && view.blackboardImg.naturalWidth > 0) {
+        doExport(view.blackboardImg);
+    } else {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function () {
+            doExport(img);
+        };
+        img.src = '/static/img/blackboard.png';
+    }
+};
+
 view.exportToPng = async function () {
+    const $board = $('.board');
+    if ($board.hasClass('blackboard')) {
+        view.exportBlackboardToPng();
+        return;
+    }
+
     const $result = $('#result');
     const isSmall = $result.hasClass('small');
     const isBold = $result.hasClass('bold');
