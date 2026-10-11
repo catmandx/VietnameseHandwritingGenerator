@@ -101,7 +101,7 @@ view.render = function () {
         linesData = [lineTokens];
     } else {
         // Normal layout: clean all blackboard inline styles so CSS classes take full control
-        $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
+        $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'max-width': '', 'min-width': '', 'white-space': '' });
 
         linesData = rawLines.map(rawLine => {
             const line = rawLine.replace(/[\t]/g, "    ");
@@ -131,14 +131,18 @@ view.render = function () {
 
 view.adjustBlackboardFontSize = function () {
     const $result = $('#result');
+    const $board = $('.board');
     const $line = $result.children('p.line').first();
     if (!$line.length) return;
 
     const isSmall = $result.hasClass('small');
-    let baseSize = isSmall ? 169 : 338;
+    // Exact Illustrator metrics from Bang-a-a.ai:
+    // 2 ô ly (Cỡ chữ nhỡ): 281pt (body height = 40mm = 2 cells of 20mm each)
+    // 1 ô ly (Cỡ chữ nhỏ): 140.5pt (body height = 20mm = 1 cell of 20mm)
+    const baseSize = isSmall ? 140.5 : 281;
 
     // Reset inline styles before measurement
-    $result.css({ 'font-size': baseSize + 'px', 'top': '' });
+    $result.css({ 'font-size': baseSize + 'px', 'top': '0px' });
 
     // Measure total width of words on line
     let maxRight = 0;
@@ -147,26 +151,47 @@ view.adjustBlackboardFontSize = function () {
         if (right > maxRight) maxRight = right;
     });
 
-    const maxAllowedWidth = 888;
+    // Available width between startX (96.09px) and right margin (825px) is 728px
+    const maxAllowedWidth = 728;
     let finalSize = baseSize;
 
     if (maxRight > maxAllowedWidth && maxRight > 0) {
         const ratio = Math.min(1.0, maxAllowedWidth / maxRight);
-        finalSize = Math.max(72, Math.floor(baseSize * ratio));
+        finalSize = Math.max(36, Math.floor(baseSize * ratio));
     }
 
-    // Baseline is always anchored at y = 496px
-    // top = 496 - (2781 / 2048 * finalSize) = 496 - 1.3579 * finalSize
-    const topPx = Math.round(496 - 1.3579 * finalSize);
+    $result.css('font-size', finalSize + 'px');
 
-    $result.css({
-        'font-size': finalSize + 'px',
-        'top': topPx + 'px'
-    });
+    // Baseline calculation:
+    // In font HP001 (HP001N30.ttf), ascender is 2781, unitsPerEm is 2048.
+    // Distance from top of CSS line box (line-height: 1) to baseline is 1.35791 * finalSize.
+    // Target Line 2 baseline in Bang-a-a.ai is y = 407.45px.
+    let topPx = 407.45 - (1.35791 * finalSize);
+
+    // Calibrate with DOM baseline probe if available for sub-pixel precision across all browsers
+    const gridEl = $board.find('.grid')[0];
+    const probeEl = $line.find('.baseline-probe')[0];
+    if (gridEl && probeEl) {
+        const gridRect = gridEl.getBoundingClientRect();
+        const probeRect = probeEl.getBoundingClientRect();
+        if (gridRect.height > 0) {
+            const currentBaseline = probeRect.bottom - gridRect.top;
+            const delta = 407.45 - currentBaseline;
+            topPx = topPx + delta;
+        }
+    }
+
+    const baselineOffset = 407.45 - topPx;
+    if ($result[0]) {
+        $result[0].style.setProperty('--baseline-offset', baselineOffset + 'px');
+    }
+
+    $result.css('top', topPx + 'px');
 };
 
 view.updateLines = function (linesData) {
     const $result = $('#result');
+    const isBlackboard = $('.board').hasClass('blackboard');
     const $existingLines = $result.children('p.line');
 
     // 1. Remove excess lines if text was deleted
@@ -204,6 +229,9 @@ view.updateLines = function (linesData) {
 
         let wordIndex = 0;
         let html = '';
+        if (isBlackboard && index === 0) {
+            html += '<span class="baseline-probe" style="display:inline-block;width:0;height:0;vertical-align:baseline;overflow:hidden;pointer-events:none;"></span>';
+        }
         for (const token of lineTokens) {
             if (token.type === 'space') {
                 html += `<span class="word-space">${view.escapeHtml(token.text)}</span>`;
@@ -419,18 +447,23 @@ view.downloadFont = function (fontType) {
     document.body.removeChild(link);
 };
 
-view.exportBlackboardToPng = function () {
+view.exportBlackboardToPng = async function () {
     const $result = $('#result');
     const isBold = $result.hasClass('bold');
     const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
     const textColor = $('#font-color-input').val() || '#ffffff';
-    const isSize72 = $result.hasClass('size-72');
-    const isFit = $result.hasClass('fit');
 
-    const widthPx = 1024;
-    const heightPx = 724;
-    const baselineY = 496;
-    const startX = 112;
+    // High resolution retina export: 2x of A4 Landscape (1684 x 1190)
+    const S = 2;
+    const widthPx = 1684;
+    const heightPx = 1190;
+    const baselineY = 407.446 * S; // 814.89px
+    const startX = 96.092 * S;     // 192.18px
+
+    // Ensure custom font is ready before drawing
+    if (document.fonts) {
+        await document.fonts.ready;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = widthPx;
@@ -459,28 +492,11 @@ view.exportBlackboardToPng = function () {
             return;
         }
 
-        // Determine base font size
-        let baseFontSize = 169;
-        if (isSize72) {
-            baseFontSize = 338;
-        }
+        // Read final font size from DOM (already includes auto-scaling if text is long)
+        const domFontSize = parseFloat($result.css('font-size')) || ($result.hasClass('small') ? 140.5 : 281);
+        const exportFontSize = domFontSize * S;
 
-        let maxWordRight = 0;
-        words.forEach(w => {
-            const right = w.offsetLeft + w.offsetWidth;
-            if (right > maxWordRight) maxWordRight = right;
-        });
-
-        const maxAllowedWidth = 888;
-        let scaleRatio = 1.0;
-        let finalFontSize = baseFontSize;
-
-        if (isFit || (maxWordRight > maxAllowedWidth && maxWordRight > 0)) {
-            scaleRatio = Math.min(1.0, maxAllowedWidth / maxWordRight);
-            finalFontSize = Math.max(72, Math.floor(baseFontSize * scaleRatio));
-        }
-
-        // 3. Draw text anchored on line 2 baseline (y = 496)
+        // 3. Draw text anchored on line 2 baseline (y = 814.89)
         ctx.save();
         if (isItalics) {
             ctx.translate(0, baselineY);
@@ -488,12 +504,12 @@ view.exportBlackboardToPng = function () {
             ctx.translate(0, -baselineY);
         }
 
-        ctx.font = `${isBold ? 'bold' : 'normal'} ${finalFontSize}px HP001, serif`;
+        ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
         ctx.fillStyle = textColor;
         ctx.textBaseline = 'alphabetic';
 
         words.forEach(word => {
-            const xPos = startX + (word.offsetLeft * scaleRatio);
+            const xPos = startX + (word.offsetLeft * S);
             ctx.fillText(word.text, xPos, baselineY);
         });
 
@@ -508,7 +524,7 @@ view.exportBlackboardToPng = function () {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'bang-den-chudep.png';
+            a.download = 'bang-con-tieu-hoc.png';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

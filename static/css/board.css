@@ -32,22 +32,24 @@
 
 /*
  * BLACKBOARD SLATE ARCHITECTURE:
- * Fixed 1024x724 chalkboard containing exactly 10 rows and 15 columns,
- * with guide numbers 4, 3, 2, 1 in the left margin of Line 2.
- * Text is placed on Line 2 only, anchored at baseline y = 496px.
+ * Converted directly from vector Adobe Illustrator artboard (Bang-a-a.ai):
+ * Artboard: 841.89pt x 595.28pt (A4 Landscape, mapped to 842px x 595px).
+ * Grid: 10 rows x 15 columns (14 regular 20mm cells + 1 left number margin).
+ * Line 2 Baseline: y = 407.45px.
+ * Line 2 Start: x = 96.09px.
  */
 .board.blackboard {
-    width: 1024px;
-    height: 724px;
-    min-width: 1024px;
-    min-height: 724px;
+    width: 842px;
+    height: 595px;
+    min-width: 842px;
+    min-height: 595px;
     max-width: 100%;
     margin: 12px auto 24px auto;
-    background-color: #4e6956;
-    background-image: url('/static/img/blackboard.png');
+    background-color: #4e6957;
+    background-image: url('/static/img/blackboard.svg');
     background-repeat: no-repeat;
-    background-position: center center;
-    background-size: 1024px 724px;
+    background-position: 0 0;
+    background-size: 842px 595px;
     border: none;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     position: relative;
@@ -58,10 +60,10 @@
 }
 
 .board.blackboard .grid {
-    width: 1024px;
-    height: 724px;
-    min-width: 1024px;
-    min-height: 724px;
+    width: 842px;
+    height: 595px;
+    min-width: 842px;
+    min-height: 595px;
     background-image: none !important;
     padding: 0;
     margin: 0;
@@ -71,13 +73,13 @@
 
 .board.blackboard #result {
     position: absolute;
-    left: 112px;
-    top: 266px;
-    width: 896px;
-    min-width: 896px;
+    left: 96.09px;
+    top: 25.88px; /* Calibrated for 281px font size; dynamically adjusted by view.adjustBlackboardFontSize */
+    width: 728px;
+    max-width: 728px;
     padding: 0;
     margin: 0;
-    font-size: 169px;
+    font-size: 281px;
     line-height: 1;
     font-family: HP001, serif;
     color: #ffffff;
@@ -86,20 +88,15 @@
 }
 
 .board.blackboard #result.small {
-    font-size: 169px;
-    top: 266px;
-}
-
-.board.blackboard #result.size-72 {
-    font-size: 338px;
-    top: 36px;
+    font-size: 140.5px;
+    top: 216.66px;
 }
 
 .board.blackboard #result > p.line {
     margin: 0;
     padding: 0;
     line-height: 1;
-    white-space: pre;
+    white-space: nowrap;
 }
 
 .board.blackboard #result > p.line:last-child::after {
@@ -109,7 +106,7 @@
 .board.blackboard .grid.italics #result,
 .board.blackboard.italics #result {
     transform: skewX(-17deg);
-    transform-origin: 0 230px;
+    transform-origin: 0 var(--baseline-offset, 381.57px);
 }
 
 .board.blackboard .word-handle {
