@@ -69,7 +69,9 @@ view.escapeHtml = function (str) {
 view.render = function () {
     if (!model.isLoaded) return;
     const $input = $('#input');
-    const isBlackboard = $('#board-color-select').val() === 'blackboard' || $('.board').hasClass('blackboard');
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
+    const isWhite10x14 = layout === 'white_10x14' || $('.board').hasClass('white_10x14');
     const rawLines = $input.val().split('\n');
 
     if (isBlackboard) {
@@ -100,6 +102,31 @@ view.render = function () {
 
         view.syncBlackboards(linesData);
         view.adjustBlackboardFontSize();
+    } else if (isWhite10x14) {
+        let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
+        while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
+            lines.pop();
+        }
+        if (lines.length === 0) {
+            lines = [''];
+        }
+
+        const linesData = lines.map(line => {
+            const tokens = line.split(/(\s+)/);
+            const lineTokens = [];
+            for (const token of tokens) {
+                if (!token) continue;
+                if (/^\s+$/.test(token)) {
+                    lineTokens.push({ type: 'space', text: token });
+                } else {
+                    const converted = model.getUnicodeStr(token);
+                    lineTokens.push({ type: 'word', text: converted, raw: token });
+                }
+            }
+            return lineTokens;
+        });
+
+        view.syncWhite10x14(linesData);
     } else {
         view.syncNormalBoard();
         const $result = $('#result');
@@ -191,8 +218,8 @@ view.syncNormalBoard = function () {
     const $container = $('.board-container');
     const $boards = $container.children('.board');
 
-    // If multiple boards exist, or the single board is blackboard, replace with single normal board
-    if ($boards.length !== 1 || $boards.hasClass('blackboard')) {
+    // If multiple boards exist, or the single board is blackboard or white_10x14, replace with single normal board
+    if ($boards.length !== 1 || $boards.hasClass('blackboard') || $boards.hasClass('white_10x14')) {
         $container.empty();
         const currentColor = $('#board-color-select').val() || 'black';
         const isBold = $('#weight-checkbox').is(':checked');
@@ -209,6 +236,108 @@ view.syncNormalBoard = function () {
         `);
         $container.append($normalBoard);
     }
+};
+
+view.syncWhite10x14 = function (linesData) {
+    const $container = $('.board-container');
+    let $existingBoards = $container.children('.board.white_10x14');
+
+    // If container had boards that are NOT white_10x14, clean them out
+    if ($container.children('.board:not(.white_10x14)').length > 0) {
+        $container.empty();
+        $existingBoards = $();
+    }
+
+    const isSmall = $('#font-size-select').val() === '36' || $('#result').hasClass('small');
+    const isBold = $('#weight-checkbox').is(':checked');
+    const color = $('#font-color-input').val() || '#2b1055';
+    const isItalics = $('#style-checkbox').is(':checked');
+
+    // 14 blocks tall: small font (1 block/line) fits 14 lines; large font (2 blocks/line) fits 7 lines
+    const linesPerPage = isSmall ? 14 : 7;
+    const totalPages = Math.max(1, Math.ceil(linesData.length / linesPerPage));
+
+    // 1. Remove excess pages
+    if ($existingBoards.length > totalPages) {
+        $existingBoards.slice(totalPages).remove();
+        $existingBoards = $container.children('.board.white_10x14');
+    }
+
+    // 2. Add missing pages
+    if ($existingBoards.length < totalPages) {
+        for (let p = $existingBoards.length; p < totalPages; p++) {
+            const idAttr = p === 0 ? 'id="result"' : `id="result-p${p}"`;
+            const $newPage = $(`
+                <div class="board white white_10x14 ${isItalics ? 'italics' : ''}" data-page-idx="${p}">
+                    <div class="grid ${isItalics ? 'italics' : ''}">
+                        <div class="result-text ${isSmall ? 'small' : ''} ${isBold ? 'bold' : ''}" ${idAttr} style="color: ${color};"></div>
+                    </div>
+                </div>
+            `);
+            $container.append($newPage);
+        }
+        $existingBoards = $container.children('.board.white_10x14');
+    }
+
+    // 3. Populate lines for each page
+    $existingBoards.each(function (pIdx, boardEl) {
+        const $board = $(boardEl);
+        $board.attr('data-page-idx', pIdx);
+        if (isItalics) {
+            $board.addClass('italics');
+            $board.find('.grid').addClass('italics');
+        } else {
+            $board.removeClass('italics');
+            $board.find('.grid').removeClass('italics');
+        }
+
+        const $resultText = $board.find('.result-text, #result');
+        if (pIdx === 0) {
+            $resultText.attr('id', 'result');
+        } else {
+            $resultText.attr('id', 'result-p' + pIdx);
+        }
+
+        if (isSmall) {
+            $resultText.addClass('small');
+        } else {
+            $resultText.removeClass('small');
+        }
+
+        if (isBold) {
+            $resultText.addClass('bold');
+        } else {
+            $resultText.removeClass('bold');
+        }
+        $resultText.css('color', color);
+
+        const startLineIdx = pIdx * linesPerPage;
+        const endLineIdx = Math.min(startLineIdx + linesPerPage, linesData.length);
+        const pageLinesData = linesData.slice(startLineIdx, endLineIdx);
+
+        // Manage <p class="line"> inside $resultText
+        let $existingLines = $resultText.children('p.line');
+        if ($existingLines.length > pageLinesData.length) {
+            $existingLines.slice(pageLinesData.length).remove();
+            $existingLines = $resultText.children('p.line');
+        }
+        if ($existingLines.length < pageLinesData.length) {
+            for (let l = $existingLines.length; l < pageLinesData.length; l++) {
+                const globalLineIdx = startLineIdx + l;
+                const $newLine = $(`<p class="line" id="line-${globalLineIdx}"></p>`);
+                $resultText.append($newLine);
+            }
+            $existingLines = $resultText.children('p.line');
+        }
+
+        // Render each line
+        $existingLines.each(function (lIdx, lineEl) {
+            const globalLineIdx = startLineIdx + lIdx;
+            const $line = $(lineEl);
+            $line.attr('id', 'line-' + globalLineIdx);
+            view.renderLineElement($line, pageLinesData[lIdx] || [], globalLineIdx);
+        });
+    });
 };
 
 view.adjustBlackboardFontSize = function () {
@@ -690,9 +819,14 @@ view.changeFontSize = function (fontSize) {
     } else {
         $results.removeClass('small');
     }
-    const isBlackboard = $('#board-color-select').val() === 'blackboard' || $('.board').hasClass('blackboard');
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
+    const isWhite10x14 = layout === 'white_10x14' || $('.board').hasClass('white_10x14');
+
     if (isBlackboard) {
         view.adjustBlackboardFontSize();
+    } else if (isWhite10x14) {
+        view.render();
     } else {
         $results.css({ 'font-size': '', 'top': '' });
     }
@@ -712,10 +846,13 @@ view.changeBoardColor = function (boardColor) {
     if (boardColor === "white") {
         view.syncNormalBoard();
         const $board = $(".board");
-        $board.removeClass('blackboard black').addClass('white');
+        $board.removeClass('blackboard black white_10x14').addClass('white');
         const paperInk = "#2b1055";
         $colorInput.val(paperInk);
         $('.result-text, #result').css({ 'color': paperInk, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
+    } else if (boardColor === "white_10x14") {
+        const paperInk = "#2b1055";
+        $colorInput.val(paperInk);
     } else if (boardColor === "blackboard") {
         // Automatically change font size to small (36pt / 1 ô ly)
         $('#font-size-select').val('36');
@@ -727,7 +864,7 @@ view.changeBoardColor = function (boardColor) {
     } else {
         view.syncNormalBoard();
         const $board = $(".board");
-        $board.removeClass('blackboard white').addClass('black');
+        $board.removeClass('blackboard white white_10x14').addClass('black');
         const chalkWhite = "#ffffff";
         $colorInput.val(chalkWhite);
         $('.result-text, #result').css({ 'color': chalkWhite, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
@@ -920,10 +1057,171 @@ view.exportBlackboardToPng = async function () {
     }
 };
 
+view.exportWhite10x14ToPng = async function () {
+    const $boards = $('.board.white_10x14');
+    if (!$boards.length) return;
+
+    const isSmall = $('#font-size-select').val() === '36' || $('.board.white_10x14 .result-text, #result').hasClass('small');
+    const isBold = $('#weight-checkbox').is(':checked') || $('.result-text, #result').hasClass('bold');
+    const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
+    const textColor = $('#font-color-input').val() || '#2b1055';
+
+    // Ensure custom font is ready before drawing
+    if (document.fonts) {
+        await document.fonts.ready;
+    }
+
+    const scale = 2; // Retina sharpness
+    const ptToPx = 96 / 72; // 1.3333333333333333
+    const subGridPx = 14.4 * ptToPx; // 19.2px
+
+    // Dimensions: 42 cells wide (1 + 40 + 1), 60 cells tall (2 + 56 + 2)
+    const widthPx = 806.4;
+    const heightPx = 1152;
+    const canvasWidth = Math.round(widthPx * scale); // 1613px
+    const canvasHeight = Math.round(heightPx * scale); // 2304px
+
+    const gridOriginX = subGridPx; // 19.2px (1 cell buffer left)
+    const gridOriginY = subGridPx * 2; // 38.4px (2 cells buffer top)
+
+    const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
+    const lineHeightPx = (isSmall ? (subGridPx * 4) : (subGridPx * 8)); // 76.8px or 153.6px
+    const firstBaselineY = gridOriginY + (isSmall ? 4 : 8) * subGridPx; // Line 1 baseline at y = 6 cells or 10 cells
+
+    const exportSinglePage = function (boardEl, pIdx) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+
+            // 1. Draw Paper Background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, widthPx, heightPx);
+
+            // 2. Draw Grid Lines (Crisp and opaque for printing)
+            const majorColor = 'rgba(60, 75, 115, 0.9)';
+            const minorColor = 'rgba(90, 115, 165, 0.7)';
+
+            // Horizontal grid lines
+            for (let y = 0; y <= heightPx + 0.1; y += subGridPx) {
+                const k = Math.round((y - gridOriginY) / subGridPx);
+                const isMajor = (k % 4 === 0);
+                ctx.beginPath();
+                ctx.strokeStyle = isMajor ? majorColor : minorColor;
+                ctx.lineWidth = isMajor ? 2.0 : 1.0;
+                ctx.moveTo(0, y);
+                ctx.lineTo(widthPx, y);
+                ctx.stroke();
+            }
+
+            // Vertical grid lines (respecting slant if italics)
+            const slantOffset = isItalics ? Math.tan(17 * Math.PI / 180) : 0;
+            const xMin = -heightPx * slantOffset;
+            const xMax = widthPx + heightPx * slantOffset;
+            const startX = (gridOriginX % subGridPx) - heightPx * slantOffset;
+
+            for (let x = startX; x <= xMax; x += subGridPx) {
+                const k = Math.round((x - gridOriginX) / subGridPx);
+                const isMajor = (k % 4 === 0);
+                ctx.beginPath();
+                ctx.strokeStyle = isMajor ? majorColor : minorColor;
+                ctx.lineWidth = isMajor ? 2.0 : 1.0;
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x - heightPx * slantOffset, heightPx);
+                ctx.stroke();
+            }
+
+            // 3. Draw Text
+            ctx.save();
+            if (isItalics) {
+                ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
+            }
+
+            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
+            ctx.fillStyle = textColor;
+            ctx.textBaseline = 'alphabetic';
+
+            const $lines = $(boardEl).find('p.line');
+            const pageTexts = [];
+
+            $lines.each(function (lIdx) {
+                const yPos = firstBaselineY + (lIdx * lineHeightPx);
+                const $line = $(this);
+                const words = [];
+                $line.children('.word').each(function () {
+                    const wordEl = this;
+                    const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+                    const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
+                    words.push({
+                        text: wordText,
+                        offsetLeft: wordEl.offsetLeft,
+                        offsetWidth: wordEl.offsetWidth,
+                        stretch: stretch
+                    });
+                });
+
+                if (words.length > 0) {
+                    pageTexts.push(words.map(w => w.text).join(' '));
+                }
+
+                words.forEach(word => {
+                    const xPos = gridOriginX + word.offsetLeft;
+                    if (word.stretch && word.stretch !== 1.0) {
+                        ctx.save();
+                        ctx.translate(xPos, yPos);
+                        ctx.scale(word.stretch, 1.0);
+                        ctx.fillText(word.text, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillText(word.text, xPos, yPos);
+                    }
+                });
+            });
+
+            ctx.restore();
+
+            const firstText = pageTexts[0] || 'chu_dep';
+            const pageSuffix = $boards.length > 1 ? `_p${pIdx + 1}` : '';
+            const fileName = view.generateFileName('white_10x14' + pageSuffix, firstText);
+
+            canvas.toBlob(function (blob) {
+                if (!blob) {
+                    resolve();
+                    return;
+                }
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                    resolve();
+                }, 200);
+            }, 'image/png');
+        });
+    };
+
+    for (let i = 0; i < $boards.length; i++) {
+        await exportSinglePage($boards[i], i);
+        if (i < $boards.length - 1) {
+            await new Promise(r => setTimeout(r, 400));
+        }
+    }
+};
+
 view.exportToPng = async function () {
     const $board = $('.board');
-    if ($board.hasClass('blackboard')) {
+    if ($board.hasClass('blackboard') || $('#board-color-select').val() === 'blackboard') {
         view.exportBlackboardToPng();
+        return;
+    }
+    if ($board.hasClass('white_10x14') || $('#board-color-select').val() === 'white_10x14') {
+        view.exportWhite10x14ToPng();
         return;
     }
 
@@ -1020,9 +1318,9 @@ view.exportToPng = async function () {
     }
     ctx.fillRect(0, 0, widthPx, heightPx);
 
-    // 3. Draw Grid Lines synchronized with CSS gridOrigin
-    const majorColor = isWhiteBoard ? 'rgba(100, 110, 140, 0.5)' : 'rgba(220, 220, 220, 0.7)';
-    const minorColor = isWhiteBoard ? 'rgba(140, 160, 200, 0.28)' : 'rgba(200, 200, 200, 0.32)';
+    // 3. Draw Grid Lines synchronized with CSS gridOrigin (Crisp and opaque for printing)
+    const majorColor = isWhiteBoard ? 'rgba(60, 75, 115, 0.9)' : 'rgba(220, 220, 220, 0.7)';
+    const minorColor = isWhiteBoard ? 'rgba(90, 115, 165, 0.7)' : 'rgba(200, 200, 200, 0.32)';
 
     // Horizontal grid lines
     const startY = gridOriginY % subGridPx;
@@ -1031,7 +1329,7 @@ view.exportToPng = async function () {
         const isMajor = (k % 4 === 0);
         ctx.beginPath();
         ctx.strokeStyle = isMajor ? majorColor : minorColor;
-        ctx.lineWidth = isMajor ? 1.5 : 0.75;
+        ctx.lineWidth = isMajor ? 2.0 : 1.0;
         ctx.moveTo(0, y);
         ctx.lineTo(widthPx, y);
         ctx.stroke();
@@ -1048,7 +1346,7 @@ view.exportToPng = async function () {
         const isMajor = (k % 4 === 0);
         ctx.beginPath();
         ctx.strokeStyle = isMajor ? majorColor : minorColor;
-        ctx.lineWidth = isMajor ? 1.5 : 0.75;
+        ctx.lineWidth = isMajor ? 2.0 : 1.0;
         ctx.moveTo(x, 0);
         ctx.lineTo(x - heightPx * slantOffset, heightPx);
         ctx.stroke();

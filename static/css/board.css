@@ -126,6 +126,108 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
+/*
+ * WHITEBOARD 10x14 (NOTEBOOK PAGE) ARCHITECTURE:
+ * Clone of the whiteboard constrained to 10 blocks wide x 14 blocks tall.
+ * 1 block = 4x4 little cells (var(--grid-size) = 4 * var(--grid-unit) = 76.8px).
+ * 1 little cell = var(--grid-unit) = 14.4pt = 19.2px.
+ * Buffer: 2 little cells above & below, 1 little cell left & right.
+ * Total width: 1 + 40 + 1 = 42 little cells = 806.4px.
+ * Total height: 2 + 56 + 2 = 60 little cells = 1152px.
+ */
+.board.white_10x14 {
+    width: 806.4px;
+    height: 1152px;
+    min-width: 806.4px;
+    min-height: 1152px;
+    max-width: 100%;
+    margin: 12px auto 24px auto;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    color: #2b1055;
+    box-sizing: content-box;
+}
+
+.board.white_10x14 .grid {
+    width: 806.4px;
+    height: 1152px;
+    min-width: 806.4px;
+    min-height: 1152px;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+    transform: none;
+    background-size: var(--grid-size) var(--grid-size);
+    /* 1 cell buffer left (19.2px), 2 cells buffer top (38.4px) */
+    background-position: var(--grid-unit) calc(var(--grid-unit) * 2);
+    background-repeat: repeat;
+}
+
+.board.white_10x14 .grid.italics {
+    width: 1200px;
+    -webkit-transform: skewX(-17deg);
+    transform: skewX(-17deg);
+    -webkit-transform-origin: 0 0;
+    transform-origin: 0 0;
+}
+
+.board.white_10x14 #result,
+.board.white_10x14 .result-text {
+    position: absolute;
+    left: var(--grid-unit);
+    top: 0;
+    width: max-content;
+    padding: 0;
+    margin: 0;
+    font-family: HP001, serif;
+    color: #2b1055;
+    box-sizing: border-box;
+    white-space: nowrap;
+    /* Large font (72pt): 2 blocks per line (153.6px line height), baseline on major line 2 */
+    font-size: 72pt;
+    line-height: calc(var(--grid-unit) * 8);
+    padding-top: calc(var(--grid-unit) * 0.2 + 10px);
+}
+
+.board.white_10x14 #result > p.line,
+.board.white_10x14 .result-text > p.line {
+    height: calc(var(--grid-unit) * 8);
+    line-height: calc(var(--grid-unit) * 8);
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+/* Small font (37pt): 1 block per line (76.8px line height), baseline on major line 1 */
+.board.white_10x14 #result.small,
+.board.white_10x14 .result-text.small {
+    font-size: 37pt;
+    line-height: calc(var(--grid-unit) * 4);
+    padding-top: calc(var(--grid-unit) * 2.85);
+}
+
+.board.white_10x14 #result.small > p.line,
+.board.white_10x14 .result-text.small > p.line {
+    height: calc(var(--grid-unit) * 4);
+    line-height: calc(var(--grid-unit) * 4);
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+.board.white_10x14 .result-text > p.line::after {
+    display: none !important;
+}
+
+.board.white_10x14:last-child .result-text > p.line:last-child::after {
+    display: inline-block !important;
+}
+
 /* 
  * UNIFIED GRID TILE ARCHITECTURE:
  * Both the major lines and minor lines are defined within the EXACT SAME 4x4 repeating tile.
@@ -509,6 +611,22 @@ body.is-word-stretching {
     .grid {
         min-width: 100% !important;
         padding-right: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        --grid-major-color: rgba(60, 75, 115, 0.9) !important;
+        --grid-minor-color: rgba(90, 115, 165, 0.7) !important;
+    }
+
+    .white .grid,
+    .board.white .grid,
+    .board.white_10x14 .grid {
+        --grid-major-color: rgba(60, 75, 115, 0.9) !important;
+        --grid-minor-color: rgba(90, 115, 165, 0.7) !important;
+    }
+
+    .board.blackboard .grid {
+        --grid-major-color: rgba(255, 255, 255, 0.95) !important;
+        --grid-minor-color: rgba(255, 255, 255, 0.7) !important;
     }
 
     .board.blackboard {
@@ -524,10 +642,19 @@ body.is-word-stretching {
         margin: 0 auto 24px auto !important;
     }
 
-
+    .board.white_10x14 {
+        width: 806.4px !important;
+        height: 1152px !important;
+        min-width: 806.4px !important;
+        min-height: 1152px !important;
+        background-color: #ffffff !important;
+        page-break-after: always;
+        break-after: page;
+        margin: 0 auto 24px auto !important;
+    }
 
     @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 6mm;
     }
 }
