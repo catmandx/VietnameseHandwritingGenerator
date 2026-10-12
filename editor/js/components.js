@@ -89,22 +89,90 @@ components.baseListPage = `
 `
 
 components.baseCard = `
-<div class="card m-3 pt-2 baseCard" data-bs-toggle="modal" data-bs-target="#editBaseModal">
+<div class="card m-3 pt-2 baseCard position-relative" data-bs-toggle="modal" data-bs-target="#editBaseModal" data-base-name="{{name}}">
+    {{dotBadge}}
     <div class="card-header bg-white text-center" style="font-size:72pt;">{{name}}</div>
 </div>
 `
 
 components.baseEditForm = `
 <form id="editBaseForm" action="#">
-<div class="row">
-    <div class="col-2 d-flex align-items-center justify-content-center">Editing base</div>
-    <div class="col-10 d-flex align-items-center ">
-        <span>Unicode:</span>
-        <input id="baseUnicode" name="baseUnicode" class="glyph-display text-center" value="" type="text" disabled=true size=4>
-        <span>Glyph</span>
+<div class="row bg-white p-2 rounded border mb-3">
+    <div class="col-sm-2 d-flex align-items-center justify-content-center fw-bold text-secondary">Editing base</div>
+    <div class="col-sm-10 d-flex align-items-center flex-wrap gap-2">
+        <span class="fw-semibold">Unicode:</span>
+        <input id="baseUnicode" name="baseUnicode" class="glyph-display text-center form-control-sm" value="" type="text" disabled=true size=4>
+        <span class="fw-semibold ms-2">Glyph:</span>
         <input id="baseCharacter" name="baseCharacter" class="glyph glyph-display text-center" value="" size="1">
-        <span>Number of types:</span>
-        <input id="numberOfTypes" name="numberOfTypes" class="glyph-display text-center" value="0" size="5">
+        <span class="fw-semibold ms-2">Number of types:</span>
+        <input id="numberOfTypes" name="numberOfTypes" class="glyph-display text-center form-control-sm" value="0" size="3">
+    </div>
+</div>
+
+<!-- Start Point (Điểm đặt bút) Editor Section -->
+<div class="card start-point-card mb-4 border shadow-sm">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+        <span class="fw-bold text-primary">
+            <span style="color: #ef4444; font-size: 1.1rem;">●</span> Điểm đặt bút (Start Point)
+        </span>
+        <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="hasStartPoint" name="hasStartPoint">
+            <label class="form-check-label fw-semibold" for="hasStartPoint">Bật điểm đặt bút</label>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-lg-5 col-md-6 d-flex flex-column align-items-center mb-3 mb-md-0">
+                <div id="startPointPreviewContainer" class="position-relative border rounded bg-white shadow-sm user-select-none" style="width: 288px; height: 324px; cursor: crosshair; touch-action: none; overflow: hidden;">
+                    <!-- SVG Grid & Glyph preview rendered dynamically -->
+                </div>
+                <div id="startPointGlyphBadge" class="mt-2 text-center small text-muted"></div>
+                <small class="text-muted mt-1 text-center">Click hoặc kéo chấm đỏ trên lưới để chọn điểm đặt bút</small>
+            </div>
+            <div class="col-lg-7 col-md-6">
+                <div class="p-3 bg-light rounded border h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="row g-3 align-items-center mb-3">
+                            <div class="col-sm-6">
+                                <label for="startPointX" class="form-label fw-bold mb-1">Tọa độ X (ô ly ngang):</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white">X</span>
+                                    <input type="number" step="0.05" class="form-control text-center" id="startPointX" name="startPointX" placeholder="Chưa đặt">
+                                    <span class="input-group-text bg-white">ô ly</span>
+                                </div>
+                                <small class="text-muted">Khoảng cách từ mép trái ($X = 0$)</small>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="startPointY" class="form-label fw-bold mb-1">Tọa độ Y (ô ly cao):</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white">Y</span>
+                                    <input type="number" step="0.05" class="form-control text-center" id="startPointY" name="startPointY" placeholder="Chưa đặt">
+                                    <span class="input-group-text bg-white">ô ly</span>
+                                </div>
+                                <small class="text-muted">Tính từ Baseline kẻ 1 ($Y = 0$)</small>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnSnapOly">
+                                Làm tròn 0.25 ô ly (1/4 ô)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="btnClearStartPoint">
+                                Xóa điểm đặt bút
+                            </button>
+                        </div>
+                    </div>
+                    <div class="alert alert-secondary py-2 px-3 mb-0 small" style="font-size: 0.85rem; line-height: 1.45;">
+                        <div class="fw-bold mb-1">Quy chuẩn lưới ô ly tiểu học:</div>
+                        <ul class="mb-0 ps-3">
+                            <li><span class="badge bg-primary">Đường xanh đậm</span>: Baseline ($Y = 0$, Đường kẻ 1).</li>
+                            <li><span class="badge bg-info text-dark">Nét đứt nhạt</span>: Đường kẻ 3 ($Y = 2.0$ - đỉnh chữ <code>a, o, c</code>).</li>
+                            <li><span class="badge bg-info text-dark">Nét đứt cao</span>: Đường kẻ 5 ($Y = 5.0$ - đỉnh chữ <code>b, l, h</code>).</li>
+                            <li>Tọa độ lưu theo tỷ lệ ô ly, <strong>tự động co giãn chính xác 100%</strong> cho cả cỡ to (72pt) và cỡ nhỏ (36pt).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 </form>

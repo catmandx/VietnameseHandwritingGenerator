@@ -28,9 +28,20 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
-.card{
+.baseCard {
     cursor: pointer;
     width: 220px;
+}
+
+.start-point-card {
+    width: 100% !important;
+    cursor: default !important;
+}
+
+.dot-badge {
+    box-shadow: 0 0 0 2px #ffffff;
+    font-size: 0.75rem;
+    padding: 0.35em 0.55em;
 }
 
 .card-header{

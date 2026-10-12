@@ -91,7 +91,24 @@ model.saveBaseData = function(formData){
         this.glyphData[baseCharacter] = {};
     }
     this.glyphData[baseCharacter].types = newBaseTypesData;
+
+    // Handle Start Point (Điểm đặt bút)
+    let hasStartPoint = !!data['hasStartPoint'];
+    let spX = parseFloat(data['startPointX']);
+    let spY = parseFloat(data['startPointY']);
+    if (hasStartPoint && !isNaN(spX) && !isNaN(spY)) {
+        this.glyphData[baseCharacter].startPoint = {
+            x: Math.round(spX * 100) / 100,
+            y: Math.round(spY * 100) / 100
+        };
+    } else {
+        delete this.glyphData[baseCharacter].startPoint;
+    }
+
     toastr.success('Save success!')
+    if (typeof view.updateBaseCardBadge === 'function') {
+        view.updateBaseCardBadge(baseCharacter);
+    }
 }
 
 function validatePrevAndNext(text){
