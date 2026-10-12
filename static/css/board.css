@@ -208,7 +208,7 @@
 .board.white_10x14 .result-text.small {
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
-    padding-top: calc(var(--grid-unit) * 2.85);
+    padding-top: calc(var(--grid-unit) * 3.05);
 }
 
 .board.white_10x14 #result.small > p.line,
@@ -317,7 +317,7 @@
 }
 
 #result.small {
-    padding-top: calc(var(--grid-unit) * 3.35);
+    padding-top: calc(var(--grid-unit) * 3.55);
     font-size: 37pt;
     line-height: calc(36pt + var(--grid-unit) * 1.5);
 }

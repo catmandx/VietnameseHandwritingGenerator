@@ -106,6 +106,8 @@ body {
     width: 100%;
     padding: 0 16px 24px 16px;
     box-sizing: border-box;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Control Panel */

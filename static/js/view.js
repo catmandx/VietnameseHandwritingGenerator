@@ -938,10 +938,10 @@ view.exportBlackboardToPng = async function () {
     const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
     const textColor = $('#font-color-input').val() || '#ffd700';
 
-    // High resolution retina export: 2x of A4 Landscape (1684 x 1190)
-    const S = 2;
-    const widthPx = 1684;
-    const heightPx = 1190;
+    // Ultra HD resolution export: 4x of A4 Landscape (3368 x 2380)
+    const S = 4;
+    const widthPx = 842 * S;
+    const heightPx = 595 * S;
     const baselineY = 408.05 * S; // 816.1px (Line 2 baseline)
     const startX = 96.092 * S;    // 192.18px
 
@@ -1071,15 +1071,15 @@ view.exportWhite10x14ToPng = async function () {
         await document.fonts.ready;
     }
 
-    const scale = 2; // Retina sharpness
+    const scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
     const ptToPx = 96 / 72; // 1.3333333333333333
     const subGridPx = 14.4 * ptToPx; // 19.2px
 
     // Dimensions: 42 cells wide (1 + 40 + 1), 60 cells tall (2 + 56 + 2)
     const widthPx = 806.4;
     const heightPx = 1152;
-    const canvasWidth = Math.round(widthPx * scale); // 1613px
-    const canvasHeight = Math.round(heightPx * scale); // 2304px
+    const canvasWidth = Math.round(widthPx * scale); // 3226px
+    const canvasHeight = Math.round(heightPx * scale); // 4608px
 
     const gridOriginX = subGridPx; // 19.2px (1 cell buffer left)
     const gridOriginY = subGridPx * 2; // 38.4px (2 cells buffer top)
@@ -1262,7 +1262,7 @@ view.exportToPng = async function () {
         await document.fonts.ready;
     }
 
-    const scale = 2; // Retina sharpness
+    const scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
     const ptToPx = 96 / 72; // 1.3333333333333333
     const subGridPx = 14.4 * ptToPx; // 19.2px
     const bigGridPx = subGridPx * 4; // 76.8px
