@@ -71,7 +71,7 @@ view.render = function () {
     const $input = $('#input');
     const layout = $('#board-color-select').val();
     const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
-    const isWhite10x14 = layout === 'white_10x14' || $('.board').hasClass('white_10x14');
+    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
     const rawLines = $input.val().split('\n');
 
     if (isBlackboard) {
@@ -102,7 +102,7 @@ view.render = function () {
 
         view.syncBlackboards(linesData);
         view.adjustBlackboardFontSize();
-    } else if (isWhite10x14) {
+    } else if (isWhite11x14) {
         let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
         while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
             lines.pop();
@@ -126,7 +126,7 @@ view.render = function () {
             return lineTokens;
         });
 
-        view.syncWhite10x14(linesData);
+        view.syncWhite11x14(linesData);
     } else {
         view.syncNormalBoard();
         const $result = $('#result');
@@ -218,8 +218,8 @@ view.syncNormalBoard = function () {
     const $container = $('.board-container');
     const $boards = $container.children('.board');
 
-    // If multiple boards exist, or the single board is blackboard or white_10x14, replace with single normal board
-    if ($boards.length !== 1 || $boards.hasClass('blackboard') || $boards.hasClass('white_10x14')) {
+    // If multiple boards exist, or the single board is blackboard or white_11x14/white_10x14, replace with single normal board
+    if ($boards.length !== 1 || $boards.hasClass('blackboard') || $boards.hasClass('white_11x14') || $boards.hasClass('white_10x14')) {
         $container.empty();
         const currentColor = $('#board-color-select').val() || 'black';
         const isBold = $('#weight-checkbox').is(':checked');
@@ -238,12 +238,12 @@ view.syncNormalBoard = function () {
     }
 };
 
-view.syncWhite10x14 = function (linesData) {
+view.syncWhite11x14 = function (linesData) {
     const $container = $('.board-container');
-    let $existingBoards = $container.children('.board.white_10x14');
+    let $existingBoards = $container.children('.board.white_11x14, .board.white_10x14');
 
-    // If container had boards that are NOT white_10x14, clean them out
-    if ($container.children('.board:not(.white_10x14)').length > 0) {
+    // If container had boards that are NOT white_11x14/white_10x14, clean them out
+    if ($container.children('.board:not(.white_11x14):not(.white_10x14)').length > 0) {
         $container.empty();
         $existingBoards = $();
     }
@@ -260,7 +260,7 @@ view.syncWhite10x14 = function (linesData) {
     // 1. Remove excess pages
     if ($existingBoards.length > totalPages) {
         $existingBoards.slice(totalPages).remove();
-        $existingBoards = $container.children('.board.white_10x14');
+        $existingBoards = $container.children('.board.white_11x14, .board.white_10x14');
     }
 
     // 2. Add missing pages
@@ -268,7 +268,7 @@ view.syncWhite10x14 = function (linesData) {
         for (let p = $existingBoards.length; p < totalPages; p++) {
             const idAttr = p === 0 ? 'id="result"' : `id="result-p${p}"`;
             const $newPage = $(`
-                <div class="board white white_10x14 ${isItalics ? 'italics' : ''}" data-page-idx="${p}">
+                <div class="board white white_11x14 white_10x14 ${isItalics ? 'italics' : ''}" data-page-idx="${p}">
                     <div class="grid ${isItalics ? 'italics' : ''}">
                         <div class="result-text ${isSmall ? 'small' : ''} ${isBold ? 'bold' : ''}" ${idAttr} style="color: ${color};"></div>
                     </div>
@@ -276,7 +276,7 @@ view.syncWhite10x14 = function (linesData) {
             `);
             $container.append($newPage);
         }
-        $existingBoards = $container.children('.board.white_10x14');
+        $existingBoards = $container.children('.board.white_11x14, .board.white_10x14');
     }
 
     // 3. Populate lines for each page
@@ -339,6 +339,7 @@ view.syncWhite10x14 = function (linesData) {
         });
     });
 };
+view.syncWhite10x14 = view.syncWhite11x14;
 
 view.adjustBlackboardFontSize = function () {
     const $results = $('.board.blackboard .result-text, .board.blackboard #result');
@@ -821,11 +822,11 @@ view.changeFontSize = function (fontSize) {
     }
     const layout = $('#board-color-select').val();
     const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
-    const isWhite10x14 = layout === 'white_10x14' || $('.board').hasClass('white_10x14');
+    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
 
     if (isBlackboard) {
         view.adjustBlackboardFontSize();
-    } else if (isWhite10x14) {
+    } else if (isWhite11x14) {
         view.render();
     } else {
         $results.css({ 'font-size': '', 'top': '' });
@@ -846,11 +847,11 @@ view.changeBoardColor = function (boardColor) {
     if (boardColor === "white") {
         view.syncNormalBoard();
         const $board = $(".board");
-        $board.removeClass('blackboard black white_10x14').addClass('white');
+        $board.removeClass('blackboard black white_11x14 white_10x14').addClass('white');
         const paperInk = "#2b1055";
         $colorInput.val(paperInk);
         $('.result-text, #result').css({ 'color': paperInk, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
-    } else if (boardColor === "white_10x14") {
+    } else if (boardColor === "white_11x14" || boardColor === "white_10x14") {
         const paperInk = "#2b1055";
         $colorInput.val(paperInk);
     } else if (boardColor === "blackboard") {
@@ -864,7 +865,7 @@ view.changeBoardColor = function (boardColor) {
     } else {
         view.syncNormalBoard();
         const $board = $(".board");
-        $board.removeClass('blackboard white white_10x14').addClass('black');
+        $board.removeClass('blackboard white white_11x14 white_10x14').addClass('black');
         const chalkWhite = "#ffffff";
         $colorInput.val(chalkWhite);
         $('.result-text, #result').css({ 'color': chalkWhite, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
@@ -1057,11 +1058,11 @@ view.exportBlackboardToPng = async function () {
     }
 };
 
-view.exportWhite10x14ToPng = async function () {
-    const $boards = $('.board.white_10x14');
+view.exportWhite11x14ToPng = async function () {
+    const $boards = $('.board.white_11x14, .board.white_10x14');
     if (!$boards.length) return;
 
-    const isSmall = $('#font-size-select').val() === '36' || $('.board.white_10x14 .result-text, #result').hasClass('small');
+    const isSmall = $('#font-size-select').val() === '36' || $('.board.white_11x14 .result-text, .board.white_10x14 .result-text, #result').hasClass('small');
     const isBold = $('#weight-checkbox').is(':checked') || $('.result-text, #result').hasClass('bold');
     const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
     const textColor = $('#font-color-input').val() || '#2b1055';
@@ -1075,10 +1076,10 @@ view.exportWhite10x14ToPng = async function () {
     const ptToPx = 96 / 72; // 1.3333333333333333
     const subGridPx = 14.4 * ptToPx; // 19.2px
 
-    // Dimensions: 42 cells wide (1 + 40 + 1), 60 cells tall (2 + 56 + 2)
-    const widthPx = 806.4;
+    // Dimensions: 46 cells wide (1 + 44 + 1), 60 cells tall (2 + 56 + 2)
+    const widthPx = 883.2;
     const heightPx = 1152;
-    const canvasWidth = Math.round(widthPx * scale); // 3226px
+    const canvasWidth = Math.round(widthPx * scale); // 3533px
     const canvasHeight = Math.round(heightPx * scale); // 4608px
 
     const gridOriginX = subGridPx; // 19.2px (1 cell buffer left)
@@ -1184,7 +1185,7 @@ view.exportWhite10x14ToPng = async function () {
 
             const firstText = pageTexts[0] || 'chu_dep';
             const pageSuffix = $boards.length > 1 ? `_p${pIdx + 1}` : '';
-            const fileName = view.generateFileName('white_10x14' + pageSuffix, firstText);
+            const fileName = view.generateFileName('white_11x14' + pageSuffix, firstText);
 
             canvas.toBlob(function (blob) {
                 if (!blob) {
@@ -1213,6 +1214,7 @@ view.exportWhite10x14ToPng = async function () {
         }
     }
 };
+view.exportWhite10x14ToPng = view.exportWhite11x14ToPng;
 
 view.exportToPng = async function () {
     const $board = $('.board');
@@ -1220,8 +1222,8 @@ view.exportToPng = async function () {
         view.exportBlackboardToPng();
         return;
     }
-    if ($board.hasClass('white_10x14') || $('#board-color-select').val() === 'white_10x14') {
-        view.exportWhite10x14ToPng();
+    if ($board.hasClass('white_11x14') || $board.hasClass('white_10x14') || $('#board-color-select').val() === 'white_11x14' || $('#board-color-select').val() === 'white_10x14') {
+        view.exportWhite11x14ToPng();
         return;
     }
 
