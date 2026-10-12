@@ -69,35 +69,43 @@ view.escapeHtml = function (str) {
 view.render = function () {
     if (!model.isLoaded) return;
     const $input = $('#input');
-    const $board = $('.board');
-    const $result = $('#result');
-    const isBlackboard = $board.hasClass('blackboard');
+    const isBlackboard = $('#board-color-select').val() === 'blackboard' || $('.board').hasClass('blackboard');
     const rawLines = $input.val().split('\n');
 
-    let linesData;
     if (isBlackboard) {
-        // In blackboard mode, text renders on Line 2 of the blackboard slate!
-        // Select input line: use first non-empty line of the input
-        const targetLine = rawLines.find(l => l.trim().length > 0) || rawLines[0] || '';
-
-        const line = targetLine.replace(/[\t]/g, "    ");
-        const tokens = line.split(/(\s+)/);
-        const lineTokens = [];
-        for (const token of tokens) {
-            if (!token) continue;
-            if (/^\s+$/.test(token)) {
-                lineTokens.push({ type: 'space', text: token });
-            } else {
-                const converted = model.getUnicodeStr(token);
-                lineTokens.push({ type: 'word', text: converted, raw: token });
-            }
+        // In blackboard mode, each input line gets its own blackboard slate!
+        let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
+        // Remove trailing empty lines if more than 1
+        while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
+            lines.pop();
         }
-        linesData = [lineTokens];
+        if (lines.length === 0) {
+            lines = [''];
+        }
+
+        const linesData = lines.map(line => {
+            const tokens = line.split(/(\s+)/);
+            const lineTokens = [];
+            for (const token of tokens) {
+                if (!token) continue;
+                if (/^\s+$/.test(token)) {
+                    lineTokens.push({ type: 'space', text: token });
+                } else {
+                    const converted = model.getUnicodeStr(token);
+                    lineTokens.push({ type: 'word', text: converted, raw: token });
+                }
+            }
+            return lineTokens;
+        });
+
+        view.syncBlackboards(linesData);
+        view.adjustBlackboardFontSize();
     } else {
-        // Normal layout: clean all blackboard inline styles so CSS classes take full control
+        view.syncNormalBoard();
+        const $result = $('#result');
         $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'max-width': '', 'min-width': '', 'white-space': '' });
 
-        linesData = rawLines.map(rawLine => {
+        const linesData = rawLines.map(rawLine => {
             const line = rawLine.replace(/[\t]/g, "    ");
             const tokens = line.split(/(\s+)/);
             const lineTokens = [];
@@ -112,23 +120,102 @@ view.render = function () {
             }
             return lineTokens;
         });
-    }
 
-    view.updateLines(linesData);
-
-    if (isBlackboard) {
-        view.adjustBlackboardFontSize();
-    } else {
+        view.updateLines(linesData);
         $result.css({ 'font-size': '', 'top': '' });
     }
 };
 
-view.adjustBlackboardFontSize = function () {
-    const $result = $('#result');
-    const $line = $result.children('p.line').first();
-    if (!$line.length) return;
+view.syncBlackboards = function (linesData) {
+    const $container = $('.board-container');
+    let $existingBoards = $container.children('.board.blackboard');
 
-    const isSmall = $result.hasClass('small');
+    // If container had normal boards (not blackboard), clean them out
+    if ($container.children('.board:not(.blackboard)').length > 0) {
+        $container.empty();
+        $existingBoards = $();
+    }
+
+    // 1. Remove excess blackboards
+    if ($existingBoards.length > linesData.length) {
+        $existingBoards.slice(linesData.length).remove();
+        $existingBoards = $container.children('.board.blackboard');
+    }
+
+    // 2. Add missing blackboards
+    const isSmall = $('#font-size-select').val() === '36' || $('#result').hasClass('small');
+    const isBold = $('#weight-checkbox').is(':checked');
+    const color = $('#font-color-input').val() || '#ffd700';
+    const isItalics = $('#style-checkbox').is(':checked');
+
+    if ($existingBoards.length < linesData.length) {
+        for (let i = $existingBoards.length; i < linesData.length; i++) {
+            const idAttr = i === 0 ? 'id="result"' : `id="result-${i}"`;
+            const $newBoard = $(`
+                <div class="board blackboard ${isItalics ? 'italics' : ''}" data-board-idx="${i}">
+                    <div class="grid ${isItalics ? 'italics' : ''}">
+                        <div class="result-text ${isSmall ? 'small' : ''} ${isBold ? 'bold' : ''}" ${idAttr} style="color: ${color};">
+                            <p class="line" id="line-${i}"></p>
+                        </div>
+                    </div>
+                </div>
+            `);
+            $container.append($newBoard);
+        }
+        $existingBoards = $container.children('.board.blackboard');
+    }
+
+    // 3. Update each blackboard's single line
+    $existingBoards.each(function (index, boardEl) {
+        const $board = $(boardEl);
+        $board.attr('data-board-idx', index);
+        const $resultText = $board.find('.result-text, #result');
+        if (index === 0) {
+            $resultText.attr('id', 'result');
+        } else {
+            $resultText.attr('id', 'result-' + index);
+        }
+
+        let $line = $resultText.children('p.line').first();
+        if (!$line.length) {
+            $line = $(`<p class="line" id="line-${index}"></p>`);
+            $resultText.append($line);
+        }
+
+        const lineTokens = linesData[index] || [];
+        view.renderLineElement($line, lineTokens, index);
+    });
+};
+
+view.syncNormalBoard = function () {
+    const $container = $('.board-container');
+    const $boards = $container.children('.board');
+
+    // If multiple boards exist, or the single board is blackboard, replace with single normal board
+    if ($boards.length !== 1 || $boards.hasClass('blackboard')) {
+        $container.empty();
+        const currentColor = $('#board-color-select').val() || 'black';
+        const isBold = $('#weight-checkbox').is(':checked');
+        const color = $('#font-color-input').val() || (currentColor === 'white' ? '#2b1055' : '#ffffff');
+        const isSmall = $('#font-size-select').val() === '36';
+        const isItalics = $('#style-checkbox').is(':checked');
+
+        const $normalBoard = $(`
+            <div class="board ${currentColor} ${isItalics ? 'italics' : ''}">
+                <div class="grid ${isItalics ? 'italics' : ''}">
+                    <div id="result" class="result-text ${isBold ? 'bold' : ''} ${isSmall ? 'small' : ''}" style="color: ${color};"></div>
+                </div>
+            </div>
+        `);
+        $container.append($normalBoard);
+    }
+};
+
+view.adjustBlackboardFontSize = function () {
+    const $results = $('.board.blackboard .result-text, .board.blackboard #result');
+    if (!$results.length) return;
+
+    const isSmall = $('#font-size-select').val() === '36' || $results.first().hasClass('small');
     // Large font: capitalized glyphs like I are 5 cells high, normal glyphs like o are 2 cells high -> font size = 281.5px
     // Small font: capitalized glyphs like I are 2.5 cells high, normal glyphs like o are 1 cell high -> font size = 140.75px
     const finalSize = isSmall ? 140.75 : 281.5;
@@ -139,21 +226,91 @@ view.adjustBlackboardFontSize = function () {
     // 281.5px: baseline offset = 216px -> top = 192px.
     // 140.75px: baseline offset = 108px -> top = 300px.
     const topPx = Math.round(408.05 - (0.769 * finalSize));
-
     const baselineOffset = 408.05 - topPx;
-    if ($result[0]) {
-        $result[0].style.setProperty('--baseline-offset', baselineOffset + 'px');
+
+    $results.each(function () {
+        this.style.setProperty('--baseline-offset', baselineOffset + 'px');
+        $(this).css({
+            'font-size': finalSize + 'px',
+            'top': topPx + 'px'
+        });
+        if (isSmall) {
+            $(this).addClass('small');
+        } else {
+            $(this).removeClass('small');
+        }
+    });
+};
+
+view.renderLineElement = function ($line, lineTokens, lineIndex) {
+    $line.attr('id', 'line-' + lineIndex);
+
+    // Collect existing word margins & stretch to preserve user adjustments across re-renders
+    const existingMargins = [];
+    const existingStretches = [];
+    const existingNatWidths = [];
+    $line.children('.word').each(function () {
+        const ml = this.style.marginLeft;
+        const stretch = $(this).attr('data-stretch');
+        const natW = $(this).attr('data-natural-width');
+        existingMargins.push(ml || null);
+        existingStretches.push(stretch ? parseFloat(stretch) : null);
+        existingNatWidths.push(natW ? parseFloat(natW) : null);
+    });
+
+    const wordTokens = lineTokens.filter(t => t.type === 'word');
+
+    if (wordTokens.length === 0) {
+        // Non-breaking space keeps the empty line height intact on the grid
+        $line.empty().html('&nbsp;');
+        return;
     }
 
-    $result.css({
-        'font-size': finalSize + 'px',
-        'top': topPx + 'px'
-    });
+    let wordIndex = 0;
+    let html = '';
+    for (const token of lineTokens) {
+        if (token.type === 'space') {
+            html += `<span class="word-space">${view.escapeHtml(token.text)}</span>`;
+        } else {
+            const preservedMargin = existingMargins[wordIndex];
+            const preservedStretch = existingStretches[wordIndex];
+            const preservedNatW = existingNatWidths[wordIndex];
+
+            let wordStyles = [];
+            if (preservedMargin) {
+                wordStyles.push(`margin-left: ${preservedMargin}`);
+            }
+            let stretchAttr = '';
+            let natWAttr = '';
+            let textStyles = [];
+            if (preservedStretch && preservedStretch !== 1) {
+                stretchAttr = ` data-stretch="${preservedStretch}"`;
+                if (preservedNatW) {
+                    natWAttr = ` data-natural-width="${preservedNatW}"`;
+                    wordStyles.push(`width: ${(preservedNatW * preservedStretch).toFixed(2)}px`);
+                    textStyles.push(`width: ${preservedNatW}px`);
+                }
+                textStyles.push(`display: inline-block`, `vertical-align: baseline`, `transform: scaleX(${preservedStretch})`, `transform-origin: 0 0`);
+            }
+            const styleAttr = wordStyles.length ? ` style="${wordStyles.join('; ')};"` : '';
+            const textStyleAttr = textStyles.length ? ` style="${textStyles.join('; ')};"` : '';
+
+            html += `<span class="word" data-word-idx="${wordIndex}"${stretchAttr}${natWAttr}${styleAttr}>` +
+                `<span class="word-handle no-print">` +
+                    `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
+                    `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
+                `</span>` +
+                `<span class="word-text"${textStyleAttr}>${view.escapeHtml(token.text)}</span>` +
+                `<span class="btn-word-stretch no-print" title="Kéo để kéo giãn chữ (Nhấp đúp để đặt lại cỡ chữ)"></span>` +
+            `</span>`;
+            wordIndex++;
+        }
+    }
+    $line.empty().html(html);
 };
 
 view.updateLines = function (linesData) {
     const $result = $('#result');
-    const isBlackboard = $('.board').hasClass('blackboard');
     const $existingLines = $result.children('p.line');
 
     // 1. Remove excess lines if text was deleted
@@ -170,88 +327,17 @@ view.updateLines = function (linesData) {
 
     // 3. Update line content while preserving existing word margins and stretch
     $result.children('p.line').each(function (index, el) {
-        const $el = $(el);
-        $el.attr('id', 'line-' + index);
-        const lineTokens = linesData[index] || [];
-
-        // Collect existing word margins & stretch to preserve user adjustments across re-renders
-        const existingMargins = [];
-        const existingStretches = [];
-        const existingNatWidths = [];
-        $el.children('.word').each(function () {
-            const ml = this.style.marginLeft;
-            const stretch = $(this).attr('data-stretch');
-            const natW = $(this).attr('data-natural-width');
-            existingMargins.push(ml || null);
-            existingStretches.push(stretch ? parseFloat(stretch) : null);
-            existingNatWidths.push(natW ? parseFloat(natW) : null);
-        });
-
-        const wordTokens = lineTokens.filter(t => t.type === 'word');
-
-        if (wordTokens.length === 0) {
-            // Non-breaking space keeps the empty line height intact on the grid
-            $el.empty().html('&nbsp;');
-            return;
-        }
-
-        let wordIndex = 0;
-        let html = '';
-        for (const token of lineTokens) {
-            if (token.type === 'space') {
-                html += `<span class="word-space">${view.escapeHtml(token.text)}</span>`;
-            } else {
-                const preservedMargin = existingMargins[wordIndex];
-                const preservedStretch = existingStretches[wordIndex];
-                const preservedNatW = existingNatWidths[wordIndex];
-
-                let wordStyles = [];
-                if (preservedMargin) {
-                    wordStyles.push(`margin-left: ${preservedMargin}`);
-                }
-                let stretchAttr = '';
-                let natWAttr = '';
-                let textStyles = [];
-                if (preservedStretch && preservedStretch !== 1) {
-                    stretchAttr = ` data-stretch="${preservedStretch}"`;
-                    if (preservedNatW) {
-                        natWAttr = ` data-natural-width="${preservedNatW}"`;
-                        wordStyles.push(`width: ${(preservedNatW * preservedStretch).toFixed(2)}px`);
-                        textStyles.push(`width: ${preservedNatW}px`);
-                    }
-                    textStyles.push(`display: inline-block`, `vertical-align: baseline`, `transform: scaleX(${preservedStretch})`, `transform-origin: left baseline`);
-                }
-                const styleAttr = wordStyles.length ? ` style="${wordStyles.join('; ')};"` : '';
-                const textStyleAttr = textStyles.length ? ` style="${textStyles.join('; ')};"` : '';
-
-                html += `<span class="word" data-word-idx="${wordIndex}"${stretchAttr}${natWAttr}${styleAttr}>` +
-                    `<span class="word-handle no-print">` +
-                        `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
-                        `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
-                    `</span>` +
-                    `<span class="word-text"${textStyleAttr}>${view.escapeHtml(token.text)}</span>` +
-                    `<span class="btn-word-stretch no-print" title="Kéo để kéo giãn chữ (Nhấp đúp để đặt lại cỡ chữ)"></span>` +
-                `</span>`;
-                wordIndex++;
-            }
-        }
-        $el.empty().html(html);
+        view.renderLineElement($(el), linesData[index] || [], index);
     });
 };
 
 view.setupDragInteractions = function () {
-    const $result = $('#result');
+    const $container = $('.board-container');
     let dragState = null;
     let stretchState = null;
 
-    let $guideline = $('.snap-guideline');
-    if (!$guideline.length) {
-        $guideline = $('<div class="snap-guideline no-print"></div>');
-        $('.board').append($guideline);
-    }
-
     // Pointer down on .btn-word-drag: start dragging word
-    $result.on('pointerdown', '.btn-word-drag', function (e) {
+    $container.on('pointerdown', '.btn-word-drag', function (e) {
         if (e.button !== undefined && e.button !== 0) return;
 
         const handleEl = this;
@@ -267,11 +353,13 @@ view.setupDragInteractions = function () {
         }
 
         const startMargin = parseFloat(wordEl.style.marginLeft) || 0;
+        const dragCfg = (window.APP_CONFIG && window.APP_CONFIG.dragPastStart) || {};
+        const maxLeftDrag = dragCfg.maxLeftDragPx !== undefined ? dragCfg.maxLeftDragPx : 28.35;
 
-        // Determine minMargin so word cannot overlap previous word or go beyond line origin
+        // Determine minMargin so word cannot overlap previous word, but allow dragging left past start of line up to half a cell
         let minMargin = 0;
         if (wordIdx === 0) {
-            minMargin = 0;
+            minMargin = -maxLeftDrag;
         } else {
             const $prevWord = $line.find(`.word[data-word-idx="${wordIdx - 1}"]`);
             if ($prevWord.length) {
@@ -281,7 +369,7 @@ view.setupDragInteractions = function () {
                 minMargin = startMargin - (gap - 2);
                 minMargin = Math.min(minMargin, startMargin);
             } else {
-                minMargin = 0;
+                minMargin = -maxLeftDrag;
             }
         }
 
@@ -304,7 +392,15 @@ view.setupDragInteractions = function () {
 
     // Pointer move: update word margin-left
     function handlePointerMove(e) {
-        if (!dragState || dragState.pointerId !== e.pointerId) return;
+        if (!dragState) return;
+        // Safety: if pointer button is no longer down, finish drag immediately
+        if (e.buttons !== undefined && (e.buttons & 1) === 0) {
+            endDrag(e);
+            return;
+        }
+        if (e.pointerId !== undefined && dragState.pointerId !== undefined && e.pointerId !== dragState.pointerId) {
+            return;
+        }
 
         const deltaX = e.clientX - dragState.startX;
         let newMargin = dragState.startMargin + deltaX;
@@ -312,29 +408,40 @@ view.setupDragInteractions = function () {
         dragState.wordEl.style.marginLeft = Math.round(newMargin) + 'px';
     }
 
-    $result.on('pointermove', '.btn-word-drag', handlePointerMove);
-    $(window).on('pointermove', handlePointerMove);
+    $container.on('pointermove mousemove', '.btn-word-drag', handlePointerMove);
+    $(window).on('pointermove mousemove', handlePointerMove);
 
-    // Pointer up / cancel: finish drag
+    // Pointer up / cancel / blur: finish drag
     function endDrag(e) {
-        if (!dragState || dragState.pointerId !== e.pointerId) return;
+        if (!dragState) return;
+        if (e && e.pointerId !== undefined && dragState.pointerId !== undefined && e.pointerId !== dragState.pointerId) {
+            return;
+        }
 
-        if (typeof dragState.handleEl.releasePointerCapture === 'function') {
+        if (dragState.handleEl && typeof dragState.handleEl.releasePointerCapture === 'function') {
             try {
-                dragState.handleEl.releasePointerCapture(e.pointerId);
+                if (dragState.pointerId !== undefined) {
+                    dragState.handleEl.releasePointerCapture(dragState.pointerId);
+                }
             } catch (_) {}
         }
 
-        dragState.$word.removeClass('is-dragging');
+        if (dragState.$word) {
+            dragState.$word.removeClass('is-dragging');
+        }
         $('body').removeClass('is-word-dragging');
         dragState = null;
     }
+
+    $(window).on('pointerup pointercancel mouseup blur', endDrag);
+    $(document).on('pointerup pointercancel mouseup', endDrag);
+    $container.on('lostpointercapture', '.btn-word-drag', endDrag);
 
     let lastStretchClick = 0;
     let lastStretchEl = null;
 
     // Pointer down on .btn-word-stretch: start stretching word
-    $result.on('pointerdown', '.btn-word-stretch', function (e) {
+    $container.on('pointerdown', '.btn-word-stretch', function (e) {
         if (e.button !== undefined && e.button !== 0) return;
 
         const handleEl = this;
@@ -346,11 +453,8 @@ view.setupDragInteractions = function () {
             const $word = $(handleEl).closest('.word');
             $word.css('width', '').removeAttr('data-stretch').removeAttr('data-natural-width');
             $word.children('.word-text').css({
-                'display': '',
-                'vertical-align': '',
                 'width': '',
-                'transform': '',
-                'transform-origin': ''
+                'transform': ''
             });
             e.preventDefault();
             e.stopPropagation();
@@ -362,7 +466,7 @@ view.setupDragInteractions = function () {
         const $word = $(handleEl).closest('.word');
         const $wordText = $word.children('.word-text');
         const $line = $word.closest('p.line');
-        const $board = $('.board');
+        const $board = $word.closest('.board');
 
         if (typeof handleEl.setPointerCapture === 'function') {
             try {
@@ -390,11 +494,17 @@ view.setupDragInteractions = function () {
             $word.attr('data-natural-width', naturalWidth);
         }
 
+        let $guideline = $board.find('.snap-guideline');
+        if (!$guideline.length) {
+            $guideline = $('<div class="snap-guideline no-print"></div>');
+            $board.append($guideline);
+        }
+
         const boardRect = $board[0].getBoundingClientRect();
         const lineRect = $line[0].getBoundingClientRect();
         const wordRect = $word[0].getBoundingClientRect();
 
-        // Calculate snap guideline position on board
+        // Calculate snap guideline position on board (anchored at target width right edge)
         const wordStartLeftOnBoard = wordRect.left - boardRect.left + $board.scrollLeft();
         const targetSnapLeft = wordStartLeftOnBoard + (naturalWidth * targetScale);
         const lineTopOnBoard = lineRect.top - boardRect.top + $board.scrollTop();
@@ -413,6 +523,8 @@ view.setupDragInteractions = function () {
             $wordText: $wordText,
             $stretchBtn: $(handleEl),
             $line: $line,
+            $board: $board,
+            $guideline: $guideline,
             naturalWidth: naturalWidth,
             currentScale: currentScale,
             startX: e.clientX,
@@ -433,7 +545,15 @@ view.setupDragInteractions = function () {
 
     // Pointer move for stretch
     function handleStretchMove(e) {
-        if (!stretchState || stretchState.pointerId !== e.pointerId) return;
+        if (!stretchState) return;
+        // Safety: if pointer button is no longer down, finish stretch immediately
+        if (e.buttons !== undefined && (e.buttons & 1) === 0) {
+            endStretch(e);
+            return;
+        }
+        if (e.pointerId !== undefined && stretchState.pointerId !== undefined && e.pointerId !== stretchState.pointerId) {
+            return;
+        }
 
         const deltaX = e.clientX - stretchState.startX;
         let newWidth = stretchState.startWidth + deltaX;
@@ -444,10 +564,10 @@ view.setupDragInteractions = function () {
         if (isSnapped) {
             newScale = stretchState.targetScale;
             stretchState.$stretchBtn.addClass('is-snapped');
-            $guideline.addClass('is-snapped');
+            stretchState.$guideline.addClass('is-snapped');
         } else {
             stretchState.$stretchBtn.removeClass('is-snapped');
-            $guideline.removeClass('is-snapped');
+            stretchState.$guideline.removeClass('is-snapped');
         }
 
         const scaledWidth = Math.round(stretchState.naturalWidth * newScale * 100) / 100;
@@ -458,92 +578,96 @@ view.setupDragInteractions = function () {
             'vertical-align': 'baseline',
             'width': stretchState.naturalWidth + 'px',
             'transform': 'scaleX(' + newScale + ')',
-            'transform-origin': 'left baseline'
+            'transform-origin': '0 0'
         });
     }
 
-    $result.on('pointermove', '.btn-word-stretch', handleStretchMove);
-    $(window).on('pointermove', handleStretchMove);
+    $container.on('pointermove mousemove', '.btn-word-stretch', handleStretchMove);
+    $(window).on('pointermove mousemove', handleStretchMove);
 
     // Pointer up for stretch
     function endStretch(e) {
-        if (!stretchState || stretchState.pointerId !== e.pointerId) return;
+        if (!stretchState) return;
+        if (e && e.pointerId !== undefined && stretchState.pointerId !== undefined && e.pointerId !== stretchState.pointerId) {
+            return;
+        }
 
-        if (typeof stretchState.handleEl.releasePointerCapture === 'function') {
+        if (stretchState.handleEl && typeof stretchState.handleEl.releasePointerCapture === 'function') {
             try {
-                stretchState.handleEl.releasePointerCapture(e.pointerId);
+                if (stretchState.pointerId !== undefined) {
+                    stretchState.handleEl.releasePointerCapture(stretchState.pointerId);
+                }
             } catch (_) {}
         }
 
-        stretchState.$word.removeClass('is-stretching');
-        stretchState.$stretchBtn.removeClass('is-stretching is-snapped');
+        if (stretchState.$word) {
+            stretchState.$word.removeClass('is-stretching');
+        }
+        if (stretchState.$stretchBtn) {
+            stretchState.$stretchBtn.removeClass('is-stretching is-snapped');
+        }
         $('body').removeClass('is-word-stretching');
-        $guideline.removeClass('is-snapped').hide();
+        if (stretchState.$guideline) {
+            stretchState.$guideline.removeClass('is-snapped').hide();
+        }
         stretchState = null;
     }
 
-    $(window).on('pointerup pointercancel', endStretch);
+    $(window).on('pointerup pointercancel mouseup blur', endStretch);
+    $(document).on('pointerup pointercancel mouseup', endStretch);
+    $container.on('lostpointercapture', '.btn-word-stretch', endStretch);
 
     // Double-click on .btn-word-stretch: reset stretch only back to 100%
-    $result.on('dblclick', '.btn-word-stretch', function (e) {
+    $container.on('dblclick', '.btn-word-stretch', function (e) {
         e.stopPropagation();
         e.preventDefault();
         const $word = $(this).closest('.word');
         $word.css('width', '').removeAttr('data-stretch');
         $word.children('.word-text').css({
-            'display': '',
-            'vertical-align': '',
             'width': '',
-            'transform': '',
-            'transform-origin': ''
+            'transform': ''
         });
     });
 
     // Reset button .btn-word-reset: resets BOTH margin-left and stretch
-    $result.on('click', '.btn-word-reset', function (e) {
+    $container.on('click', '.btn-word-reset', function (e) {
         e.stopPropagation();
         e.preventDefault();
         const $word = $(this).closest('.word');
         $word.css({ 'margin-left': '0px', 'width': '' }).removeAttr('data-stretch');
         $word.children('.word-text').css({
-            'display': '',
-            'vertical-align': '',
             'width': '',
-            'transform': '',
-            'transform-origin': ''
+            'transform': ''
         });
     });
 
     // Double-click empty line background: reset all words on that line
-    $result.on('dblclick', 'p.line', function (e) {
+    $container.on('dblclick', 'p.line', function (e) {
         if ($(e.target).closest('.word').length) return;
         $(this).find('.word').each(function () {
             this.style.marginLeft = '0px';
             this.style.width = '';
             $(this).removeAttr('data-stretch');
             $(this).children('.word-text').css({
-                'display': '',
-                'vertical-align': '',
                 'width': '',
-                'transform': '',
-                'transform-origin': ''
+                'transform': ''
             });
         });
     });
 };
 
 view.changeFontSize = function (fontSize) {
-    const $result = $("#result");
+    const $results = $('.result-text, #result');
     if (fontSize === "36") {
-        $result.addClass('small');
+        $results.addClass('small');
     } else {
-        $result.removeClass('small');
+        $results.removeClass('small');
     }
-    const isBlackboard = $('.board').hasClass('blackboard');
+    const isBlackboard = $('#board-color-select').val() === 'blackboard' || $('.board').hasClass('blackboard');
     if (isBlackboard) {
         view.adjustBlackboardFontSize();
     } else {
-        $result.css({ 'font-size': '', 'top': '' });
+        $results.css({ 'font-size': '', 'top': '' });
     }
 };
 
@@ -551,54 +675,52 @@ view.changeColorText = function (color) {
     if (!color) {
         color = document.getElementById("font-color-input").value;
     }
-    $("#result").css('color', color);
+    $('.result-text, #result').css('color', color);
     $("#font-color-input").val(color);
 };
 
 view.changeBoardColor = function (boardColor) {
-    const $board = $(".board");
     const $colorInput = $("#font-color-input");
-    const $result = $("#result");
-
-    $board.removeClass('blackboard white black');
-    // Clear any inline styles from blackboard mode immediately!
-    $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
 
     if (boardColor === "white") {
-        $board.addClass('white');
-        // Default ink purple for paper
+        view.syncNormalBoard();
+        const $board = $(".board");
+        $board.removeClass('blackboard black').addClass('white');
         const paperInk = "#2b1055";
         $colorInput.val(paperInk);
-        $result.css('color', paperInk);
+        $('.result-text, #result').css({ 'color': paperInk, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
     } else if (boardColor === "blackboard") {
-        $board.addClass('blackboard');
-        // Default chalk white for chalkboard
-        const chalkWhite = "#ffffff";
-        $colorInput.val(chalkWhite);
-        $result.css('color', chalkWhite);
+        // Automatically change font size to small (36pt / 1 ô ly)
+        $('#font-size-select').val('36');
+        // Automatically change weight to normal instead of bold
+        $('#weight-checkbox').prop('checked', false);
+        // Automatically set text color to yellow
+        const chalkYellow = "#ffd700";
+        $colorInput.val(chalkYellow);
     } else {
-        // Standard infinite chalkboard
-        $board.addClass('black');
+        view.syncNormalBoard();
+        const $board = $(".board");
+        $board.removeClass('blackboard white').addClass('black');
         const chalkWhite = "#ffffff";
         $colorInput.val(chalkWhite);
-        $result.css('color', chalkWhite);
+        $('.result-text, #result').css({ 'color': chalkWhite, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
     }
     view.render();
 };
 
 view.changeWeight = function (isBold) {
     if (isBold) {
-        $("#result").addClass('bold');
+        $('.result-text, #result').addClass('bold');
     } else {
-        $("#result").removeClass('bold');
+        $('.result-text, #result').removeClass('bold');
     }
 };
 
 view.changeStyle = function (isItalics) {
     if (isItalics) {
-        $(".grid").addClass('italics');
+        $(".grid, .board").addClass('italics');
     } else {
-        $(".grid").removeClass('italics');
+        $(".grid, .board").removeClass('italics');
     }
 };
 
@@ -624,11 +746,33 @@ view.downloadFont = function (fontType) {
     document.body.removeChild(link);
 };
 
+view.generateFileName = function (layoutPrefix, text) {
+    let cleanText = (text || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[\s\t\n]+/g, '_')
+        .replace(/[/\\:*?"<>|#%&{}+,;=~`^!@$()[\].,]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    if (!cleanText) cleanText = 'chu_dep';
+    let prefix = layoutPrefix || 'blackboard';
+    let base = `${prefix}_${cleanText}`;
+
+    // Max 50 characters total including '.png' (46 chars for base)
+    if (base.length > 46) {
+        base = base.substring(0, 46).replace(/_+$/, '');
+    }
+    return base + '.png';
+};
+
 view.exportBlackboardToPng = async function () {
-    const $result = $('#result');
-    const isBold = $result.hasClass('bold');
+    const $boards = $('.board.blackboard');
+    if (!$boards.length) return;
+
+    const isBold = $('#weight-checkbox').is(':checked') || $('.result-text, #result').hasClass('bold');
     const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
-    const textColor = $('#font-color-input').val() || '#ffffff';
+    const textColor = $('#font-color-input').val() || '#ffd700';
 
     // High resolution retina export: 2x of A4 Landscape (1684 x 1190)
     const S = 2;
@@ -642,91 +786,108 @@ view.exportBlackboardToPng = async function () {
         await document.fonts.ready;
     }
 
-    const canvas = document.createElement('canvas');
-    canvas.width = widthPx;
-    canvas.height = heightPx;
-    const ctx = canvas.getContext('2d');
+    const isSmall = $('#font-size-select').val() === '36' || $('.result-text, #result').hasClass('small');
+    const domFontSize = isSmall ? 140.75 : 281.5;
+    const exportFontSize = domFontSize * S;
 
-    const doExport = function (bgImg) {
-        // 1. Draw exact blackboard background
-        ctx.drawImage(bgImg, 0, 0, widthPx, heightPx);
+    // Get raw input lines for file naming
+    const rawInputLines = $('#input').val().split('\n').map(l => l.replace(/[\t]/g, "    ")).map(l => l.trim()).filter(l => l.length > 0);
 
-        // 2. Collect words
-        const $line = $result.children('p.line').first();
-        const words = [];
-        $line.children('.word').each(function () {
-            const wordEl = this;
-            const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
-            const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
-            words.push({
-                text: wordText,
-                offsetLeft: wordEl.offsetLeft,
-                offsetWidth: wordEl.offsetWidth,
-                stretch: stretch
+    const exportSingleBoard = function (bgImg, boardEl, bIdx) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = widthPx;
+            canvas.height = heightPx;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Draw exact blackboard background
+            ctx.drawImage(bgImg, 0, 0, widthPx, heightPx);
+
+            // 2. Collect words for this board
+            const $line = $(boardEl).find('p.line').first();
+            const words = [];
+            $line.children('.word').each(function () {
+                const wordEl = this;
+                const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+                const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
+                words.push({
+                    text: wordText,
+                    offsetLeft: wordEl.offsetLeft,
+                    offsetWidth: wordEl.offsetWidth,
+                    stretch: stretch
+                });
             });
-        });
 
-        if (words.length === 0) {
-            triggerDownload(canvas);
-            return;
-        }
+            // Original line text for filename
+            const rawLineText = rawInputLines[bIdx] || words.map(w => w.text).join(' ');
 
-        // Font size: 281.5px (Large: I is 5 cells high, o is 2 cells high) or 140.75px (Small: 2.5 / 1 cell)
-        const isSmall = $result.hasClass('small');
-        const domFontSize = parseFloat($result.css('font-size')) || (isSmall ? 140.75 : 281.5);
-        const exportFontSize = domFontSize * S;
-
-        // 3. Draw text anchored on Line 2 baseline (y = 816.1px at 2x)
-        ctx.save();
-        if (isItalics) {
-            ctx.translate(0, baselineY);
-            ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
-            ctx.translate(0, -baselineY);
-        }
-
-        ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
-        ctx.fillStyle = textColor;
-        ctx.textBaseline = 'alphabetic';
-
-        words.forEach(word => {
-            const xPos = startX + (word.offsetLeft * S);
-            if (word.stretch && word.stretch !== 1.0) {
+            if (words.length > 0) {
+                // 3. Draw text anchored on Line 2 baseline
                 ctx.save();
-                ctx.translate(xPos, baselineY);
-                ctx.scale(word.stretch, 1.0);
-                ctx.fillText(word.text, 0, 0);
+                if (isItalics) {
+                    ctx.translate(0, baselineY);
+                    ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
+                    ctx.translate(0, -baselineY);
+                }
+
+                ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
+                ctx.fillStyle = textColor;
+                ctx.textBaseline = 'alphabetic';
+
+                words.forEach(word => {
+                    const xPos = startX + (word.offsetLeft * S);
+                    if (word.stretch && word.stretch !== 1.0) {
+                        ctx.save();
+                        ctx.translate(xPos, baselineY);
+                        ctx.scale(word.stretch, 1.0);
+                        ctx.fillText(word.text, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillText(word.text, xPos, baselineY);
+                    }
+                });
+
                 ctx.restore();
-            } else {
-                ctx.fillText(word.text, xPos, baselineY);
             }
+
+            const fileName = view.generateFileName('blackboard', rawLineText);
+
+            canvas.toBlob(function (blob) {
+                if (!blob) {
+                    resolve();
+                    return;
+                }
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                    resolve();
+                }, 200);
+            }, 'image/png');
         });
-
-        ctx.restore();
-
-        triggerDownload(canvas);
     };
 
-    const triggerDownload = function (cvs) {
-        cvs.toBlob(function (blob) {
-            if (!blob) return;
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'bang-con-tieu-hoc.png';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 'image/png');
+    const doExportAll = async function (bgImg) {
+        for (let i = 0; i < $boards.length; i++) {
+            await exportSingleBoard(bgImg, $boards[i], i);
+            if (i < $boards.length - 1) {
+                await new Promise(r => setTimeout(r, 400));
+            }
+        }
     };
 
     if (view.blackboardImg && view.blackboardImg.complete && view.blackboardImg.naturalWidth > 0) {
-        doExport(view.blackboardImg);
+        await doExportAll(view.blackboardImg);
     } else {
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.onload = function () {
-            doExport(img);
+        img.onload = async function () {
+            await doExportAll(img);
         };
         img.src = '/static/img/blackboard.png';
     }
@@ -894,12 +1055,16 @@ view.exportToPng = async function () {
     ctx.restore();
 
     // 5. Trigger Download
+    const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const layout = $('#board-color-select').val();
+    const fileName = view.generateFileName(layout, rawInputLines[0] || 'chu_dep');
+
     canvas.toBlob(function (blob) {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'viet-chu-dep-oly.png';
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

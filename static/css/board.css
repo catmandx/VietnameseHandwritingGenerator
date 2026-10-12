@@ -53,8 +53,7 @@
     border: none;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     position: relative;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
     color: #ffffff;
     border-radius: 4px;
 }
@@ -69,9 +68,11 @@
     margin: 0;
     position: relative;
     transform: none !important;
+    overflow: hidden;
 }
 
-.board.blackboard #result {
+.board.blackboard #result,
+.board.blackboard .result-text {
     position: absolute;
     left: 96.09px;
     top: 192px; /* Calibrated for 281.5px large font size; baseline at y = 408.05px */
@@ -86,24 +87,29 @@
     white-space: nowrap;
 }
 
-.board.blackboard #result.small {
+.board.blackboard #result.small,
+.board.blackboard .result-text.small {
     font-size: 140.75px;
     top: 300px; /* Calibrated for 140.75px small font size; baseline at y = 408.05px */
 }
 
-.board.blackboard #result > p.line {
+.board.blackboard #result > p.line,
+.board.blackboard .result-text > p.line {
     margin: 0;
     padding: 0;
     line-height: 1;
     white-space: nowrap;
 }
 
-.board.blackboard #result > p.line:last-child::after {
+.board.blackboard #result > p.line:last-child::after,
+.board.blackboard .result-text > p.line:last-child::after {
     display: none !important;
 }
 
 .board.blackboard .grid.italics #result,
-.board.blackboard.italics #result {
+.board.blackboard.italics #result,
+.board.blackboard .grid.italics .result-text,
+.board.blackboard.italics .result-text {
     transform: skewX(-17deg);
     transform-origin: 0 var(--baseline-offset, 216px);
 }
@@ -246,6 +252,9 @@ p.line {
 }
 
 .word-text {
+    display: inline-block;
+    vertical-align: baseline;
+    transform-origin: 0 0;
     user-select: text;
     -webkit-user-select: text;
 }
@@ -298,6 +307,11 @@ p.line {
     padding: 0;
     transition: background 0.15s, color 0.15s;
     touch-action: none;
+}
+
+.btn-word-drag i,
+.btn-word-reset i {
+    pointer-events: none;
 }
 
 .white .btn-word-drag,
@@ -448,6 +462,19 @@ body.is-word-stretching {
     .grid {
         min-width: 100% !important;
         padding-right: 0 !important;
+    }
+
+    .board.blackboard {
+        width: 842px !important;
+        height: 595px !important;
+        min-width: 842px !important;
+        min-height: 595px !important;
+        background-color: #4e6957 !important;
+        background-image: url('/static/img/blackboard.svg') !important;
+        background-size: 842px 595px !important;
+        page-break-after: always;
+        break-after: page;
+        margin: 0 auto 24px auto !important;
     }
 
 

@@ -17,5 +17,10 @@ window.APP_CONFIG = {
 
         // Snapping tolerance: snaps to target threshold when within +/- this percentage
         snapTolerancePercent: 2.5
+    },
+    dragPastStart: {
+        // Maximum distance (in px) a word at the start of a line can be dragged to the left past the line origin.
+        // In blackboard layout (20mm grid = 56.69px), half a cell is ~28.35px.
+        maxLeftDragPx: 28.35
     }
 };
