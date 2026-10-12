@@ -168,17 +168,23 @@ view.updateLines = function (linesData) {
         }
     }
 
-    // 3. Update line content while preserving existing word margins
+    // 3. Update line content while preserving existing word margins and stretch
     $result.children('p.line').each(function (index, el) {
         const $el = $(el);
         $el.attr('id', 'line-' + index);
         const lineTokens = linesData[index] || [];
 
-        // Collect existing word margins to preserve user adjustments across re-renders
+        // Collect existing word margins & stretch to preserve user adjustments across re-renders
         const existingMargins = [];
+        const existingStretches = [];
+        const existingNatWidths = [];
         $el.children('.word').each(function () {
             const ml = this.style.marginLeft;
+            const stretch = $(this).attr('data-stretch');
+            const natW = $(this).attr('data-natural-width');
             existingMargins.push(ml || null);
+            existingStretches.push(stretch ? parseFloat(stretch) : null);
+            existingNatWidths.push(natW ? parseFloat(natW) : null);
         });
 
         const wordTokens = lineTokens.filter(t => t.type === 'word');
@@ -195,14 +201,36 @@ view.updateLines = function (linesData) {
             if (token.type === 'space') {
                 html += `<span class="word-space">${view.escapeHtml(token.text)}</span>`;
             } else {
-                const preserved = existingMargins[wordIndex];
-                const styleAttr = preserved ? ` style="margin-left: ${preserved};"` : '';
-                html += `<span class="word" data-word-idx="${wordIndex}"${styleAttr}>` +
+                const preservedMargin = existingMargins[wordIndex];
+                const preservedStretch = existingStretches[wordIndex];
+                const preservedNatW = existingNatWidths[wordIndex];
+
+                let wordStyles = [];
+                if (preservedMargin) {
+                    wordStyles.push(`margin-left: ${preservedMargin}`);
+                }
+                let stretchAttr = '';
+                let natWAttr = '';
+                let textStyles = [];
+                if (preservedStretch && preservedStretch !== 1) {
+                    stretchAttr = ` data-stretch="${preservedStretch}"`;
+                    if (preservedNatW) {
+                        natWAttr = ` data-natural-width="${preservedNatW}"`;
+                        wordStyles.push(`width: ${(preservedNatW * preservedStretch).toFixed(2)}px`);
+                        textStyles.push(`width: ${preservedNatW}px`);
+                    }
+                    textStyles.push(`display: inline-block`, `vertical-align: baseline`, `transform: scaleX(${preservedStretch})`, `transform-origin: left baseline`);
+                }
+                const styleAttr = wordStyles.length ? ` style="${wordStyles.join('; ')};"` : '';
+                const textStyleAttr = textStyles.length ? ` style="${textStyles.join('; ')};"` : '';
+
+                html += `<span class="word" data-word-idx="${wordIndex}"${stretchAttr}${natWAttr}${styleAttr}>` +
                     `<span class="word-handle no-print">` +
                         `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
                         `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
                     `</span>` +
-                    `<span class="word-text">${view.escapeHtml(token.text)}</span>` +
+                    `<span class="word-text"${textStyleAttr}>${view.escapeHtml(token.text)}</span>` +
+                    `<span class="btn-word-stretch no-print" title="Kéo để kéo giãn chữ (Nhấp đúp để đặt lại cỡ chữ)"></span>` +
                 `</span>`;
                 wordIndex++;
             }
@@ -214,6 +242,13 @@ view.updateLines = function (linesData) {
 view.setupDragInteractions = function () {
     const $result = $('#result');
     let dragState = null;
+    let stretchState = null;
+
+    let $guideline = $('.snap-guideline');
+    if (!$guideline.length) {
+        $guideline = $('<div class="snap-guideline no-print"></div>');
+        $('.board').append($guideline);
+    }
 
     // Pointer down on .btn-word-drag: start dragging word
     $result.on('pointerdown', '.btn-word-drag', function (e) {
@@ -295,14 +330,188 @@ view.setupDragInteractions = function () {
         dragState = null;
     }
 
-    $(window).on('pointerup pointercancel', endDrag);
+    let lastStretchClick = 0;
+    let lastStretchEl = null;
 
-    // Reset icon click: reset word margin to 0
+    // Pointer down on .btn-word-stretch: start stretching word
+    $result.on('pointerdown', '.btn-word-stretch', function (e) {
+        if (e.button !== undefined && e.button !== 0) return;
+
+        const handleEl = this;
+        const now = Date.now();
+        if (lastStretchEl === handleEl && (now - lastStretchClick) < 400) {
+            // Double-click / double-tap detected: reset stretch only back to 100%
+            lastStretchClick = 0;
+            lastStretchEl = null;
+            const $word = $(handleEl).closest('.word');
+            $word.css('width', '').removeAttr('data-stretch').removeAttr('data-natural-width');
+            $word.children('.word-text').css({
+                'display': '',
+                'vertical-align': '',
+                'width': '',
+                'transform': '',
+                'transform-origin': ''
+            });
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        lastStretchClick = now;
+        lastStretchEl = handleEl;
+
+        const $word = $(handleEl).closest('.word');
+        const $wordText = $word.children('.word-text');
+        const $line = $word.closest('p.line');
+        const $board = $('.board');
+
+        if (typeof handleEl.setPointerCapture === 'function') {
+            try {
+                handleEl.setPointerCapture(e.pointerId);
+            } catch (_) {}
+        }
+
+        const cfg = (window.APP_CONFIG && window.APP_CONFIG.wordStretch) || {
+            stretchTargetPercent: 121.89,
+            minStretchPercent: 100,
+            maxStretchPercent: 150,
+            snapTolerancePercent: 2.5
+        };
+
+        const targetScale = cfg.stretchTargetPercent / 100;
+        const minScale = cfg.minStretchPercent / 100;
+        const maxScale = cfg.maxStretchPercent / 100;
+        const snapTolerance = cfg.snapTolerancePercent / 100;
+
+        const currentScale = parseFloat($word.attr('data-stretch')) || 1.0;
+        let naturalWidth = parseFloat($word.attr('data-natural-width'));
+        if (!naturalWidth) {
+            const rect = $wordText[0].getBoundingClientRect();
+            naturalWidth = currentScale !== 1.0 ? (rect.width / currentScale) : rect.width;
+            $word.attr('data-natural-width', naturalWidth);
+        }
+
+        const boardRect = $board[0].getBoundingClientRect();
+        const lineRect = $line[0].getBoundingClientRect();
+        const wordRect = $word[0].getBoundingClientRect();
+
+        // Calculate snap guideline position on board
+        const wordStartLeftOnBoard = wordRect.left - boardRect.left + $board.scrollLeft();
+        const targetSnapLeft = wordStartLeftOnBoard + (naturalWidth * targetScale);
+        const lineTopOnBoard = lineRect.top - boardRect.top + $board.scrollTop();
+
+        $guideline.css({
+            top: lineTopOnBoard + 'px',
+            height: lineRect.height + 'px',
+            left: targetSnapLeft + 'px',
+            display: 'block'
+        }).removeClass('is-snapped');
+
+        stretchState = {
+            pointerId: e.pointerId,
+            handleEl: handleEl,
+            $word: $word,
+            $wordText: $wordText,
+            $stretchBtn: $(handleEl),
+            $line: $line,
+            naturalWidth: naturalWidth,
+            currentScale: currentScale,
+            startX: e.clientX,
+            startWidth: naturalWidth * currentScale,
+            targetScale: targetScale,
+            minScale: minScale,
+            maxScale: maxScale,
+            snapTolerance: snapTolerance
+        };
+
+        $word.addClass('is-stretching');
+        $(handleEl).addClass('is-stretching');
+        $('body').addClass('is-word-stretching');
+
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    // Pointer move for stretch
+    function handleStretchMove(e) {
+        if (!stretchState || stretchState.pointerId !== e.pointerId) return;
+
+        const deltaX = e.clientX - stretchState.startX;
+        let newWidth = stretchState.startWidth + deltaX;
+        let newScale = newWidth / stretchState.naturalWidth;
+        newScale = Math.max(stretchState.minScale, Math.min(stretchState.maxScale, newScale));
+
+        const isSnapped = Math.abs(newScale - stretchState.targetScale) <= stretchState.snapTolerance;
+        if (isSnapped) {
+            newScale = stretchState.targetScale;
+            stretchState.$stretchBtn.addClass('is-snapped');
+            $guideline.addClass('is-snapped');
+        } else {
+            stretchState.$stretchBtn.removeClass('is-snapped');
+            $guideline.removeClass('is-snapped');
+        }
+
+        const scaledWidth = Math.round(stretchState.naturalWidth * newScale * 100) / 100;
+        stretchState.$word.css('width', scaledWidth + 'px');
+        stretchState.$word.attr('data-stretch', newScale.toFixed(4));
+        stretchState.$wordText.css({
+            'display': 'inline-block',
+            'vertical-align': 'baseline',
+            'width': stretchState.naturalWidth + 'px',
+            'transform': 'scaleX(' + newScale + ')',
+            'transform-origin': 'left baseline'
+        });
+    }
+
+    $result.on('pointermove', '.btn-word-stretch', handleStretchMove);
+    $(window).on('pointermove', handleStretchMove);
+
+    // Pointer up for stretch
+    function endStretch(e) {
+        if (!stretchState || stretchState.pointerId !== e.pointerId) return;
+
+        if (typeof stretchState.handleEl.releasePointerCapture === 'function') {
+            try {
+                stretchState.handleEl.releasePointerCapture(e.pointerId);
+            } catch (_) {}
+        }
+
+        stretchState.$word.removeClass('is-stretching');
+        stretchState.$stretchBtn.removeClass('is-stretching is-snapped');
+        $('body').removeClass('is-word-stretching');
+        $guideline.removeClass('is-snapped').hide();
+        stretchState = null;
+    }
+
+    $(window).on('pointerup pointercancel', endStretch);
+
+    // Double-click on .btn-word-stretch: reset stretch only back to 100%
+    $result.on('dblclick', '.btn-word-stretch', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $word = $(this).closest('.word');
+        $word.css('width', '').removeAttr('data-stretch');
+        $word.children('.word-text').css({
+            'display': '',
+            'vertical-align': '',
+            'width': '',
+            'transform': '',
+            'transform-origin': ''
+        });
+    });
+
+    // Reset button .btn-word-reset: resets BOTH margin-left and stretch
     $result.on('click', '.btn-word-reset', function (e) {
         e.stopPropagation();
         e.preventDefault();
         const $word = $(this).closest('.word');
-        $word.css('margin-left', '0px');
+        $word.css({ 'margin-left': '0px', 'width': '' }).removeAttr('data-stretch');
+        $word.children('.word-text').css({
+            'display': '',
+            'vertical-align': '',
+            'width': '',
+            'transform': '',
+            'transform-origin': ''
+        });
     });
 
     // Double-click empty line background: reset all words on that line
@@ -310,6 +519,15 @@ view.setupDragInteractions = function () {
         if ($(e.target).closest('.word').length) return;
         $(this).find('.word').each(function () {
             this.style.marginLeft = '0px';
+            this.style.width = '';
+            $(this).removeAttr('data-stretch');
+            $(this).children('.word-text').css({
+                'display': '',
+                'vertical-align': '',
+                'width': '',
+                'transform': '',
+                'transform-origin': ''
+            });
         });
     });
 };
@@ -439,10 +657,12 @@ view.exportBlackboardToPng = async function () {
         $line.children('.word').each(function () {
             const wordEl = this;
             const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+            const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
             words.push({
                 text: wordText,
                 offsetLeft: wordEl.offsetLeft,
-                offsetWidth: wordEl.offsetWidth
+                offsetWidth: wordEl.offsetWidth,
+                stretch: stretch
             });
         });
 
@@ -470,7 +690,15 @@ view.exportBlackboardToPng = async function () {
 
         words.forEach(word => {
             const xPos = startX + (word.offsetLeft * S);
-            ctx.fillText(word.text, xPos, baselineY);
+            if (word.stretch && word.stretch !== 1.0) {
+                ctx.save();
+                ctx.translate(xPos, baselineY);
+                ctx.scale(word.stretch, 1.0);
+                ctx.fillText(word.text, 0, 0);
+                ctx.restore();
+            } else {
+                ctx.fillText(word.text, xPos, baselineY);
+            }
         });
 
         ctx.restore();
@@ -525,10 +753,12 @@ view.exportToPng = async function () {
         $line.children('.word').each(function () {
             const wordEl = this;
             const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+            const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
             lineWords.push({
                 text: wordText,
                 offsetLeft: wordEl.offsetLeft,
-                offsetWidth: wordEl.offsetWidth
+                offsetWidth: wordEl.offsetWidth,
+                stretch: stretch
             });
         });
         lines.push({
@@ -650,7 +880,15 @@ view.exportToPng = async function () {
         const yPos = firstBaselineY + (idx * lineHeightPx);
         lineObj.words.forEach(word => {
             const xPos = gridOriginX + word.offsetLeft;
-            ctx.fillText(word.text, xPos, yPos);
+            if (word.stretch && word.stretch !== 1.0) {
+                ctx.save();
+                ctx.translate(xPos, yPos);
+                ctx.scale(word.stretch, 1.0);
+                ctx.fillText(word.text, 0, 0);
+                ctx.restore();
+            } else {
+                ctx.fillText(word.text, xPos, yPos);
+            }
         });
     });
     ctx.restore();

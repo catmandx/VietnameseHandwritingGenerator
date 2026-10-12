@@ -337,6 +337,78 @@ body.is-word-dragging {
     -webkit-user-select: none !important;
 }
 
+/* Word Stretch Dot Handle */
+.btn-word-stretch {
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #3b82f6;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    cursor: ew-resize;
+    opacity: 0;
+    pointer-events: auto;
+    transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    z-index: 60;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.white .btn-word-stretch {
+    background: #2563eb;
+    border-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.word:hover .btn-word-stretch,
+.btn-word-stretch:hover,
+.word.is-stretching .btn-word-stretch {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.btn-word-stretch:hover,
+.btn-word-stretch.is-stretching {
+    transform: translateY(-50%) scale(1.3);
+    background: #2563eb;
+}
+
+.btn-word-stretch.is-snapped {
+    background: #10b981 !important;
+    border-color: #ecfdf5 !important;
+    transform: translateY(-50%) scale(1.45);
+}
+
+/* Snap Guideline (vertical dashed line across the line height) */
+.snap-guideline {
+    position: absolute;
+    width: 0;
+    border-left: 2px dashed #60a5fa;
+    pointer-events: none;
+    display: none;
+    z-index: 85;
+    transition: border-color 0.1s ease;
+}
+
+.white .snap-guideline {
+    border-left-color: #3b82f6;
+}
+
+.snap-guideline.is-snapped {
+    border-left: 2px solid #10b981;
+}
+
+body.is-word-stretching {
+    cursor: ew-resize !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
 .word-space {
     display: inline;
     white-space: pre;
