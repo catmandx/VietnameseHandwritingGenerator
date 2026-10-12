@@ -89,8 +89,8 @@
 
 .board.blackboard #result.small,
 .board.blackboard .result-text.small {
-    font-size: 140.75px;
-    top: 300px; /* Calibrated for 140.75px small font size; baseline at y = 408.05px */
+    font-size: 144.66px;
+    top: 297px; /* Calibrated for 144.66px small font size (37pt equivalent); baseline at y = 408.05px */
 }
 
 .board.blackboard #result > p.line,
@@ -332,7 +332,7 @@
 #result.small {
     padding-top: calc(var(--grid-unit) * 3.55);
     font-size: 37pt;
-    line-height: calc(36pt + var(--grid-unit) * 1.5);
+    line-height: calc(var(--grid-unit) * 4);
 }
 
 #result > p.line:last-child::after {

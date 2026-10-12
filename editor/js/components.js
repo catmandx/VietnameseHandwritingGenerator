@@ -167,7 +167,7 @@ components.baseEditForm = `
                             <li><span class="badge bg-primary">Đường xanh đậm</span>: Baseline ($Y = 0$, Đường kẻ 1).</li>
                             <li><span class="badge bg-info text-dark">Nét đứt nhạt</span>: Đường kẻ 3 ($Y = 2.0$ - đỉnh chữ <code>a, o, c</code>).</li>
                             <li><span class="badge bg-info text-dark">Nét đứt cao</span>: Đường kẻ 5 ($Y = 5.0$ - đỉnh chữ <code>b, l, h</code>).</li>
-                            <li>Tọa độ lưu theo tỷ lệ ô ly, <strong>tự động co giãn chính xác 100%</strong> cho cả cỡ to (72pt) và cỡ nhỏ (36pt).</li>
+                            <li>Tọa độ lưu theo tỷ lệ ô ly, <strong>tự động co giãn chính xác 100%</strong> cho cả cỡ to (72pt) và cỡ nhỏ (37pt).</li>
                         </ul>
                     </div>
                 </div>

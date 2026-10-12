@@ -70,8 +70,8 @@ view.render = function () {
     if (!model.isLoaded) return;
     const $input = $('#input');
     const layout = $('#board-color-select').val();
-    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
-    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
+    const isBlackboard = layout ? layout === 'blackboard' : $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout ? (layout === 'white_11x14' || layout === 'white_10x14') : ($('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14'));
     const rawLines = $input.val().split('\n');
 
     if (isBlackboard) {
@@ -170,7 +170,7 @@ view.syncBlackboards = function (linesData) {
     }
 
     // 2. Add missing blackboards
-    const isSmall = $('#font-size-select').val() === '36' || $('#result').hasClass('small');
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('#result').hasClass('small');
     const isBold = $('#weight-checkbox').is(':checked');
     const color = $('#font-color-input').val() || '#ffd700';
     const isItalics = $('#style-checkbox').is(':checked');
@@ -224,7 +224,7 @@ view.syncNormalBoard = function () {
         const currentColor = $('#board-color-select').val() || 'black';
         const isBold = $('#weight-checkbox').is(':checked');
         const color = $('#font-color-input').val() || (currentColor === 'white' ? '#2b1055' : '#ffffff');
-        const isSmall = $('#font-size-select').val() === '36';
+        const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36';
         const isItalics = $('#style-checkbox').is(':checked');
 
         const $normalBoard = $(`
@@ -248,7 +248,7 @@ view.syncWhite11x14 = function (linesData) {
         $existingBoards = $();
     }
 
-    const isSmall = $('#font-size-select').val() === '36' || $('#result').hasClass('small');
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('#result').hasClass('small');
     const isBold = $('#weight-checkbox').is(':checked');
     const color = $('#font-color-input').val() || '#2b1055';
     const isItalics = $('#style-checkbox').is(':checked');
@@ -345,16 +345,16 @@ view.adjustBlackboardFontSize = function () {
     const $results = $('.board.blackboard .result-text, .board.blackboard #result');
     if (!$results.length) return;
 
-    const isSmall = $('#font-size-select').val() === '36' || $results.first().hasClass('small');
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $results.first().hasClass('small');
     // Large font: capitalized glyphs like I are 5 cells high, normal glyphs like o are 2 cells high -> font size = 281.5px
-    // Small font: capitalized glyphs like I are 2.5 cells high, normal glyphs like o are 1 cell high -> font size = 140.75px
-    const finalSize = isSmall ? 140.75 : 281.5;
+    // Small font: capitalized glyphs like I are 2.5 cells high, normal glyphs like o are 1 cell high -> font size = 144.66px (37pt equivalent)
+    const finalSize = isSmall ? 144.66 : 281.5;
 
     // Baseline calculation:
     // Target Line 2 baseline is anchored on y = 408.05px (thick horizontal grid line).
     // In font HP001 (line-height: 1), baseline offset from top of CSS line box is ~0.769 * finalSize.
     // 281.5px: baseline offset = 216px -> top = 192px.
-    // 140.75px: baseline offset = 108px -> top = 300px.
+    // 144.66px (37pt equivalent): baseline offset = 111px -> top = 297px.
     const topPx = Math.round(408.05 - (0.769 * finalSize));
     const baselineOffset = 408.05 - topPx;
 
@@ -815,14 +815,14 @@ view.setupDragInteractions = function () {
 
 view.changeFontSize = function (fontSize) {
     const $results = $('.result-text, #result');
-    if (fontSize === "36") {
+    if (fontSize === "37" || fontSize === "36") {
         $results.addClass('small');
     } else {
         $results.removeClass('small');
     }
     const layout = $('#board-color-select').val();
-    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
-    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
+    const isBlackboard = layout ? layout === 'blackboard' : $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout ? (layout === 'white_11x14' || layout === 'white_10x14') : ($('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14'));
 
     if (isBlackboard) {
         view.adjustBlackboardFontSize();
@@ -855,8 +855,8 @@ view.changeBoardColor = function (boardColor) {
         const paperInk = "#2b1055";
         $colorInput.val(paperInk);
     } else if (boardColor === "blackboard") {
-        // Automatically change font size to small (36pt / 1 ô ly)
-        $('#font-size-select').val('36');
+        // Automatically change font size to small (37pt / 1 ô ly equivalent)
+        $('#font-size-select').val('37');
         // Automatically change weight to normal instead of bold
         $('#weight-checkbox').prop('checked', false);
         // Automatically set text color to yellow
@@ -951,8 +951,8 @@ view.exportBlackboardToPng = async function () {
         await document.fonts.ready;
     }
 
-    const isSmall = $('#font-size-select').val() === '36' || $('.result-text, #result').hasClass('small');
-    const domFontSize = isSmall ? 140.75 : 281.5;
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('.result-text, #result').hasClass('small');
+    const domFontSize = isSmall ? 144.66 : 281.5;
     const exportFontSize = domFontSize * S;
 
     // Get raw input lines for file naming
@@ -1062,7 +1062,7 @@ view.exportWhite11x14ToPng = async function () {
     const $boards = $('.board.white_11x14, .board.white_10x14');
     if (!$boards.length) return;
 
-    const isSmall = $('#font-size-select').val() === '36' || $('.board.white_11x14 .result-text, .board.white_10x14 .result-text, #result').hasClass('small');
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('.board.white_11x14 .result-text, .board.white_10x14 .result-text, #result').hasClass('small');
     const isBold = $('#weight-checkbox').is(':checked') || $('.result-text, #result').hasClass('bold');
     const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
     const textColor = $('#font-color-input').val() || '#2b1055';
@@ -1217,12 +1217,15 @@ view.exportWhite11x14ToPng = async function () {
 view.exportWhite10x14ToPng = view.exportWhite11x14ToPng;
 
 view.exportToPng = async function () {
-    const $board = $('.board');
-    if ($board.hasClass('blackboard') || $('#board-color-select').val() === 'blackboard') {
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout ? layout === 'blackboard' : $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout ? (layout === 'white_11x14' || layout === 'white_10x14') : ($('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14'));
+
+    if (isBlackboard) {
         view.exportBlackboardToPng();
         return;
     }
-    if ($board.hasClass('white_11x14') || $board.hasClass('white_10x14') || $('#board-color-select').val() === 'white_11x14' || $('#board-color-select').val() === 'white_10x14') {
+    if (isWhite11x14) {
         view.exportWhite11x14ToPng();
         return;
     }
@@ -1270,7 +1273,7 @@ view.exportToPng = async function () {
     const bigGridPx = subGridPx * 4; // 76.8px
 
     const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
-    const lineHeightPx = (isSmall ? (36 + 14.4 * 1.5) : (72 + 14.4 * 3)) * ptToPx; // 76.8px or 153.6px
+    const lineHeightPx = (isSmall ? (subGridPx * 4) : (subGridPx * 8)); // 76.8px or 153.6px
 
     // 1. Accurately measure the widest line
     const measureCanvas = document.createElement('canvas');
@@ -1300,7 +1303,7 @@ view.exportToPng = async function () {
 
     // First line baseline rests on major line:
     // In 72pt mode: gridOriginY + 8 sub-grids = 192px (Major line 2)
-    // In 36pt mode: gridOriginY + 4 sub-grids = 115.2px (Major line 1)
+    // In 37pt mode: gridOriginY + 4 sub-grids = 115.2px (Major line 1)
     const firstBaselineY = gridOriginY + (isSmall ? 4 : 8) * subGridPx;
     const lastBaselineY = firstBaselineY + (lines.length - 1) * lineHeightPx;
     const neededHeight = lastBaselineY + bigGridPx * 2;
@@ -1383,7 +1386,6 @@ view.exportToPng = async function () {
 
     // 5. Trigger Download
     const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    const layout = $('#board-color-select').val();
     const fileName = view.generateFileName(layout, rawInputLines[0] || 'chu_dep');
 
     canvas.toBlob(function (blob) {
