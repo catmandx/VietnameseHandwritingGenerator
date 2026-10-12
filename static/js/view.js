@@ -336,6 +336,21 @@ view.setupDragInteractions = function () {
     let dragState = null;
     let stretchState = null;
 
+    // Tap / click word to activate handles on touch / mobile devices
+    $container.on('pointerdown click', '.word', function (e) {
+        if ($(e.target).closest('.btn-word-stretch, .btn-word-drag, .btn-word-reset').length) {
+            return;
+        }
+        $('.word.is-active').not(this).removeClass('is-active');
+        $(this).addClass('is-active');
+    });
+
+    $(document).on('pointerdown click', function (e) {
+        if (!$(e.target).closest('.word').length) {
+            $('.word.is-active').removeClass('is-active');
+        }
+    });
+
     // Pointer down on .btn-word-drag: start dragging word
     $container.on('pointerdown', '.btn-word-drag', function (e) {
         if (e.button !== undefined && e.button !== 0) return;
@@ -383,7 +398,8 @@ view.setupDragInteractions = function () {
             minMargin: minMargin
         };
 
-        $word.addClass('is-dragging');
+        $('.word.is-active').not($word).removeClass('is-active');
+        $word.addClass('is-dragging is-active');
         $('body').addClass('is-word-dragging');
 
         e.preventDefault();
@@ -393,8 +409,8 @@ view.setupDragInteractions = function () {
     // Pointer move: update word margin-left
     function handlePointerMove(e) {
         if (!dragState) return;
-        // Safety: if pointer button is no longer down, finish drag immediately
-        if (e.buttons !== undefined && (e.buttons & 1) === 0) {
+        // Safety: for non-touch pointers, if pointer button is no longer down, finish drag immediately
+        if (e.pointerType !== 'touch' && e.buttons !== undefined && (e.buttons & 1) === 0) {
             endDrag(e);
             return;
         }
@@ -535,7 +551,8 @@ view.setupDragInteractions = function () {
             snapTolerance: snapTolerance
         };
 
-        $word.addClass('is-stretching');
+        $('.word.is-active').not($word).removeClass('is-active');
+        $word.addClass('is-stretching is-active');
         $(handleEl).addClass('is-stretching');
         $('body').addClass('is-word-stretching');
 
@@ -546,8 +563,8 @@ view.setupDragInteractions = function () {
     // Pointer move for stretch
     function handleStretchMove(e) {
         if (!stretchState) return;
-        // Safety: if pointer button is no longer down, finish stretch immediately
-        if (e.buttons !== undefined && (e.buttons & 1) === 0) {
+        // Safety: for non-touch pointers, if pointer button is no longer down, finish stretch immediately
+        if (e.pointerType !== 'touch' && e.buttons !== undefined && (e.buttons & 1) === 0) {
             endStretch(e);
             return;
         }
@@ -630,10 +647,20 @@ view.setupDragInteractions = function () {
     });
 
     // Reset button .btn-word-reset: resets BOTH margin-left and stretch
-    $container.on('click', '.btn-word-reset', function (e) {
+    let lastResetTime = 0;
+    $container.on('pointerdown click', '.btn-word-reset', function (e) {
+        if (e.type === 'pointerdown' && e.button !== undefined && e.button !== 0) return;
+        const now = Date.now();
+        if (now - lastResetTime < 250) {
+            e.stopPropagation();
+            e.preventDefault();
+            return;
+        }
+        lastResetTime = now;
         e.stopPropagation();
         e.preventDefault();
         const $word = $(this).closest('.word');
+        $word.addClass('is-active');
         $word.css({ 'margin-left': '0px', 'width': '' }).removeAttr('data-stretch');
         $word.children('.word-text').css({
             'width': '',

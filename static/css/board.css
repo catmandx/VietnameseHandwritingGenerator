@@ -279,6 +279,8 @@ p.line {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s ease;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .white .word-handle {
@@ -287,7 +289,14 @@ p.line {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+.word.is-active,
+.word.is-dragging,
+.word.is-stretching {
+    z-index: 70;
+}
+
 .word:hover .word-handle,
+.word.is-active .word-handle,
 .word.is-dragging .word-handle {
     opacity: 1;
     pointer-events: auto;
@@ -295,6 +304,7 @@ p.line {
 
 .btn-word-drag,
 .btn-word-reset {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -307,6 +317,27 @@ p.line {
     padding: 0;
     transition: background 0.15s, color 0.15s;
     touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Expanded invisible touch hitboxes (increases interactive area without changing visual display size) */
+.btn-word-drag::after,
+.btn-word-reset::after {
+    content: '';
+    position: absolute;
+    top: -14px;
+    bottom: -14px;
+    pointer-events: auto;
+}
+
+.btn-word-drag::after {
+    left: -12px;
+    right: -1.5px;
+}
+
+.btn-word-reset::after {
+    left: -1.5px;
+    right: -12px;
 }
 
 .btn-word-drag i,
@@ -349,6 +380,7 @@ p.line {
 body.is-word-dragging {
     user-select: none !important;
     -webkit-user-select: none !important;
+    touch-action: none !important;
 }
 
 /* Word Stretch Dot Handle */
@@ -365,12 +397,25 @@ body.is-word-dragging {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     cursor: ew-resize;
     opacity: 0;
-    pointer-events: auto;
+    pointer-events: none;
     transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
     z-index: 60;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Invisible touch hitbox expansion: 44x44px standard mobile touch target (increases hit area ~24x) */
+.btn-word-stretch::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    pointer-events: auto;
 }
 
 .white .btn-word-stretch {
@@ -380,6 +425,7 @@ body.is-word-dragging {
 }
 
 .word:hover .btn-word-stretch,
+.word.is-active .btn-word-stretch,
 .btn-word-stretch:hover,
 .word.is-stretching .btn-word-stretch {
     opacity: 1;
@@ -421,6 +467,7 @@ body.is-word-stretching {
     cursor: ew-resize !important;
     user-select: none !important;
     -webkit-user-select: none !important;
+    touch-action: none !important;
 }
 
 .word-space {
