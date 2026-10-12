@@ -21,12 +21,101 @@
     box-sizing: border-box;
 }
 
-.board.black {
+.board.black,
+.board.black_infinite {
     color: #ffffff;
     background-color: #496e53;
     border: 12px solid #364f3c;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * BLACKBOARD SLATE ARCHITECTURE:
+ * Converted directly from vector Adobe Illustrator artboard (Bang-a-a.ai):
+ * Artboard: 841.89pt x 595.28pt (A4 Landscape, mapped to 842px x 595px).
+ * Grid: 10 rows x 15 columns (14 regular 20mm cells + 1 left number margin).
+ * Line 2 Baseline: y = 407.45px.
+ * Line 2 Start: x = 96.09px.
+ */
+.board.blackboard {
+    width: 842px;
+    height: 595px;
+    min-width: 842px;
+    min-height: 595px;
+    max-width: 100%;
+    margin: 12px auto 24px auto;
+    background-color: #4e6957;
+    background-image: url('/static/img/blackboard.svg');
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-size: 842px 595px;
+    border: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+    color: #ffffff;
+    border-radius: 4px;
+}
+
+.board.blackboard .grid {
+    width: 842px;
+    height: 595px;
+    min-width: 842px;
+    min-height: 595px;
+    background-image: none !important;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    transform: none !important;
+    overflow: hidden;
+}
+
+.board.blackboard #result,
+.board.blackboard .result-text {
+    position: absolute;
+    left: 96.09px;
+    top: 192px; /* Calibrated for 281.5px large font size; baseline at y = 408.05px */
+    width: max-content;
+    padding: 0;
+    margin: 0;
+    font-size: 281.5px;
+    line-height: 1;
+    font-family: HP001, serif;
+    color: #ffffff;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.board.blackboard #result.small,
+.board.blackboard .result-text.small {
+    font-size: 140.75px;
+    top: 300px; /* Calibrated for 140.75px small font size; baseline at y = 408.05px */
+}
+
+.board.blackboard #result > p.line,
+.board.blackboard .result-text > p.line {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.board.blackboard #result > p.line:last-child::after,
+.board.blackboard .result-text > p.line:last-child::after {
+    display: none !important;
+}
+
+.board.blackboard .grid.italics #result,
+.board.blackboard.italics #result,
+.board.blackboard .grid.italics .result-text,
+.board.blackboard.italics .result-text {
+    transform: skewX(-17deg);
+    transform-origin: 0 var(--baseline-offset, 216px);
+}
+
+.board.blackboard .word-handle {
+    top: -24px;
 }
 
 .board.white {
@@ -85,7 +174,8 @@
       );
 } 
 
-.black .grid {
+.black .grid,
+.black_infinite .grid {
     --grid-major-color: rgba(220, 220, 220, 0.7);
     --grid-minor-color: rgba(200, 200, 200, 0.32);
 }
@@ -162,6 +252,9 @@ p.line {
 }
 
 .word-text {
+    display: inline-block;
+    vertical-align: baseline;
+    transform-origin: 0 0;
     user-select: text;
     -webkit-user-select: text;
 }
@@ -186,6 +279,8 @@ p.line {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s ease;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .white .word-handle {
@@ -194,7 +289,14 @@ p.line {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+.word.is-active,
+.word.is-dragging,
+.word.is-stretching {
+    z-index: 70;
+}
+
 .word:hover .word-handle,
+.word.is-active .word-handle,
 .word.is-dragging .word-handle {
     opacity: 1;
     pointer-events: auto;
@@ -202,6 +304,7 @@ p.line {
 
 .btn-word-drag,
 .btn-word-reset {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -214,6 +317,32 @@ p.line {
     padding: 0;
     transition: background 0.15s, color 0.15s;
     touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Expanded invisible touch hitboxes (increases interactive area without changing visual display size) */
+.btn-word-drag::after,
+.btn-word-reset::after {
+    content: '';
+    position: absolute;
+    top: -14px;
+    bottom: -14px;
+    pointer-events: auto;
+}
+
+.btn-word-drag::after {
+    left: -12px;
+    right: -1.5px;
+}
+
+.btn-word-reset::after {
+    left: -1.5px;
+    right: -12px;
+}
+
+.btn-word-drag i,
+.btn-word-reset i {
+    pointer-events: none;
 }
 
 .white .btn-word-drag,
@@ -251,6 +380,94 @@ p.line {
 body.is-word-dragging {
     user-select: none !important;
     -webkit-user-select: none !important;
+    touch-action: none !important;
+}
+
+/* Word Stretch Dot Handle */
+.btn-word-stretch {
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #3b82f6;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    cursor: ew-resize;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    z-index: 60;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Invisible touch hitbox expansion: 44x44px standard mobile touch target (increases hit area ~24x) */
+.btn-word-stretch::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    pointer-events: auto;
+}
+
+.white .btn-word-stretch {
+    background: #2563eb;
+    border-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.word:hover .btn-word-stretch,
+.word.is-active .btn-word-stretch,
+.btn-word-stretch:hover,
+.word.is-stretching .btn-word-stretch {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.btn-word-stretch:hover,
+.btn-word-stretch.is-stretching {
+    transform: translateY(-50%) scale(1.3);
+    background: #2563eb;
+}
+
+.btn-word-stretch.is-snapped {
+    background: #10b981 !important;
+    border-color: #ecfdf5 !important;
+    transform: translateY(-50%) scale(1.45);
+}
+
+/* Snap Guideline (vertical dashed line across the line height) */
+.snap-guideline {
+    position: absolute;
+    width: 0;
+    border-left: 2px dashed #60a5fa;
+    pointer-events: none;
+    display: none;
+    z-index: 85;
+    transition: border-color 0.1s ease;
+}
+
+.white .snap-guideline {
+    border-left-color: #3b82f6;
+}
+
+.snap-guideline.is-snapped {
+    border-left: 2px solid #10b981;
+}
+
+body.is-word-stretching {
+    cursor: ew-resize !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    touch-action: none !important;
 }
 
 .word-space {
@@ -292,6 +509,19 @@ body.is-word-dragging {
     .grid {
         min-width: 100% !important;
         padding-right: 0 !important;
+    }
+
+    .board.blackboard {
+        width: 842px !important;
+        height: 595px !important;
+        min-width: 842px !important;
+        min-height: 595px !important;
+        background-color: #4e6957 !important;
+        background-image: url('/static/img/blackboard.svg') !important;
+        background-size: 842px 595px !important;
+        page-break-after: always;
+        break-after: page;
+        margin: 0 auto 24px auto !important;
     }
 
 

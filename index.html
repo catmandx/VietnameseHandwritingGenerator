@@ -12,14 +12,16 @@
     <link rel="shortcut icon" href="/static/img/favicon/favicon.ico" />
     <meta name="theme-color" content="#ffffff" />
 
-    <!-- Preload primary handwriting font -->
+    <!-- Preload primary handwriting font & blackboard image -->
     <link rel="preload" href="/static/font/HP001N30.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/static/img/blackboard.png" as="image" />
 
     <link rel="stylesheet" href="/static/css/main.css" />
     <link rel="stylesheet" href="/static/css/board.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.2/css/all.min.css" />
 
     <script src="/static/js/jquery-3.6.0.min.js"></script>
+    <script src="/static/js/config.js"></script>
     <script src="/static/js/utils.js"></script>
     <script src="/static/js/model.js"></script>
     <script src="/static/js/view.js"></script>
@@ -77,6 +79,7 @@
                 <select id="board-color-select">
                   <option selected value="black">Bảng đen phấn trắng</option>
                   <option value="white">Vở ô ly (Giấy trắng)</option>
+                  <option value="blackboard">Bảng con tiểu học (Blackboard)</option>
                 </select>
               </div>
 
@@ -130,7 +133,7 @@
       <div class="board-container">
         <div class="board black">
           <div class="grid">
-            <div id="result" class="bold"></div>
+            <div id="result" class="result-text bold"></div>
           </div>
         </div>
       </div>
