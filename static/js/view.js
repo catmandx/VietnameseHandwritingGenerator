@@ -396,9 +396,9 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
 
     if (baselineY <= 0) {
         if (isBlackboard) {
-            baselineY = isSmall ? 108 : 216;
+            baselineY = isSmall ? 109.5 : 217.5;
         } else {
-            baselineY = isSmall ? 57.6 : 115.2;
+            baselineY = isSmall ? 58.8 : 116.7;
         }
     }
 
@@ -771,12 +771,12 @@ view.adjustBlackboardFontSize = function () {
     const finalSize = isSmall ? 140.75 : 281.5;
 
     // Baseline calculation:
-    // Target Line 2 baseline is anchored on y = 408.05px (thick horizontal grid line).
+    // Target Line 2 baseline is anchored on y = 409.55px (thick horizontal grid line, shifted slightly into guideline).
     // In font HP001 (line-height: 1), baseline offset from top of CSS line box is ~0.769 * finalSize.
-    // 281.5px: baseline offset = 216px -> top = 192px.
-    // 140.75px: baseline offset = 108px -> top = 300px.
-    const topPx = Math.round(408.05 - (0.769 * finalSize));
-    const baselineOffset = 408.05 - topPx;
+    // 281.5px: baseline offset = 216px -> top = 193.5px.
+    // 140.75px: baseline offset = 108px -> top = 301.5px.
+    const topPx = Math.round(409.55 - (0.769 * finalSize));
+    const baselineOffset = 409.55 - topPx;
 
     $results.each(function () {
         this.style.setProperty('--baseline-offset', baselineOffset + 'px');
@@ -1656,7 +1656,7 @@ view.exportBlackboardToPng = async function () {
     const S = 4;
     const widthPx = 842 * S;
     const heightPx = 595 * S;
-    const baselineY = 408.05 * S; // 816.1px (Line 2 baseline)
+    const baselineY = 409.55 * S; // Line 2 baseline shifted slightly into guideline
     const startX = 96.092 * S;    // 192.18px
 
     // Ensure custom font is ready before drawing
@@ -1826,7 +1826,7 @@ view.exportWhite11x14ToPng = async function () {
 
     const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
     const lineHeightPx = (isSmall ? (subGridPx * 4) : (subGridPx * 8)); // 76.8px or 153.6px
-    const firstBaselineY = gridOriginY + 4 * subGridPx; // Line 1 baseline at y = 6 cells (115.2px) matching on-screen Major Line 1
+    const firstBaselineY = gridOriginY + 4 * subGridPx + (isSmall ? 1.2 : 1.5); // Line 1 baseline shifted slightly into guideline
 
     const exportSinglePage = function (boardEl, pIdx) {
         return new Promise((resolve) => {
@@ -2077,8 +2077,8 @@ view.exportToPng = async function () {
     const neededWidth = Math.max(minViewportWidth, maxLineRight + bigGridPx * 2 + slantExtra);
     const widthPx = Math.ceil(neededWidth / bigGridPx) * bigGridPx;
 
-    // First line baseline rests on major line 1 (124.8px) matching CSS on-screen display
-    const firstBaselineY = gridOriginY + 4 * subGridPx;
+    // First line baseline rests in major line 1 (126.3px) matching CSS on-screen display
+    const firstBaselineY = gridOriginY + 4 * subGridPx + (isSmall ? 1.2 : 1.5);
     const totalLinesCount = Math.max(lines.length, (dotConfig && dotConfig.enabled) ? dotConfig.linesCount : 0);
     const lastBaselineY = firstBaselineY + Math.max(0, totalLinesCount - 1) * lineHeightPx;
     const neededHeight = lastBaselineY + bigGridPx * 2;
