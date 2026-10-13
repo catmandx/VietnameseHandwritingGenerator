@@ -330,7 +330,7 @@
 }
 
 #result.small {
-    padding-top: calc(var(--grid-unit) * 3.55);
+    padding-top: calc(var(--grid-unit) * 3.35);
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
 }
