@@ -854,7 +854,7 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
             const styleAttr = wordStyles.length ? ` style="${wordStyles.join('; ')};"` : '';
             const textStyleAttr = textStyles.length ? ` style="${textStyles.join('; ')};"` : '';
 
-            const dotBadgeHtml = isDotActive ? `
+            const dotBadgeHtml = (isDotActive && wordIndex === 0) ? `
                 <span class="line-dot-wrapper">
                     <button type="button" class="btn-line-dot-badge ${lineDotConfig.isCustom ? 'is-custom' : ''}" data-line-idx="${lineIndex}" title="Dòng ${lineIndex + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)">
                         <i class="fa-solid fa-circle-dot"></i> Cách ${lineDotConfig.spaces} ô
