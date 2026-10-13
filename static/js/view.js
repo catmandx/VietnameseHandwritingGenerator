@@ -396,7 +396,7 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
 
     if (baselineY <= 0) {
         if (isBlackboard) {
-            baselineY = isSmall ? 108.75 : 216.75;
+            baselineY = isSmall ? 108 : 216;
         } else {
             baselineY = isSmall ? 58.2 : 115.95;
         }
@@ -771,11 +771,11 @@ view.adjustBlackboardFontSize = function () {
     const finalSize = isSmall ? 144.66 : 281.5;
 
     // Baseline calculation:
-    // Target Line 2 baseline is anchored on y = 408.8px (thick horizontal grid line, shifted slightly into guideline).
-    // 281.5px: baseline offset = 216px -> top = 192.75px.
-    // 144.66px (37pt equivalent): baseline offset = 111px -> top = 297.75px.
-    const topPx = Math.round(408.8 - (0.769 * finalSize));
-    const baselineOffset = 408.8 - topPx;
+    // Target Line 2 baseline is anchored on y = 408.05px (thick horizontal grid line; text bottom sits midway through guideline).
+    // 281.5px: baseline offset = 216px -> top = 192px.
+    // 144.66px (37pt equivalent): baseline offset = 111px -> top = 297px.
+    const topPx = isSmall ? 297 : 192;
+    const baselineOffset = 408.05 - topPx;
 
     $results.each(function () {
         this.style.setProperty('--baseline-offset', baselineOffset + 'px');
