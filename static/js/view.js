@@ -1592,6 +1592,57 @@ view.generateFileName = function (layoutPrefix, text) {
     return base + '.png';
 };
 
+view.downloadCanvasAsPng = function (canvas, fileName) {
+    return new Promise((resolve) => {
+        const triggerDownload = (url, isBlob) => {
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                if (document.body.contains(a)) {
+                    document.body.removeChild(a);
+                }
+                resolve();
+            }, 300);
+            if (isBlob) {
+                setTimeout(() => {
+                    try {
+                        URL.revokeObjectURL(url);
+                    } catch (e) {}
+                }, 60000);
+            }
+        };
+
+        if (canvas.toBlob) {
+            canvas.toBlob(function (blob) {
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    triggerDownload(url, true);
+                } else {
+                    try {
+                        const dataUrl = canvas.toDataURL('image/png');
+                        triggerDownload(dataUrl, false);
+                    } catch (e) {
+                        console.error('Canvas export error:', e);
+                        resolve();
+                    }
+                }
+            }, 'image/png');
+        } else {
+            try {
+                const dataUrl = canvas.toDataURL('image/png');
+                triggerDownload(dataUrl, false);
+            } catch (e) {
+                console.error('Canvas export error:', e);
+                resolve();
+            }
+        }
+    });
+};
+
 view.exportBlackboardToPng = async function () {
     const $boards = $('.board.blackboard');
     if (!$boards.length) return;
@@ -1717,23 +1768,7 @@ view.exportBlackboardToPng = async function () {
 
             const fileName = view.generateFileName('blackboard', rawLineText);
 
-            canvas.toBlob(function (blob) {
-                if (!blob) {
-                    resolve();
-                    return;
-                }
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => {
-                    URL.revokeObjectURL(url);
-                    resolve();
-                }, 200);
-            }, 'image/png');
+            view.downloadCanvasAsPng(canvas, fileName).then(resolve);
         });
     };
 
@@ -1787,7 +1822,7 @@ view.exportWhite11x14ToPng = async function () {
 
     const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
     const lineHeightPx = (isSmall ? (subGridPx * 4) : (subGridPx * 8)); // 76.8px or 153.6px
-    const firstBaselineY = gridOriginY + (isSmall ? 4 : 8) * subGridPx; // Line 1 baseline at y = 6 cells or 10 cells
+    const firstBaselineY = gridOriginY + 4 * subGridPx; // Line 1 baseline at y = 6 cells (115.2px) matching on-screen Major Line 1
 
     const exportSinglePage = function (boardEl, pIdx) {
         return new Promise((resolve) => {
@@ -1922,23 +1957,7 @@ view.exportWhite11x14ToPng = async function () {
             const pageSuffix = $boards.length > 1 ? `_p${pIdx + 1}` : '';
             const fileName = view.generateFileName('white_11x14' + pageSuffix, firstText);
 
-            canvas.toBlob(function (blob) {
-                if (!blob) {
-                    resolve();
-                    return;
-                }
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => {
-                    URL.revokeObjectURL(url);
-                    resolve();
-                }, 200);
-            }, 'image/png');
+            view.downloadCanvasAsPng(canvas, fileName).then(resolve);
         });
     };
 
@@ -1954,11 +1973,11 @@ view.exportWhite10x14ToPng = view.exportWhite11x14ToPng;
 view.exportToPng = async function () {
     const layout = $('#board-color-select').val();
     if (layout === 'blackboard') {
-        view.exportBlackboardToPng();
+        await view.exportBlackboardToPng();
         return;
     }
     if (layout === 'white_11x14' || layout === 'white_10x14') {
-        view.exportWhite11x14ToPng();
+        await view.exportWhite11x14ToPng();
         return;
     }
 
@@ -2046,10 +2065,8 @@ view.exportToPng = async function () {
     const neededWidth = Math.max(minViewportWidth, maxLineRight + bigGridPx * 2 + slantExtra);
     const widthPx = Math.ceil(neededWidth / bigGridPx) * bigGridPx;
 
-    // First line baseline rests on major line:
-    // In 72pt mode: gridOriginY + 8 sub-grids = 192px (Major line 2)
-    // In 36pt mode: gridOriginY + 4 sub-grids = 115.2px (Major line 1)
-    const firstBaselineY = gridOriginY + (isSmall ? 4 : 8) * subGridPx;
+    // First line baseline rests on major line 1 (124.8px) matching CSS on-screen display
+    const firstBaselineY = gridOriginY + 4 * subGridPx;
     const totalLinesCount = Math.max(lines.length, (dotConfig && dotConfig.enabled) ? dotConfig.linesCount : 0);
     const lastBaselineY = firstBaselineY + Math.max(0, totalLinesCount - 1) * lineHeightPx;
     const neededHeight = lastBaselineY + bigGridPx * 2;
@@ -2172,15 +2189,5 @@ view.exportToPng = async function () {
     const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const fileName = view.generateFileName(layout, rawInputLines[0] || 'chu_dep');
 
-    canvas.toBlob(function (blob) {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 'image/png');
+    await view.downloadCanvasAsPng(canvas, fileName);
 };

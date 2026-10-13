@@ -194,10 +194,10 @@
     color: #2b1055;
     box-sizing: border-box;
     white-space: nowrap;
-    /* Large font (72pt): 2 blocks per line (153.6px line height), baseline on major line 2 */
+    /* Large font (72pt): 2 blocks per line (153.6px line height), baseline on major line 1 */
     font-size: 72pt;
     line-height: calc(var(--grid-unit) * 8);
-    padding-top: calc(var(--grid-unit) * 0.2 + 10px);
+    padding-top: calc(var(--grid-unit) * 0.2 + 9px);
 }
 
 .board.white_11x14 #result > p.line,
@@ -311,7 +311,7 @@
     width: max-content;
     min-width: 100%;
     padding-left: var(--grid-unit);
-    padding-top: calc(var(--grid-unit) * 0.7);
+    padding-top: calc(var(--grid-unit) * 0.7 - 1px);
     padding-bottom: calc(var(--grid-unit) * 4);
     font-size: 72pt;
     font-family: HP001, serif;
