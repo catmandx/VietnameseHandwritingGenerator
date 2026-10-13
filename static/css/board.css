@@ -450,7 +450,7 @@ p.line {
 
 .btn-word-reset::after {
     left: -1.5px;
-    right: -12px;
+    right: -2px;
 }
 
 .btn-word-drag i,

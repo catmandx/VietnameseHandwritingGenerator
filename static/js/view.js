@@ -1,6 +1,13 @@
 const view = {};
 window.view = view;
 view.lineDotConfigs = {};
+view.resetLineDotConfigs = function () {
+    view.lineDotConfigs = {};
+    if ($('#dotting-line-select').length) {
+        $('#dotting-line-select').val('all');
+        $('#btn-reset-line-dotting').hide();
+    }
+};
 
 view.sampleTexts = {
     "sample1": "Nét chữ nết người",
@@ -24,6 +31,7 @@ view.init = function () {
 
     // Input listener (handles typing, paste, cut, composition IME)
     $input.on('input propertychange', function () {
+        view.resetLineDotConfigs();
         view.render();
     });
 
@@ -285,17 +293,20 @@ view.updateDottingLineSelect = function () {
 
     const rawLines = ($('#input').val() || '').split('\n');
     const hasAnyText = ($('#input').val() || '').trim().length > 0;
-    const dotConfig = view.getDottingConfig();
-    const totalLines = hasAnyText ? Math.max(rawLines.length, dotConfig.linesCount || 1) : 0;
 
     let html = '<option value="all">Tất cả các dòng</option>';
-    for (let i = 0; i < totalLines; i++) {
-        const lineText = (rawLines[i] || '').trim();
-        const customCfg = view.lineDotConfigs[i];
-        const cfg = view.getDottingConfig(i);
-        const customBadge = (customCfg && customCfg.isCustom) ? ` [Cách ${cfg.spaces} ô]` : '';
-        const preview = lineText ? ` "${lineText.slice(0, 15)}${lineText.length > 15 ? '...' : ''}"` : ' (dòng bài tập)';
-        html += `<option value="${i}">Dòng ${i + 1}${customBadge}:${preview}</option>`;
+    if (hasAnyText) {
+        for (let i = 0; i < rawLines.length; i++) {
+            const lineText = (rawLines[i] || '').trim();
+            if (!lineText) {
+                continue; // Only track lines that have text, ignore empty lines
+            }
+            const customCfg = view.lineDotConfigs[i];
+            const cfg = view.getDottingConfig(i);
+            const customBadge = (customCfg && customCfg.isCustom) ? ` [Cách ${cfg.spaces} ô]` : '';
+            const preview = ` "${lineText.slice(0, 15)}${lineText.length > 15 ? '...' : ''}"`;
+            html += `<option value="${i}">Dòng ${i + 1}${customBadge}:${preview}</option>`;
+        }
     }
     $select.html(html);
 
@@ -311,12 +322,10 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
     const hasAnyText = ($('#input').val() || '').trim().length > 0;
     if (!config.enabled || !hasAnyText) {
         $line.find('.guide-dots-layer').remove();
-        $line.find('.line-dot-controls').remove();
         return;
     }
 
     $line.find('.guide-dots-layer').remove();
-    $line.find('.line-dot-controls').remove();
 
     // 1. Check if this line has text
     let wordTokens = (lineTokens || []).filter(t => t.type === 'word');
@@ -444,17 +453,6 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         }
     }
     $line.append($dotsLayer);
-
-    // 6. Build line-specific quick controls badge
-    const isCustom = !!config.isCustom;
-    const $lineControls = $(`
-        <div class="line-dot-controls no-print" data-line-idx="${lineIndex}">
-            <button type="button" class="btn-line-dot-badge ${isCustom ? 'is-custom' : ''}" title="Dòng ${lineIndex + 1}: Cách ${config.spaces} ô (Nhấp để chỉnh riêng)">
-                <i class="fa-solid fa-circle-dot"></i> Cách ${config.spaces} ô
-            </button>
-        </div>
-    `);
-    $line.append($lineControls);
 };
 
 view.escapeHtml = function (str) {
@@ -819,13 +817,16 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
             view.renderDotsForLine($line, lineTokens, lineIndex);
         } else {
             $line.find('.guide-dots-layer').remove();
-            $line.find('.line-dot-controls').remove();
         }
+        $line.find('.line-dot-controls, .line-dot-wrapper, .btn-line-dot-badge').remove();
         return;
     }
 
     let wordIndex = 0;
     let html = '';
+    const lineDotConfig = view.getDottingConfig(lineIndex);
+    const isDotActive = view.isDottingActive();
+
     for (const token of lineTokens) {
         if (token.type === 'space') {
             html += `<span class="word-space">${view.escapeHtml(token.text)}</span>`;
@@ -853,10 +854,18 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
             const styleAttr = wordStyles.length ? ` style="${wordStyles.join('; ')};"` : '';
             const textStyleAttr = textStyles.length ? ` style="${textStyles.join('; ')};"` : '';
 
+            const dotBadgeHtml = isDotActive ? `
+                <span class="line-dot-wrapper">
+                    <button type="button" class="btn-line-dot-badge ${lineDotConfig.isCustom ? 'is-custom' : ''}" data-line-idx="${lineIndex}" title="Dòng ${lineIndex + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)">
+                        <i class="fa-solid fa-circle-dot"></i> Cách ${lineDotConfig.spaces} ô
+                    </button>
+                </span>` : '';
+
             html += `<span class="word" data-word-idx="${wordIndex}"${stretchAttr}${natWAttr}${styleAttr}>` +
                 `<span class="word-handle no-print">` +
                     `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
                     `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
+                    dotBadgeHtml +
                 `</span>` +
                 `<span class="word-text"${textStyleAttr}>${view.escapeHtml(token.text)}</span>` +
                 `<span class="btn-word-stretch no-print" title="Kéo để kéo giãn chữ (Nhấp đúp để đặt lại cỡ chữ)"></span>` +
@@ -869,7 +878,6 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
         view.renderDotsForLine($line, lineTokens, lineIndex);
     } else {
         $line.find('.guide-dots-layer').remove();
-        $line.find('.line-dot-controls').remove();
     }
 };
 
@@ -1268,7 +1276,7 @@ view.setupDragInteractions = function () {
 
     // Double-click empty line background: reset all words on that line
     $container.on('dblclick', 'p.line', function (e) {
-        if ($(e.target).closest('.word, .line-dot-controls').length) return;
+        if ($(e.target).closest('.word, .line-dot-wrapper, .line-dot-popover').length) return;
         $(this).find('.word').each(function () {
             this.style.marginLeft = '0px';
             this.style.width = '';
@@ -1287,20 +1295,28 @@ view.setupDragInteractions = function () {
     // Line dotting badge popover click handlers
     $container.on('click', '.btn-line-dot-badge', function (e) {
         e.stopPropagation();
+        e.preventDefault();
         const $badge = $(this);
-        const $controls = $badge.closest('.line-dot-controls');
-        const lineIdx = parseInt($controls.attr('data-line-idx'), 10);
+        const $wrapper = $badge.closest('.line-dot-wrapper');
+        const $word = $badge.closest('.word');
+        const $line = $badge.closest('p.line');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
 
         // If clicking on already open popover button, toggle close
-        if ($controls.hasClass('is-open')) {
+        if ($wrapper.children('.line-dot-popover').length) {
             $('.line-dot-popover').remove();
-            $controls.removeClass('is-open');
+            $('.word').removeClass('is-dotting-open');
+            $('p.line').removeClass('has-dot-popover');
             return;
         }
 
         // Close any other open popovers
         $('.line-dot-popover').remove();
-        $('.line-dot-controls').removeClass('is-open');
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+
+        $line.addClass('has-dot-popover');
+        $word.addClass('is-dotting-open');
 
         // Select this line in top toolbar
         $('#dotting-line-select').val(lineIdx).trigger('change');
@@ -1310,49 +1326,56 @@ view.setupDragInteractions = function () {
             <div class="line-dot-popover no-print">
                 <div class="popover-header">
                     <strong>Dòng ${lineIdx + 1}</strong>
-                    <button type="button" class="popover-close">&times;</button>
+                    <button type="button" class="popover-close" title="Đóng">&times;</button>
                 </div>
                 <div class="popover-row">
                     <label>Khoảng cách:</label>
                     <div class="step-control">
-                        <button type="button" class="btn-step" data-action="dec">-</button>
-                        <span class="step-val">${cfg.spaces} ô</span>
-                        <button type="button" class="btn-step" data-action="inc">+</button>
+                        <button type="button" class="btn-step" data-action="dec" title="Giảm khoảng cách">-</button>
+                        <span class="step-val step-spaces-val">${cfg.spaces} ô</span>
+                        <button type="button" class="btn-step" data-action="inc" title="Tăng khoảng cách">+</button>
                     </div>
                 </div>
                 <div class="popover-row">
                     <label>Số chấm:</label>
-                    <span class="step-val">${cfg.repetitions}</span>
+                    <span class="step-val step-reps-val">${cfg.repetitions}</span>
                 </div>
                 <div class="popover-row">
-                    <label style="cursor: pointer;">
-                        <input type="checkbox" class="popover-fulldot" ${cfg.fullDot ? 'checked' : ''} /> Chấm hết
+                    <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                        <input type="checkbox" class="popover-fulldot" ${cfg.fullDot ? 'checked' : ''} /> Chấm hết dòng
                     </label>
                 </div>
                 ${cfg.isCustom ? '<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>' : ''}
             </div>
         `);
 
-        $controls.addClass('is-open').append($popover);
+        $wrapper.append($popover);
     });
 
     $(document).on('click', function (e) {
-        if (!$(e.target).closest('.line-dot-controls').length) {
+        if (!$(e.target).closest('.line-dot-wrapper, .line-dot-popover').length) {
             $('.line-dot-popover').remove();
-            $('.line-dot-controls').removeClass('is-open');
+            $('.word').removeClass('is-dotting-open');
+            $('p.line').removeClass('has-dot-popover');
         }
     });
 
     $container.on('click', '.popover-close', function (e) {
         e.stopPropagation();
+        e.preventDefault();
         $('.line-dot-popover').remove();
-        $('.line-dot-controls').removeClass('is-open');
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
     });
 
     $container.on('click', '.line-dot-popover .btn-step', function (e) {
         e.stopPropagation();
+        e.preventDefault();
         const action = $(this).attr('data-action');
-        const lineIdx = parseInt($(this).closest('.line-dot-controls').attr('data-line-idx'), 10);
+        const $popover = $(this).closest('.line-dot-popover');
+        const $wrapper = $popover.closest('.line-dot-wrapper');
+        const $badge = $wrapper.children('.btn-line-dot-badge');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
         const cfg = view.getDottingConfig(lineIdx);
         let newSpaces = cfg.spaces + (action === 'inc' ? 1 : -1);
         newSpaces = Math.max(1, Math.min(10, newSpaces));
@@ -1361,31 +1384,88 @@ view.setupDragInteractions = function () {
         view.lineDotConfigs[lineIdx].spaces = newSpaces;
         view.lineDotConfigs[lineIdx].isCustom = true;
 
-        $('#dotting-line-select').val(lineIdx).trigger('change');
-        view.render();
-        $(`#line-${lineIdx} .btn-line-dot-badge`).trigger('click');
+        const updatedCfg = view.getDottingConfig(lineIdx);
+        $popover.find('.step-spaces-val').text(`${newSpaces} ô`);
+        $popover.find('.step-reps-val').text(updatedCfg.repetitions);
+
+        if (!$popover.find('.btn-popover-reset').length) {
+            $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
+        }
+
+        const $line = $(`#line-${lineIdx}`);
+        $line.find('.btn-line-dot-badge').each(function () {
+            $(this).addClass('is-custom')
+                   .attr('title', `Dòng ${lineIdx + 1}: Cách ${newSpaces} ô (Nhấp để chỉnh riêng)`)
+                   .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${newSpaces} ô`);
+        });
+
+        view.renderDotsForLine($line, null, lineIdx);
+        view.updateDottingLineSelect();
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-spaces-input').val(newSpaces);
+            $('#dotting-reps-input').val(updatedCfg.repetitions);
+            $('#btn-reset-line-dotting').show();
+        }
     });
 
     $container.on('change', '.line-dot-popover .popover-fulldot', function (e) {
         e.stopPropagation();
-        const lineIdx = parseInt($(this).closest('.line-dot-controls').attr('data-line-idx'), 10);
+        const $popover = $(this).closest('.line-dot-popover');
+        const $wrapper = $popover.closest('.line-dot-wrapper');
+        const $badge = $wrapper.children('.btn-line-dot-badge');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+
         if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
         view.lineDotConfigs[lineIdx].fullDot = this.checked;
         view.lineDotConfigs[lineIdx].isCustom = true;
 
-        $('#dotting-line-select').val(lineIdx).trigger('change');
-        view.render();
-        $(`#line-${lineIdx} .btn-line-dot-badge`).trigger('click');
+        if (!$popover.find('.btn-popover-reset').length) {
+            $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
+        }
+
+        const $line = $(`#line-${lineIdx}`);
+        $line.find('.btn-line-dot-badge').addClass('is-custom');
+        view.renderDotsForLine($line, null, lineIdx);
+        view.updateDottingLineSelect();
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-fulldot-checkbox').prop('checked', this.checked);
+            $('#btn-reset-line-dotting').show();
+        }
     });
 
     $container.on('click', '.line-dot-popover .btn-popover-reset', function (e) {
         e.stopPropagation();
-        const lineIdx = parseInt($(this).closest('.line-dot-controls').attr('data-line-idx'), 10);
+        e.preventDefault();
+        const $popover = $(this).closest('.line-dot-popover');
+        const $wrapper = $popover.closest('.line-dot-wrapper');
+        const $badge = $wrapper.children('.btn-line-dot-badge');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+
         delete view.lineDotConfigs[lineIdx];
-        $('#dotting-line-select').val(lineIdx).trigger('change');
-        view.render();
+        const defaultCfg = view.getDottingConfig(lineIdx);
+
+        const $line = $(`#line-${lineIdx}`);
+        $line.find('.btn-line-dot-badge').each(function () {
+            $(this).removeClass('is-custom')
+                   .attr('title', `Dòng ${lineIdx + 1}: Cách ${defaultCfg.spaces} ô (Nhấp để chỉnh riêng)`)
+                   .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${defaultCfg.spaces} ô`);
+        });
+
+        view.renderDotsForLine($line, null, lineIdx);
+        view.updateDottingLineSelect();
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-spaces-input').val(defaultCfg.spaces);
+            $('#dotting-reps-input').val(defaultCfg.repetitions);
+            $('#dotting-fulldot-checkbox').prop('checked', defaultCfg.fullDot);
+            $('#btn-reset-line-dotting').hide();
+        }
+
         $('.line-dot-popover').remove();
-        $('.line-dot-controls').removeClass('is-open');
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
     });
 };
 
@@ -1471,6 +1551,7 @@ view.changeStyle = function (isItalics) {
 
 view.loadSample = function (sampleKey) {
     if (view.sampleTexts[sampleKey]) {
+        view.resetLineDotConfigs();
         $('#input').val(view.sampleTexts[sampleKey]);
         view.render();
     }
