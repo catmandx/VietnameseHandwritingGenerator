@@ -2007,7 +2007,7 @@ view.exportToPng = async function () {
     const bigGridPx = subGridPx * 4; // 76.8px
 
     const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
-    const lineHeightPx = (isSmall ? (36 + 14.4 * 1.5) : (72 + 14.4 * 3)) * ptToPx; // 76.8px or 153.6px
+    const lineHeightPx = (isSmall ? 4 : 8) * subGridPx; // 76.8px or 153.6px
 
     // 1. Accurately measure the widest line
     const measureCanvas = document.createElement('canvas');

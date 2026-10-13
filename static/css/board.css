@@ -95,6 +95,7 @@
 
 .board.blackboard #result > p.line,
 .board.blackboard .result-text > p.line {
+    height: auto !important;
     margin: 0;
     padding: 0;
     line-height: 1;
@@ -311,9 +312,10 @@
     min-width: 100%;
     padding-left: var(--grid-unit);
     padding-top: calc(var(--grid-unit) * 0.7);
+    padding-bottom: calc(var(--grid-unit) * 4);
     font-size: 72pt;
     font-family: HP001, serif;
-    line-height: calc(72pt + var(--grid-unit) * 3);
+    line-height: calc(var(--grid-unit) * 8);
     margin-top: 10px;
     letter-spacing: 0;
     user-select: text;
@@ -330,13 +332,31 @@
 #result.small {
     padding-top: calc(var(--grid-unit) * 3.32);
     font-size: 37pt;
-    line-height: calc(36pt + var(--grid-unit) * 1.5);
+    line-height: calc(var(--grid-unit) * 4);
 }
 
-#result > p.line:last-child::after {
-    content: ' ';
-    display: block;
-    height: calc(var(--grid-unit) * 3);
+#result > p.line,
+.result-text > p.line {
+    height: calc(var(--grid-unit) * 8);
+    line-height: calc(var(--grid-unit) * 8);
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+#result.small > p.line,
+.result-text.small > p.line {
+    height: calc(var(--grid-unit) * 4);
+    line-height: calc(var(--grid-unit) * 4);
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+#result > p.line:last-child::after,
+.result-text > p.line:last-child::after {
+    display: none !important;
+    content: none !important;
 }
 
 p.line {
@@ -345,7 +365,7 @@ p.line {
     -webkit-margin-after: 0;
     padding: 0;
     position: relative;
-    white-space: pre;
+    white-space: nowrap;
 }
 
 /* 
