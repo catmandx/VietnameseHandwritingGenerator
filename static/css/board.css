@@ -75,7 +75,7 @@
 .board.blackboard .result-text {
     position: absolute;
     left: 96.09px;
-    top: 193.5px; /* Calibrated for 281.5px large font size; baseline at y = 409.55px */
+    top: 192.75px; /* Calibrated for 281.5px large font size; baseline at y = 408.8px */
     width: max-content;
     padding: 0;
     margin: 0;
@@ -90,7 +90,7 @@
 .board.blackboard #result.small,
 .board.blackboard .result-text.small {
     font-size: 140.75px;
-    top: 301.5px; /* Calibrated for 140.75px small font size; baseline at y = 409.55px */
+    top: 300.75px; /* Calibrated for 140.75px small font size; baseline at y = 408.8px */
 }
 
 .board.blackboard #result > p.line,
@@ -197,7 +197,7 @@
     /* Large font (72pt): 2 blocks per line (153.6px line height), baseline on major line 1 */
     font-size: 72pt;
     line-height: calc(var(--grid-unit) * 8);
-    padding-top: calc(var(--grid-unit) * 0.2 + 10.5px);
+    padding-top: calc(var(--grid-unit) * 0.2 + 9.75px);
 }
 
 .board.white_11x14 #result > p.line,
@@ -218,7 +218,7 @@
 .board.white_10x14 .result-text.small {
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
-    padding-top: calc(var(--grid-unit) * 3.34 + 1.2px);
+    padding-top: calc(var(--grid-unit) * 3.34 + 0.6px);
 }
 
 .board.white_11x14 #result.small > p.line,
@@ -311,7 +311,7 @@
     width: max-content;
     min-width: 100%;
     padding-left: var(--grid-unit);
-    padding-top: calc(var(--grid-unit) * 0.7 + 0.5px);
+    padding-top: calc(var(--grid-unit) * 0.7 - 0.25px);
     padding-bottom: calc(var(--grid-unit) * 4);
     font-size: 72pt;
     font-family: HP001, serif;
@@ -330,7 +330,7 @@
 }
 
 #result.small {
-    padding-top: calc(var(--grid-unit) * 3.32 + 1.2px);
+    padding-top: calc(var(--grid-unit) * 3.32 + 0.6px);
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
 }
