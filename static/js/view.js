@@ -861,7 +861,8 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
                     </button>
                 </span>` : '';
 
-            html += `<span class="word" data-word-idx="${wordIndex}"${stretchAttr}${natWAttr}${styleAttr}>` +
+            const rawTokenAttr = ` data-raw="${view.escapeHtml(token.raw || token.text)}"`;
+            html += `<span class="word" data-word-idx="${wordIndex}"${rawTokenAttr}${stretchAttr}${natWAttr}${styleAttr}>` +
                 `<span class="word-handle no-print">` +
                     `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
                     `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
@@ -1686,9 +1687,11 @@ view.exportBlackboardToPng = async function () {
             $line.children('.word').each(function () {
                 const wordEl = this;
                 const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+                const rawWord = $(wordEl).attr('data-raw') || '';
                 const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
                 words.push({
                     text: wordText,
+                    raw: rawWord,
                     offsetLeft: wordEl.offsetLeft,
                     offsetWidth: wordEl.offsetWidth,
                     stretch: stretch
@@ -1696,7 +1699,7 @@ view.exportBlackboardToPng = async function () {
             });
 
             // Original line text for filename
-            const rawLineText = rawInputLines[bIdx] || words.map(w => w.text).join(' ');
+            const rawLineText = rawInputLines[bIdx] || words.map(w => w.raw || w.text).join(' ');
 
             if (words.length > 0) {
                 // 3. Draw text anchored on Line 2 baseline
@@ -1713,6 +1716,7 @@ view.exportBlackboardToPng = async function () {
 
                 words.forEach(word => {
                     const xPos = startX + (word.offsetLeft * S);
+                    ctx.fillStyle = textColor;
                     if (word.stretch && word.stretch !== 1.0) {
                         ctx.save();
                         ctx.translate(xPos, baselineY);
@@ -1727,11 +1731,11 @@ view.exportBlackboardToPng = async function () {
                 ctx.restore();
             }
 
-            const dotConfig = view.getDottingConfig(bIdx);
+            const lineDotConfig = view.getDottingConfig(bIdx);
             const hasText = words.length > 0;
             const hasAnyText = ($('#input').val() || '').trim().length > 0;
-            if (dotConfig && dotConfig.enabled && hasAnyText && (hasText || bIdx < dotConfig.linesCount)) {
-                let rawLine = words.length > 0 ? words[0].text : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
+            if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || bIdx < lineDotConfig.linesCount)) {
+                let rawLine = words.length > 0 ? (words[0].raw || rawInputLines[bIdx] || words[0].text) : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
                 const charUnit = model.getFirstCharUnit(rawLine);
                 const startPoint = model.getGlyphStartPoint(charUnit);
 
@@ -1751,11 +1755,11 @@ view.exportBlackboardToPng = async function () {
                     ctx.translate(0, -baselineY);
                 }
 
-                for (let j = 0; j < dotConfig.repetitions; j++) {
-                    if (hasText || dotConfig.fullDot || j === 0) {
-                        const dotX = startX0 + (j * blockWidth * dotConfig.spaces);
+                for (let j = 0; j < lineDotConfig.repetitions; j++) {
+                    if (hasText || lineDotConfig.fullDot || j === 0) {
+                        const dotX = startX0 + (j * blockWidth * lineDotConfig.spaces);
                         ctx.beginPath();
-                        ctx.fillStyle = dotConfig.color;
+                        ctx.fillStyle = lineDotConfig.color;
                         ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
                         ctx.fill();
                         ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
@@ -1892,9 +1896,11 @@ view.exportWhite11x14ToPng = async function () {
                 $line.children('.word').each(function () {
                     const wordEl = this;
                     const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+                    const rawWord = $(wordEl).attr('data-raw') || '';
                     const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
                     words.push({
                         text: wordText,
+                        raw: rawWord,
                         offsetLeft: wordEl.offsetLeft,
                         offsetWidth: wordEl.offsetWidth,
                         stretch: stretch
@@ -1902,18 +1908,21 @@ view.exportWhite11x14ToPng = async function () {
                 });
 
                 if (words.length > 0) {
-                    pageTexts.push(words.map(w => w.text).join(' '));
+                    pageTexts.push(words.map(w => w.raw || w.text).join(' '));
                 }
 
+                ctx.fillStyle = textColor;
                 words.forEach(word => {
                     const xPos = gridOriginX + word.offsetLeft;
                     if (word.stretch && word.stretch !== 1.0) {
                         ctx.save();
                         ctx.translate(xPos, yPos);
                         ctx.scale(word.stretch, 1.0);
+                        ctx.fillStyle = textColor;
                         ctx.fillText(word.text, 0, 0);
                         ctx.restore();
                     } else {
+                        ctx.fillStyle = textColor;
                         ctx.fillText(word.text, xPos, yPos);
                     }
                 });
@@ -1922,10 +1931,11 @@ view.exportWhite11x14ToPng = async function () {
                 const hasAnyText = ($('#input').val() || '').trim().length > 0;
                 const lineDotConfig = view.getDottingConfig(globalLineIdx);
                 if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || globalLineIdx < lineDotConfig.linesCount)) {
-                    let rawLineText = words.length > 0 ? words[0].text : '';
+                    let rawLineText = words.length > 0 ? (words[0].raw || words[0].text) : '';
                     if (!rawLineText) {
-                        const rawLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                        rawLineText = rawLines.length > 0 ? rawLines[0] : 'a';
+                        const rawLines = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                        const lineFromInput = rawLines[globalLineIdx] || rawLines[0] || 'a';
+                        rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
                     }
                     const charUnit = model.getFirstCharUnit(rawLineText);
                     const startPoint = model.getGlyphStartPoint(charUnit);
@@ -1995,9 +2005,11 @@ view.exportToPng = async function () {
         $line.children('.word').each(function () {
             const wordEl = this;
             const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+            const rawWord = $(wordEl).attr('data-raw') || '';
             const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
             lineWords.push({
                 text: wordText,
+                raw: rawWord,
                 offsetLeft: wordEl.offsetLeft,
                 offsetWidth: wordEl.offsetWidth,
                 stretch: stretch
@@ -2132,15 +2144,18 @@ view.exportToPng = async function () {
 
     lines.forEach((lineObj, idx) => {
         const yPos = firstBaselineY + (idx * lineHeightPx);
+        ctx.fillStyle = textColor;
         lineObj.words.forEach(word => {
             const xPos = gridOriginX + word.offsetLeft;
             if (word.stretch && word.stretch !== 1.0) {
                 ctx.save();
                 ctx.translate(xPos, yPos);
                 ctx.scale(word.stretch, 1.0);
+                ctx.fillStyle = textColor;
                 ctx.fillText(word.text, 0, 0);
                 ctx.restore();
             } else {
+                ctx.fillStyle = textColor;
                 ctx.fillText(word.text, xPos, yPos);
             }
         });
@@ -2150,6 +2165,7 @@ view.exportToPng = async function () {
     if (dotConfig && dotConfig.enabled) {
         const olyUnitPx = isSmall ? 9.6 : 19.2;
         const dotRadius = isSmall ? 2.5 : 3.5;
+        const rawInputLines = ($('#input').val() || '').split('\n').map(l => l.trim());
 
         for (let idx = 0; idx < totalLinesCount; idx++) {
             const lineObj = lines[idx];
@@ -2158,10 +2174,10 @@ view.exportToPng = async function () {
             if (!hasText && idx >= lineDotConfig.linesCount) break;
 
             const yPos = firstBaselineY + (idx * lineHeightPx);
-            let rawLineText = hasText ? lineObj.words[0].text : '';
+            let rawLineText = hasText ? (lineObj.words[0].raw || lineObj.words[0].text) : '';
             if (!rawLineText) {
-                const rawLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                rawLineText = rawLines.length > 0 ? rawLines[0] : 'a';
+                const lineFromInput = rawInputLines[idx] || rawInputLines.find(l => l.length > 0) || 'a';
+                rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
             }
             const charUnit = model.getFirstCharUnit(rawLineText);
             const startPoint = model.getGlyphStartPoint(charUnit);

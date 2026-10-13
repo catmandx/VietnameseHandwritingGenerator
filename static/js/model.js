@@ -8,6 +8,7 @@ model.getData = function(callback){
     return $.getJSON("/data/all.json", function(data){
         model.glyphs = data;
         model.isLoaded = true;
+        model.buildGlyphCodeMap();
         utils.log('Loaded glyph definitions:', Object.keys(data).length);
         if (typeof callback === 'function') {
             callback(data);
@@ -16,6 +17,30 @@ model.getData = function(callback){
         console.error("Failed to load /data/all.json", err);
     });
 }
+
+model.buildGlyphCodeMap = function () {
+    model.glyphCodeMap = {};
+    if (!model.glyphs) return;
+    for (const [key, val] of Object.entries(model.glyphs)) {
+        if (val && Array.isArray(val.types)) {
+            for (const type of val.types) {
+                if (type && type.accent) {
+                    for (const [accName, accVal] of Object.entries(type.accent)) {
+                        if (accVal !== undefined && accVal !== null) {
+                            String(accVal).split(',').forEach(codeStr => {
+                                const code = parseInt(codeStr.trim(), 10);
+                                if (!isNaN(code)) {
+                                    model.glyphCodeMap[code] = key;
+                                    model.glyphCodeMap[String.fromCharCode(code)] = key;
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
 
 model.getUnicodeStr = function(word){
     utils.log(word)
@@ -164,13 +189,27 @@ model.defaultStartPoints = {
 model.getFirstCharUnit = function(word) {
     if (!word) return 'a';
     word = word.trim();
+    if (!word) return 'a';
+
+    // 1. Check compound consonants first (e.g. "kh", "nh", "ch", "gh", "ph", "th", "Gh")
     if (word.length >= 2) {
         const twoChar = word.substring(0, 2);
         if (["kh", "nh", "ch", "gh", "ph", "th", "Gh"].includes(twoChar)) {
             return twoChar;
         }
     }
-    return word.charAt(0);
+
+    // 2. Check if first char is a converted font glyph (or mapped glyph code)
+    const firstChar = word.charAt(0);
+    const firstCharCode = word.charCodeAt(0);
+    if (!model.glyphCodeMap && model.glyphs) {
+        model.buildGlyphCodeMap();
+    }
+    if (model.glyphCodeMap && (model.glyphCodeMap[firstChar] || model.glyphCodeMap[firstCharCode])) {
+        return model.glyphCodeMap[firstChar] || model.glyphCodeMap[firstCharCode];
+    }
+
+    return firstChar;
 };
 
 model.getGlyphStartPoint = function(charUnit) {
