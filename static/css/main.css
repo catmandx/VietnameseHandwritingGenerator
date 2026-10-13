@@ -223,6 +223,68 @@ input[type="checkbox"] {
     accent-color: var(--primary);
 }
 
+.tool-dotting-toggle input[type="checkbox"] {
+    accent-color: #dc2626;
+}
+
+.dotting-options-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.dotting-options-wrapper .tool-item {
+    font-size: 0.85rem;
+    gap: 4px;
+}
+
+.num-input-sm {
+    width: 48px;
+    padding: 3px 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: #ffffff;
+    color: var(--text-main);
+    outline: none;
+}
+
+.num-input-sm:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+}
+
+.num-input-sm:disabled {
+    background: #e2e8f0;
+    color: #64748b;
+    cursor: not-allowed;
+    border-color: #cbd5e1;
+}
+
+.badge-subtle {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+    border-radius: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.unit-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 input[type="color"] {
     -webkit-appearance: none;
     border: 1px solid var(--border);

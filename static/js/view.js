@@ -53,8 +53,214 @@ view.init = function () {
     // Setup word drag interactions (drag handle at top left of word)
     view.setupDragInteractions();
 
+    // Dotting controls listeners
+    $('#dotting-checkbox').on('change', function () {
+        if (this.checked) {
+            $('#dotting-options').show();
+            view.updateDottingControlsState();
+        } else {
+            $('#dotting-options').hide();
+        }
+        view.render();
+    });
+
+    $('#dotting-spaces-input').on('input change', function () {
+        let val = parseInt(this.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 10) val = 10;
+        this.value = val;
+        view.updateDottingControlsState();
+        view.render();
+    });
+
+    $('#dotting-reps-input').on('input change', function () {
+        let val = parseInt(this.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 50) val = 50;
+        this.value = val;
+        view.render();
+    });
+
+    $('#dotting-lines-input').on('input change', function () {
+        let val = parseInt(this.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 30) val = 30;
+        this.value = val;
+        view.render();
+    });
+
+    $('#dotting-fulldot-checkbox').on('change', function () {
+        view.render();
+    });
+
+    $('#dotting-color-input').on('input change', function () {
+        view.render();
+    });
+
+    view.updateDottingControlsState();
+
     // Trigger initial render
     view.render();
+};
+
+view.isDottingActive = function () {
+    return $('#dotting-checkbox').is(':checked');
+};
+
+view.getDottingConfig = function () {
+    const enabled = view.isDottingActive();
+    const spaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
+    const linesCount = Math.max(1, parseInt($('#dotting-lines-input').val(), 10) || 1);
+    const fullDot = $('#dotting-fulldot-checkbox').is(':checked');
+    const color = $('#dotting-color-input').val() || '#e53935';
+
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
+
+    let repetitions;
+    if (isWhite11x14) {
+        // Automatic for 11x14 layout: Math.floor((11 + 1) / spaces), clamped to [1, 11]
+        repetitions = Math.min(11, Math.max(1, Math.floor(12 / spaces)));
+    } else if (isBlackboard) {
+        // Automatic for 3x1 mini blackboard: Math.floor((3 + 1) / spaces), clamped to [1, 3]
+        repetitions = Math.min(3, Math.max(1, Math.floor(4 / spaces)));
+    } else {
+        // Infinite canvases (black, white): user chooses number of repetitions
+        repetitions = Math.max(1, parseInt($('#dotting-reps-input').val(), 10) || 5);
+    }
+
+    return {
+        enabled: enabled,
+        spaces: spaces,
+        repetitions: repetitions,
+        linesCount: linesCount,
+        fullDot: fullDot,
+        color: color,
+        isBlackboard: isBlackboard,
+        isWhite11x14: isWhite11x14
+    };
+};
+
+view.updateDottingControlsState = function () {
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
+    const spaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
+
+    const $repsInput = $('#dotting-reps-input');
+    const $repsBadge = $('#dotting-reps-badge');
+
+    if (isWhite11x14) {
+        const autoReps = Math.min(11, Math.max(1, Math.floor(12 / spaces)));
+        $repsInput.val(autoReps).prop('disabled', true);
+        $repsBadge.text(`Tự động: ${autoReps}`).attr('title', 'Tính tự động theo chiều rộng 11 ô của trang');
+    } else if (isBlackboard) {
+        const autoReps = Math.min(3, Math.max(1, Math.floor(4 / spaces)));
+        $repsInput.val(autoReps).prop('disabled', true);
+        $repsBadge.text(`Tự động: ${autoReps}`).attr('title', 'Tính tự động theo chiều rộng 3 ô của bảng con');
+    } else {
+        $repsInput.prop('disabled', false);
+        $repsBadge.text('Tự do').attr('title', 'Tự do chọn số chấm lặp trên dòng vô hạn');
+    }
+};
+
+view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
+    if (!config) config = view.getDottingConfig();
+    if (!config.enabled) {
+        $line.find('.guide-dots-layer').remove();
+        return;
+    }
+    if (lineIndex >= config.linesCount) {
+        $line.find('.guide-dots-layer').remove();
+        return;
+    }
+
+    $line.find('.guide-dots-layer').remove();
+
+    // 1. Identify glyph character
+    let charUnit = null;
+    const wordTokens = (lineTokens || []).filter(t => t.type === 'word');
+    if (wordTokens.length > 0) {
+        const rawOrText = wordTokens[0].raw || wordTokens[0].text;
+        charUnit = model.getFirstCharUnit(rawOrText);
+    } else {
+        // Line is empty, look up first word from textarea
+        const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (rawInputLines.length > 0) {
+            const firstWord = rawInputLines[0].split(/\s+/)[0];
+            charUnit = model.getFirstCharUnit(firstWord);
+        } else {
+            charUnit = 'a';
+        }
+    }
+
+    const startPoint = model.getGlyphStartPoint(charUnit);
+
+    // 2. Determine geometry units
+    const isSmall = $('#font-size-select').val() === '36' || $line.closest('.result-text').hasClass('small') || $('#result').hasClass('small');
+    const isBlackboard = config.isBlackboard;
+
+    let olyUnitPx, blockWidth, dotSizePx;
+    if (isBlackboard) {
+        olyUnitPx = isSmall ? 28.15 : 56.3;
+        blockWidth = 225.2;
+        dotSizePx = isSmall ? 8 : 14;
+    } else {
+        olyUnitPx = isSmall ? 9.6 : 19.2;
+        blockWidth = 76.8;
+        dotSizePx = isSmall ? 5 : 7;
+    }
+
+    // 3. Measure baseline Y inside $line
+    let baselineY = 0;
+    const $probe = $('<span style="display:inline-block;vertical-align:baseline;width:0;height:0;visibility:hidden;pointer-events:none;"></span>');
+    $line.append($probe);
+    baselineY = $probe[0].offsetTop;
+    $probe.remove();
+
+    if (baselineY <= 0) {
+        if (isBlackboard) {
+            baselineY = isSmall ? 108 : 216;
+        } else {
+            baselineY = isSmall ? 57.6 : 115.2;
+        }
+    }
+
+    const dotY = baselineY - (startPoint.y * olyUnitPx);
+
+    // 4. Measure start X
+    let startX0 = 0;
+    const $firstWord = $line.children('.word').first();
+    if ($firstWord.length) {
+        startX0 = $firstWord[0].offsetLeft + (startPoint.x * olyUnitPx);
+    } else {
+        // On empty line, align with line 0's first word if possible
+        const $line0Word = $('#line-0').children('.word').first();
+        if ($line0Word.length) {
+            startX0 = $line0Word[0].offsetLeft + (startPoint.x * olyUnitPx);
+        } else {
+            startX0 = startPoint.x * olyUnitPx;
+        }
+    }
+
+    // 5. Build guide dots
+    const $dotsLayer = $('<div class="guide-dots-layer"></div>');
+    for (let j = 0; j < config.repetitions; j++) {
+        if (config.fullDot || lineIndex === 0 || j === 0) {
+            const dotX = startX0 + (j * blockWidth * config.spaces);
+            const $dot = $('<span class="guide-dot"></span>').css({
+                left: dotX + 'px',
+                top: dotY + 'px',
+                width: dotSizePx + 'px',
+                height: dotSizePx + 'px',
+                backgroundColor: config.color
+            });
+            $dotsLayer.append($dot);
+        }
+    }
+
+    $line.append($dotsLayer);
 };
 
 view.escapeHtml = function (str) {
@@ -72,14 +278,23 @@ view.render = function () {
     const layout = $('#board-color-select').val();
     const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
     const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
-    const rawLines = $input.val().split('\n');
+    let rawLines = $input.val().split('\n');
+
+    const dotConfig = view.getDottingConfig();
+    if (dotConfig && dotConfig.enabled && dotConfig.linesCount > rawLines.length) {
+        while (rawLines.length < dotConfig.linesCount) {
+            rawLines.push('');
+        }
+    }
 
     if (isBlackboard) {
         // In blackboard mode, each input line gets its own blackboard slate!
         let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
-        // Remove trailing empty lines if more than 1
-        while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
-            lines.pop();
+        // Remove trailing empty lines if more than 1 (unless dotting is active)
+        if (!dotConfig.enabled) {
+            while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
+                lines.pop();
+            }
         }
         if (lines.length === 0) {
             lines = [''];
@@ -104,8 +319,10 @@ view.render = function () {
         view.adjustBlackboardFontSize();
     } else if (isWhite11x14) {
         let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
-        while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
-            lines.pop();
+        if (!dotConfig.enabled) {
+            while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
+                lines.pop();
+            }
         }
         if (lines.length === 0) {
             lines = [''];
@@ -132,8 +349,17 @@ view.render = function () {
         const $result = $('#result');
         $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'max-width': '', 'min-width': '', 'white-space': '' });
 
-        const linesData = rawLines.map(rawLine => {
-            const line = rawLine.replace(/[\t]/g, "    ");
+        let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
+        if (!dotConfig.enabled) {
+            while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
+                lines.pop();
+            }
+        }
+        if (lines.length === 0) {
+            lines = [''];
+        }
+
+        const linesData = lines.map(line => {
             const tokens = line.split(/(\s+)/);
             const lineTokens = [];
             for (const token of tokens) {
@@ -393,6 +619,9 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
     if (wordTokens.length === 0) {
         // Non-breaking space keeps the empty line height intact on the grid
         $line.empty().html('&nbsp;');
+        if (view.isDottingActive()) {
+            view.renderDotsForLine($line, lineTokens, lineIndex);
+        }
         return;
     }
 
@@ -437,6 +666,9 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
         }
     }
     $line.empty().html(html);
+    if (view.isDottingActive()) {
+        view.renderDotsForLine($line, lineTokens, lineIndex);
+    }
 };
 
 view.updateLines = function (linesData) {
@@ -574,6 +806,11 @@ view.setupDragInteractions = function () {
 
         if (dragState.$word) {
             dragState.$word.removeClass('is-dragging');
+            if (view.isDottingActive()) {
+                const $line = dragState.$word.closest('p.line');
+                const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
+                view.renderDotsForLine($line, null, lineIdx);
+            }
         }
         $('body').removeClass('is-word-dragging');
         dragState = null;
@@ -796,6 +1033,11 @@ view.setupDragInteractions = function () {
             'width': '',
             'transform': ''
         });
+        if (view.isDottingActive()) {
+            const $line = $word.closest('p.line');
+            const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
+            view.renderDotsForLine($line, null, lineIdx);
+        }
     });
 
     // Double-click empty line background: reset all words on that line
@@ -830,6 +1072,9 @@ view.changeFontSize = function (fontSize) {
         view.render();
     } else {
         $results.css({ 'font-size': '', 'top': '' });
+    }
+    if (view.isDottingActive()) {
+        view.render();
     }
 };
 
@@ -870,6 +1115,7 @@ view.changeBoardColor = function (boardColor) {
         $colorInput.val(chalkWhite);
         $('.result-text, #result').css({ 'color': chalkWhite, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
     }
+    view.updateDottingControlsState();
     view.render();
 };
 
@@ -1015,6 +1261,49 @@ view.exportBlackboardToPng = async function () {
                 ctx.restore();
             }
 
+            const dotConfig = view.getDottingConfig();
+            if (dotConfig && dotConfig.enabled && bIdx < dotConfig.linesCount) {
+                let rawLine = rawInputLines[bIdx];
+                if (!rawLine && words.length > 0) {
+                    rawLine = words[0].text;
+                }
+                if (!rawLine && rawInputLines.length > 0) {
+                    rawLine = rawInputLines[0];
+                }
+                if (!rawLine) rawLine = 'a';
+                const charUnit = model.getFirstCharUnit(rawLine);
+                const startPoint = model.getGlyphStartPoint(charUnit);
+
+                const olyUnitPx = (isSmall ? 28.15 : 56.3) * S;
+                const blockWidth = 225.2 * S;
+                const dotRadius = (isSmall ? 4 : 7) * S;
+
+                const dotY = baselineY - (startPoint.y * olyUnitPx);
+                const wordOffset = words.length > 0 ? (words[0].offsetLeft * S) : 0;
+                const startX0 = startX + wordOffset + (startPoint.x * olyUnitPx);
+
+                ctx.save();
+                if (isItalics) {
+                    ctx.translate(0, baselineY);
+                    ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
+                    ctx.translate(0, -baselineY);
+                }
+
+                for (let j = 0; j < dotConfig.repetitions; j++) {
+                    if (dotConfig.fullDot || bIdx === 0 || j === 0) {
+                        const dotX = startX0 + (j * blockWidth * dotConfig.spaces);
+                        ctx.beginPath();
+                        ctx.fillStyle = dotConfig.color;
+                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                        ctx.lineWidth = 1 * S;
+                        ctx.stroke();
+                    }
+                }
+                ctx.restore();
+            }
+
             const fileName = view.generateFileName('blackboard', rawLineText);
 
             canvas.toBlob(function (blob) {
@@ -1144,10 +1433,11 @@ view.exportWhite11x14ToPng = async function () {
             ctx.fillStyle = textColor;
             ctx.textBaseline = 'alphabetic';
 
-            const $lines = $(boardEl).find('p.line');
-            const pageTexts = [];
+            const linesPerPage = isSmall ? 14 : 7;
+            const dotConfig = view.getDottingConfig();
 
             $lines.each(function (lIdx) {
+                const globalLineIdx = (pIdx * linesPerPage) + lIdx;
                 const yPos = firstBaselineY + (lIdx * lineHeightPx);
                 const $line = $(this);
                 const words = [];
@@ -1179,6 +1469,34 @@ view.exportWhite11x14ToPng = async function () {
                         ctx.fillText(word.text, xPos, yPos);
                     }
                 });
+
+                if (dotConfig && dotConfig.enabled && globalLineIdx < dotConfig.linesCount) {
+                    let rawLineText = words.length > 0 ? words[0].text : '';
+                    if (!rawLineText) {
+                        const rawLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                        rawLineText = rawLines.length > 0 ? rawLines[0] : 'a';
+                    }
+                    const charUnit = model.getFirstCharUnit(rawLineText);
+                    const startPoint = model.getGlyphStartPoint(charUnit);
+
+                    const olyUnitPx = isSmall ? 9.6 : 19.2;
+                    const blockWidth = 76.8;
+                    const dotRadius = isSmall ? 2.5 : 3.5;
+
+                    const dotY = yPos - (startPoint.y * olyUnitPx);
+                    const wordOffset = words.length > 0 ? words[0].offsetLeft : 0;
+                    const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx);
+
+                    for (let j = 0; j < dotConfig.repetitions; j++) {
+                        if (dotConfig.fullDot || globalLineIdx === 0 || j === 0) {
+                            const dotX = startX0 + (j * blockWidth * dotConfig.spaces);
+                            ctx.beginPath();
+                            ctx.fillStyle = dotConfig.color;
+                            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
             });
 
             ctx.restore();
@@ -1254,7 +1572,8 @@ view.exportToPng = async function () {
         });
     });
 
-    if (lines.length === 0 || !lines.some(l => l.words.length > 0)) {
+    const dotConfig = view.getDottingConfig();
+    if (lines.length === 0 || (!lines.some(l => l.words.length > 0) && !(dotConfig && dotConfig.enabled))) {
         alert("Chưa có nội dung để xuất ảnh!");
         return;
     }
@@ -1288,6 +1607,13 @@ view.exportToPng = async function () {
         });
     });
 
+    if (dotConfig && dotConfig.enabled) {
+        const maxDotsRight = subGridPx + (dotConfig.repetitions * bigGridPx * dotConfig.spaces);
+        if (maxDotsRight > maxLineRight) {
+            maxLineRight = maxDotsRight;
+        }
+    }
+
     // Grid origins matching CSS background-position: var(--grid-unit) calc(var(--grid-unit) * 2.5)
     const gridOriginX = subGridPx; // 19.2px
     const gridOriginY = subGridPx * 2.5; // 48px (shifted half cell lower)
@@ -1302,7 +1628,8 @@ view.exportToPng = async function () {
     // In 72pt mode: gridOriginY + 8 sub-grids = 192px (Major line 2)
     // In 36pt mode: gridOriginY + 4 sub-grids = 115.2px (Major line 1)
     const firstBaselineY = gridOriginY + (isSmall ? 4 : 8) * subGridPx;
-    const lastBaselineY = firstBaselineY + (lines.length - 1) * lineHeightPx;
+    const totalLinesCount = Math.max(lines.length, (dotConfig && dotConfig.enabled) ? dotConfig.linesCount : 0);
+    const lastBaselineY = firstBaselineY + Math.max(0, totalLinesCount - 1) * lineHeightPx;
     const neededHeight = lastBaselineY + bigGridPx * 2;
     const heightPx = Math.ceil(neededHeight / bigGridPx) * bigGridPx;
 
@@ -1379,6 +1706,41 @@ view.exportToPng = async function () {
             }
         });
     });
+
+    // Draw dots
+    if (dotConfig && dotConfig.enabled) {
+        const olyUnitPx = isSmall ? 9.6 : 19.2;
+        const dotRadius = isSmall ? 2.5 : 3.5;
+
+        for (let idx = 0; idx < totalLinesCount; idx++) {
+            if (idx >= dotConfig.linesCount) break;
+
+            const yPos = firstBaselineY + (idx * lineHeightPx);
+            const lineObj = lines[idx];
+            let rawLineText = (lineObj && lineObj.words.length > 0) ? lineObj.words[0].text : '';
+            if (!rawLineText) {
+                const rawLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                rawLineText = rawLines.length > 0 ? rawLines[0] : 'a';
+            }
+            const charUnit = model.getFirstCharUnit(rawLineText);
+            const startPoint = model.getGlyphStartPoint(charUnit);
+
+            const dotY = yPos - (startPoint.y * olyUnitPx);
+            const wordOffset = (lineObj && lineObj.words.length > 0) ? lineObj.words[0].offsetLeft : 0;
+            const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx);
+
+            for (let j = 0; j < dotConfig.repetitions; j++) {
+                if (dotConfig.fullDot || idx === 0 || j === 0) {
+                    const dotX = startX0 + (j * bigGridPx * dotConfig.spaces);
+                    ctx.beginPath();
+                    ctx.fillStyle = dotConfig.color;
+                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
     ctx.restore();
 
     // 5. Trigger Download

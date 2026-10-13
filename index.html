@@ -98,6 +98,42 @@
                 <input type="checkbox" id="style-checkbox" />
                 <label for="style-checkbox">Chữ nghiêng</label>
               </div>
+
+              <!-- Dotting feature controls -->
+              <div class="tool-item tool-dotting-toggle">
+                <input type="checkbox" id="dotting-checkbox" />
+                <label for="dotting-checkbox" style="cursor: pointer; font-weight: 600; color: #dc2626;" title="Bật/Tắt chế độ chấm mẫu hướng dẫn viết">
+                  <i class="fa-solid fa-circle-dot"></i> Chấm mẫu
+                </label>
+              </div>
+
+              <div id="dotting-options" class="dotting-options-wrapper" style="display: none;">
+                <div class="tool-item">
+                  <label for="dotting-spaces-input" title="Khoảng cách giữa 2 chấm (theo số ô lớn)">Cách:</label>
+                  <input type="number" id="dotting-spaces-input" min="1" max="10" value="2" class="num-input-sm" title="Khoảng cách giữa các chấm (số ô lớn)" />
+                  <span class="unit-text">ô</span>
+                </div>
+
+                <div class="tool-item">
+                  <label for="dotting-reps-input" title="Số chấm trên một dòng">Số chấm:</label>
+                  <input type="number" id="dotting-reps-input" min="1" max="50" value="5" class="num-input-sm" title="Số lần chấm trên một dòng" />
+                  <span id="dotting-reps-badge" class="badge-subtle" title="Trạng thái lặp chấm">Tự do</span>
+                </div>
+
+                <div class="tool-item">
+                  <label for="dotting-lines-input" title="Số dòng bài tập cần chấm">Số dòng:</label>
+                  <input type="number" id="dotting-lines-input" min="1" max="30" value="1" class="num-input-sm" title="Số dòng bài tập cần chấm" />
+                </div>
+
+                <div class="tool-item">
+                  <input type="checkbox" id="dotting-fulldot-checkbox" checked />
+                  <label for="dotting-fulldot-checkbox" title="Chọn: Chấm toàn bộ dòng. Bỏ chọn: Chỉ chấm dòng 1 và đầu các dòng tiếp theo">Chấm hết</label>
+                </div>
+
+                <div class="tool-item">
+                  <input type="color" id="dotting-color-input" value="#e53935" title="Màu chấm đặt bút" style="width: 26px; height: 26px; padding: 1px; border-radius: 4px; cursor: pointer; border: 1px solid #cbd5e1;" />
+                </div>
+              </div>
             </div>
 
             <div class="action-group">
