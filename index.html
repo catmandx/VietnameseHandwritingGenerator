@@ -16,17 +16,17 @@
     <link rel="preload" href="/static/font/HP001N30.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="preload" href="/static/img/blackboard.png" as="image" />
 
-    <link rel="stylesheet" href="/static/css/main.css" />
-    <link rel="stylesheet" href="/static/css/board.css" />
+    <link rel="stylesheet" href="/static/css/main.css?v=20261013_7" />
+    <link rel="stylesheet" href="/static/css/board.css?v=20261013_7" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.2/css/all.min.css" />
 
     <script src="/static/js/jquery-3.6.0.min.js"></script>
-    <script src="/static/js/config.js"></script>
-    <script src="/static/js/utils.js"></script>
-    <script src="/static/js/model.js"></script>
-    <script src="/static/js/view.js"></script>
-    <script src="/static/js/controller.js"></script>
-    <script src="/static/js/index.js"></script>
+    <script src="/static/js/config.js?v=20261013_7"></script>
+    <script src="/static/js/utils.js?v=20261013_7"></script>
+    <script src="/static/js/model.js?v=20261013_7"></script>
+    <script src="/static/js/view.js?v=20261013_7"></script>
+    <script src="/static/js/controller.js?v=20261013_7"></script>
+    <script src="/static/js/index.js?v=20261013_7"></script>
   </head>
   <body>
     <header class="app-header no-print">
@@ -97,6 +97,52 @@
               <div class="tool-item">
                 <input type="checkbox" id="style-checkbox" />
                 <label for="style-checkbox">Chữ nghiêng</label>
+              </div>
+
+              <!-- Dotting feature controls -->
+              <div class="tool-item tool-dotting-toggle">
+                <input type="checkbox" id="dotting-checkbox" />
+                <label for="dotting-checkbox" style="cursor: pointer; font-weight: 600; color: #dc2626;" title="Bật/Tắt chế độ chấm mẫu hướng dẫn viết">
+                  <i class="fa-solid fa-circle-dot"></i> Chấm mẫu
+                </label>
+              </div>
+
+              <div id="dotting-options" class="dotting-options-wrapper" style="display: none;">
+                <div class="tool-item">
+                  <label for="dotting-line-select" title="Chọn dòng để cài đặt riêng hoặc áp dụng chung"><i class="fa-solid fa-bars"></i> Dòng:</label>
+                  <select id="dotting-line-select" style="padding: 2px 6px; font-size: 0.82rem; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="all">Tất cả các dòng</option>
+                  </select>
+                  <button type="button" id="btn-reset-line-dotting" class="btn-icon-subtle no-print" title="Đặt lại dòng này về mặc định chung" style="display: none; background: none; border: none; cursor: pointer; color: #dc2626; padding: 2px 4px; font-size: 0.85rem;">
+                    <i class="fa-solid fa-rotate-left"></i>
+                  </button>
+                </div>
+
+                <div class="tool-item">
+                  <label for="dotting-spaces-input" title="Khoảng cách giữa 2 chấm (theo số ô lớn)">Cách:</label>
+                  <input type="number" id="dotting-spaces-input" min="1" max="10" value="2" class="num-input-sm" title="Khoảng cách giữa các chấm (số ô lớn)" />
+                  <span class="unit-text">ô</span>
+                </div>
+
+                <div class="tool-item">
+                  <label for="dotting-reps-input" title="Số chấm trên một dòng">Số chấm:</label>
+                  <input type="number" id="dotting-reps-input" min="1" max="50" value="5" class="num-input-sm" title="Số lần chấm trên một dòng" />
+                  <span id="dotting-reps-badge" class="badge-subtle" title="Trạng thái lặp chấm">Tự do</span>
+                </div>
+
+                <div class="tool-item">
+                  <label for="dotting-lines-input" title="Số dòng bài tập cần chấm">Số dòng:</label>
+                  <input type="number" id="dotting-lines-input" min="1" max="30" value="1" class="num-input-sm" title="Số dòng bài tập cần chấm" />
+                </div>
+
+                <div class="tool-item">
+                  <input type="checkbox" id="dotting-fulldot-checkbox" checked />
+                  <label for="dotting-fulldot-checkbox" title="Chọn: Chấm toàn bộ dòng. Bỏ chọn: Chỉ chấm dòng 1 và đầu các dòng tiếp theo">Chấm hết</label>
+                </div>
+
+                <div class="tool-item">
+                  <input type="color" id="dotting-color-input" value="#e53935" title="Màu chấm đặt bút" style="width: 26px; height: 26px; padding: 1px; border-radius: 4px; cursor: pointer; border: 1px solid #cbd5e1;" />
+                </div>
               </div>
             </div>
 

@@ -75,7 +75,7 @@
 .board.blackboard .result-text {
     position: absolute;
     left: 96.09px;
-    top: 192px; /* Calibrated for 281.5px large font size; baseline at y = 408.05px */
+    top: 192.75px; /* Calibrated for 281.5px large font size; baseline at y = 408.8px */
     width: max-content;
     padding: 0;
     margin: 0;
@@ -90,11 +90,12 @@
 .board.blackboard #result.small,
 .board.blackboard .result-text.small {
     font-size: 144.66px;
-    top: 297px; /* Calibrated for 144.66px small font size (37pt equivalent); baseline at y = 408.05px */
+    top: 297.75px; /* Calibrated for 144.66px small font size (37pt equivalent); baseline at y = 408.8px */
 }
 
 .board.blackboard #result > p.line,
 .board.blackboard .result-text > p.line {
+    height: auto !important;
     margin: 0;
     padding: 0;
     line-height: 1;
@@ -193,10 +194,10 @@
     color: #2b1055;
     box-sizing: border-box;
     white-space: nowrap;
-    /* Large font (72pt): 2 blocks per line (153.6px line height), baseline on major line 2 */
+    /* Large font (72pt): 2 blocks per line (153.6px line height), baseline on major line 1 */
     font-size: 72pt;
     line-height: calc(var(--grid-unit) * 8);
-    padding-top: calc(var(--grid-unit) * 0.2 + 10px);
+    padding-top: calc(var(--grid-unit) * 0.2 + 9.75px);
 }
 
 .board.white_11x14 #result > p.line,
@@ -217,7 +218,7 @@
 .board.white_10x14 .result-text.small {
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
-    padding-top: calc(var(--grid-unit) * 3.05);
+    padding-top: calc(var(--grid-unit) * 3.34 + 0.6px);
 }
 
 .board.white_11x14 #result.small > p.line,
@@ -231,14 +232,12 @@
     white-space: nowrap;
 }
 
+.board.white_11x14 p.line::after,
 .board.white_11x14 .result-text > p.line::after,
+.board.white_10x14 p.line::after,
 .board.white_10x14 .result-text > p.line::after {
     display: none !important;
-}
-
-.board.white_11x14:last-child .result-text > p.line:last-child::after,
-.board.white_10x14:last-child .result-text > p.line:last-child::after {
-    display: inline-block !important;
+    content: none !important;
 }
 
 /* 
@@ -312,10 +311,11 @@
     width: max-content;
     min-width: 100%;
     padding-left: var(--grid-unit);
-    padding-top: calc(var(--grid-unit) * 0.7);
+    padding-top: calc(var(--grid-unit) * 0.7 - 0.25px);
+    padding-bottom: calc(var(--grid-unit) * 4);
     font-size: 72pt;
     font-family: HP001, serif;
-    line-height: calc(72pt + var(--grid-unit) * 3);
+    line-height: calc(var(--grid-unit) * 8);
     margin-top: 10px;
     letter-spacing: 0;
     user-select: text;
@@ -330,15 +330,33 @@
 }
 
 #result.small {
-    padding-top: calc(var(--grid-unit) * 3.35);
+    padding-top: calc(var(--grid-unit) * 3.32 + 0.6px);
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
 }
 
-#result > p.line:last-child::after {
-    content: ' ';
-    display: block;
-    height: calc(var(--grid-unit) * 3);
+#result > p.line,
+.result-text > p.line {
+    height: calc(var(--grid-unit) * 8);
+    line-height: calc(var(--grid-unit) * 8);
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+#result.small > p.line,
+.result-text.small > p.line {
+    height: calc(var(--grid-unit) * 4);
+    line-height: calc(var(--grid-unit) * 4);
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+#result > p.line:last-child::after,
+.result-text > p.line:last-child::after {
+    display: none !important;
+    content: none !important;
 }
 
 p.line {
@@ -347,7 +365,7 @@ p.line {
     -webkit-margin-after: 0;
     padding: 0;
     position: relative;
-    white-space: pre;
+    white-space: nowrap;
 }
 
 /* 
@@ -452,7 +470,7 @@ p.line {
 
 .btn-word-reset::after {
     left: -1.5px;
-    right: -12px;
+    right: -2px;
 }
 
 .btn-word-drag i,
@@ -594,6 +612,35 @@ body.is-word-stretching {
 }
 
 /* Print Styles */
+/* 
+ * GUIDE DOTS ARCHITECTURE:
+ * Replicated guide dots for handwriting practice worksheets (tập viết ô ly).
+ */
+.guide-dots-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.guide-dot {
+    position: absolute;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 5;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+}
+
+.board.blackboard .guide-dot {
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
 @media print {
     body {
         background: #ffffff !important;

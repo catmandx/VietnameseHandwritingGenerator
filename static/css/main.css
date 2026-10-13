@@ -223,6 +223,68 @@ input[type="checkbox"] {
     accent-color: var(--primary);
 }
 
+.tool-dotting-toggle input[type="checkbox"] {
+    accent-color: #dc2626;
+}
+
+.dotting-options-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.dotting-options-wrapper .tool-item {
+    font-size: 0.85rem;
+    gap: 4px;
+}
+
+.num-input-sm {
+    width: 48px;
+    padding: 3px 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: #ffffff;
+    color: var(--text-main);
+    outline: none;
+}
+
+.num-input-sm:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+}
+
+.num-input-sm:disabled {
+    background: #e2e8f0;
+    color: #64748b;
+    cursor: not-allowed;
+    border-color: #cbd5e1;
+}
+
+.badge-subtle {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+    border-radius: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.unit-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 input[type="color"] {
     -webkit-appearance: none;
     border: 1px solid var(--border);
@@ -372,4 +434,171 @@ input[type="color"]::-webkit-color-swatch {
 
 .app-footer a:hover {
     text-decoration: underline;
+}
+
+/* Line Dotting Controls & Popover */
+.line-dot-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.btn-line-dot-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+    border-radius: 3px;
+    padding: 0 5px;
+    height: 18px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    transition: all 0.15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1;
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+
+.btn-line-dot-badge:hover {
+    background: #fecaca;
+    border-color: #f87171;
+    transform: scale(1.04);
+}
+
+.btn-line-dot-badge.is-custom {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #b91c1c;
+}
+
+/* Elevate stacking context when popover is open so it NEVER renders behind other lines */
+p.line.has-dot-popover {
+    z-index: 900 !important;
+}
+
+.word.is-dotting-open,
+.word.is-dotting-open .word-handle,
+p.line.has-dot-popover .word.is-dotting-open .word-handle {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 1000 !important;
+}
+
+.line-dot-popover {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    width: 210px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+    padding: 10px 12px;
+    z-index: 2000 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85rem;
+    color: #1e293b;
+    line-height: 1.4;
+    white-space: normal;
+    text-align: left;
+}
+
+/* Cancel italic skew on popover so it stays upright */
+.grid.italics .line-dot-popover,
+.italics .line-dot-popover {
+    transform: skewX(17deg);
+    transform-origin: top left;
+}
+
+.line-dot-popover .popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.line-dot-popover .popover-header strong {
+    font-size: 0.85rem;
+    color: #0f172a;
+}
+
+.line-dot-popover .popover-close {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 0 4px;
+}
+
+.line-dot-popover .popover-close:hover {
+    color: #334155;
+}
+
+.line-dot-popover .popover-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.line-dot-popover .step-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.line-dot-popover .btn-step {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: #334155;
+}
+
+.line-dot-popover .btn-step:hover {
+    background: #e2e8f0;
+}
+
+.line-dot-popover .step-val {
+    font-weight: 600;
+    min-width: 32px;
+    text-align: center;
+    color: #0f172a;
+}
+
+.line-dot-popover .btn-popover-reset {
+    width: 100%;
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    color: #64748b;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.line-dot-popover .btn-popover-reset:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
 }
