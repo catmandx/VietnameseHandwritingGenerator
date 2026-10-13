@@ -1656,7 +1656,7 @@ view.exportBlackboardToPng = async function () {
     const S = 4;
     const widthPx = 842 * S;
     const heightPx = 595 * S;
-    const baselineY = 408.8 * S; // Line 2 baseline shifted slightly into guideline
+    const baselineY = 408.05 * S; // 816.1px (Line 2 baseline)
     const startX = 96.092 * S;    // 192.18px
 
     // Ensure custom font is ready before drawing
@@ -1826,7 +1826,7 @@ view.exportWhite11x14ToPng = async function () {
 
     const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
     const lineHeightPx = (isSmall ? (subGridPx * 4) : (subGridPx * 8)); // 76.8px or 153.6px
-    const firstBaselineY = gridOriginY + 4 * subGridPx + (isSmall ? 0.6 : 0.75); // Line 1 baseline shifted slightly into guideline
+    const firstBaselineY = gridOriginY + 4 * subGridPx; // Line 1 baseline at y = 6 cells (115.2px) matching on-screen Major Line 1
 
     const exportSinglePage = function (boardEl, pIdx) {
         return new Promise((resolve) => {
@@ -2077,8 +2077,8 @@ view.exportToPng = async function () {
     const neededWidth = Math.max(minViewportWidth, maxLineRight + bigGridPx * 2 + slantExtra);
     const widthPx = Math.ceil(neededWidth / bigGridPx) * bigGridPx;
 
-    // First line baseline rests in major line 1 matching CSS on-screen display
-    const firstBaselineY = gridOriginY + 4 * subGridPx + (isSmall ? 0.6 : 0.75);
+    // First line baseline rests on major line 1 (124.8px) matching CSS on-screen display
+    const firstBaselineY = gridOriginY + 4 * subGridPx;
     const totalLinesCount = Math.max(lines.length, (dotConfig && dotConfig.enabled) ? dotConfig.linesCount : 0);
     const lastBaselineY = firstBaselineY + Math.max(0, totalLinesCount - 1) * lineHeightPx;
     const neededHeight = lastBaselineY + bigGridPx * 2;
