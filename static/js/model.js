@@ -1,4 +1,5 @@
-const model = {}
+const model = {};
+window.model = model;
 
 model.glyphs = {}
 model.isLoaded = false;

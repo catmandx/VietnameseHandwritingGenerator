@@ -217,7 +217,7 @@
 .board.white_10x14 .result-text.small {
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
-    padding-top: calc(var(--grid-unit) * 3.05);
+    padding-top: calc(var(--grid-unit) * 3.34);
 }
 
 .board.white_11x14 #result.small > p.line,
@@ -231,14 +231,12 @@
     white-space: nowrap;
 }
 
+.board.white_11x14 p.line::after,
 .board.white_11x14 .result-text > p.line::after,
+.board.white_10x14 p.line::after,
 .board.white_10x14 .result-text > p.line::after {
     display: none !important;
-}
-
-.board.white_11x14:last-child .result-text > p.line:last-child::after,
-.board.white_10x14:last-child .result-text > p.line:last-child::after {
-    display: inline-block !important;
+    content: none !important;
 }
 
 /* 
@@ -330,7 +328,7 @@
 }
 
 #result.small {
-    padding-top: calc(var(--grid-unit) * 3.55);
+    padding-top: calc(var(--grid-unit) * 3.32);
     font-size: 37pt;
     line-height: calc(36pt + var(--grid-unit) * 1.5);
 }

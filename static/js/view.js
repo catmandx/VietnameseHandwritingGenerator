@@ -1,4 +1,5 @@
 const view = {};
+window.view = view;
 
 view.sampleTexts = {
     "sample1": "Nét chữ nết người",
@@ -115,8 +116,8 @@ view.getDottingConfig = function () {
     const color = $('#dotting-color-input').val() || '#e53935';
 
     const layout = $('#board-color-select').val();
-    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
-    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
+    const isBlackboard = (layout === 'blackboard');
+    const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
 
     let repetitions;
     if (isWhite11x14) {
@@ -144,8 +145,8 @@ view.getDottingConfig = function () {
 
 view.updateDottingControlsState = function () {
     const layout = $('#board-color-select').val();
-    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
-    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
+    const isBlackboard = (layout === 'blackboard');
+    const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
     const spaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
 
     const $repsInput = $('#dotting-reps-input');
@@ -171,28 +172,50 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         $line.find('.guide-dots-layer').remove();
         return;
     }
-    if (lineIndex >= config.linesCount) {
-        $line.find('.guide-dots-layer').remove();
-        return;
-    }
 
     $line.find('.guide-dots-layer').remove();
 
-    // 1. Identify glyph character
+    // 1. Check if this line has text
+    let wordTokens = (lineTokens || []).filter(t => t.type === 'word');
+    if (wordTokens.length === 0) {
+        const domWords = $line.children('.word');
+        if (domWords.length > 0) {
+            wordTokens = Array.from(domWords).map(w => ({ type: 'word', text: $(w).find('.word-text').text() || $(w).text() }));
+        }
+    }
+    const hasText = wordTokens.length > 0;
+
+    // If this line does not have text, it is an empty practice line: only draw if lineIndex < config.linesCount
+    if (!hasText && lineIndex >= config.linesCount) {
+        return;
+    }
+
+    // Identify glyph character unit for this line
     let charUnit = null;
-    const wordTokens = (lineTokens || []).filter(t => t.type === 'word');
-    if (wordTokens.length > 0) {
+    if (hasText) {
         const rawOrText = wordTokens[0].raw || wordTokens[0].text;
         charUnit = model.getFirstCharUnit(rawOrText);
     } else {
-        // Line is empty, look up first word from textarea
-        const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        if (rawInputLines.length > 0) {
-            const firstWord = rawInputLines[0].split(/\s+/)[0];
-            charUnit = model.getFirstCharUnit(firstWord);
-        } else {
-            charUnit = 'a';
+        // Line is empty, look up preceding line with text or textarea
+        let found = null;
+        for (let i = lineIndex - 1; i >= 0; i--) {
+            const $prevLine = $(`#line-${i}`);
+            if ($prevLine.length) {
+                const $prevWord = $prevLine.children('.word').first();
+                if ($prevWord.length) {
+                    const text = $prevWord.find('.word-text').text() || $prevWord.text();
+                    if (text && text.trim()) {
+                        found = model.getFirstCharUnit(text);
+                        break;
+                    }
+                }
+            }
         }
+        if (!found) {
+            const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            found = rawInputLines.length > 0 ? model.getFirstCharUnit(rawInputLines[0].split(/\s+/)[0]) : 'a';
+        }
+        charUnit = found;
     }
 
     const startPoint = model.getGlyphStartPoint(charUnit);
@@ -235,19 +258,33 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
     if ($firstWord.length) {
         startX0 = $firstWord[0].offsetLeft + (startPoint.x * olyUnitPx);
     } else {
-        // On empty line, align with line 0's first word if possible
-        const $line0Word = $('#line-0').children('.word').first();
-        if ($line0Word.length) {
-            startX0 = $line0Word[0].offsetLeft + (startPoint.x * olyUnitPx);
+        // On empty line, align with preceding line with words if possible
+        let foundWordOffset = null;
+        for (let i = lineIndex - 1; i >= 0; i--) {
+            const $prevWord = $(`#line-${i}`).children('.word').first();
+            if ($prevWord.length) {
+                foundWordOffset = $prevWord[0].offsetLeft;
+                break;
+            }
+        }
+        if (foundWordOffset !== null) {
+            startX0 = foundWordOffset + (startPoint.x * olyUnitPx);
         } else {
-            startX0 = startPoint.x * olyUnitPx;
+            const $line0Word = $('#line-0').children('.word').first();
+            if ($line0Word.length) {
+                startX0 = $line0Word[0].offsetLeft + (startPoint.x * olyUnitPx);
+            } else {
+                startX0 = startPoint.x * olyUnitPx;
+            }
         }
     }
 
     // 5. Build guide dots
     const $dotsLayer = $('<div class="guide-dots-layer"></div>');
     for (let j = 0; j < config.repetitions; j++) {
-        if (config.fullDot || lineIndex === 0 || j === 0) {
+        // Line with text is a model line: ALWAYS draw all dots for that line!
+        // Empty line is a practice line: draw all dots if fullDot is true, else only j === 0
+        if (hasText || config.fullDot || j === 0) {
             const dotX = startX0 + (j * blockWidth * config.spaces);
             const $dot = $('<span class="guide-dot"></span>').css({
                 left: dotX + 'px',
@@ -276,8 +313,8 @@ view.render = function () {
     if (!model.isLoaded) return;
     const $input = $('#input');
     const layout = $('#board-color-select').val();
-    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
-    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
+    const isBlackboard = (layout === 'blackboard');
+    const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
     let rawLines = $input.val().split('\n');
 
     const dotConfig = view.getDottingConfig();
@@ -1063,8 +1100,8 @@ view.changeFontSize = function (fontSize) {
         $results.removeClass('small');
     }
     const layout = $('#board-color-select').val();
-    const isBlackboard = layout === 'blackboard' || $('.board').hasClass('blackboard');
-    const isWhite11x14 = layout === 'white_11x14' || layout === 'white_10x14' || $('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14');
+    const isBlackboard = (layout === 'blackboard');
+    const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
 
     if (isBlackboard) {
         view.adjustBlackboardFontSize();
@@ -1262,15 +1299,9 @@ view.exportBlackboardToPng = async function () {
             }
 
             const dotConfig = view.getDottingConfig();
-            if (dotConfig && dotConfig.enabled && bIdx < dotConfig.linesCount) {
-                let rawLine = rawInputLines[bIdx];
-                if (!rawLine && words.length > 0) {
-                    rawLine = words[0].text;
-                }
-                if (!rawLine && rawInputLines.length > 0) {
-                    rawLine = rawInputLines[0];
-                }
-                if (!rawLine) rawLine = 'a';
+            const hasText = words.length > 0;
+            if (dotConfig && dotConfig.enabled && (hasText || bIdx < dotConfig.linesCount)) {
+                let rawLine = words.length > 0 ? words[0].text : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
                 const charUnit = model.getFirstCharUnit(rawLine);
                 const startPoint = model.getGlyphStartPoint(charUnit);
 
@@ -1290,7 +1321,7 @@ view.exportBlackboardToPng = async function () {
                 }
 
                 for (let j = 0; j < dotConfig.repetitions; j++) {
-                    if (dotConfig.fullDot || bIdx === 0 || j === 0) {
+                    if (hasText || dotConfig.fullDot || j === 0) {
                         const dotX = startX0 + (j * blockWidth * dotConfig.spaces);
                         ctx.beginPath();
                         ctx.fillStyle = dotConfig.color;
@@ -1470,7 +1501,8 @@ view.exportWhite11x14ToPng = async function () {
                     }
                 });
 
-                if (dotConfig && dotConfig.enabled && globalLineIdx < dotConfig.linesCount) {
+                const hasText = words.length > 0;
+                if (dotConfig && dotConfig.enabled && (hasText || globalLineIdx < dotConfig.linesCount)) {
                     let rawLineText = words.length > 0 ? words[0].text : '';
                     if (!rawLineText) {
                         const rawLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -1488,7 +1520,7 @@ view.exportWhite11x14ToPng = async function () {
                     const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx);
 
                     for (let j = 0; j < dotConfig.repetitions; j++) {
-                        if (dotConfig.fullDot || globalLineIdx === 0 || j === 0) {
+                        if (hasText || dotConfig.fullDot || j === 0) {
                             const dotX = startX0 + (j * blockWidth * dotConfig.spaces);
                             ctx.beginPath();
                             ctx.fillStyle = dotConfig.color;
@@ -1535,12 +1567,12 @@ view.exportWhite11x14ToPng = async function () {
 view.exportWhite10x14ToPng = view.exportWhite11x14ToPng;
 
 view.exportToPng = async function () {
-    const $board = $('.board');
-    if ($board.hasClass('blackboard') || $('#board-color-select').val() === 'blackboard') {
+    const layout = $('#board-color-select').val();
+    if (layout === 'blackboard') {
         view.exportBlackboardToPng();
         return;
     }
-    if ($board.hasClass('white_11x14') || $board.hasClass('white_10x14') || $('#board-color-select').val() === 'white_11x14' || $('#board-color-select').val() === 'white_10x14') {
+    if (layout === 'white_11x14' || layout === 'white_10x14') {
         view.exportWhite11x14ToPng();
         return;
     }
@@ -1713,11 +1745,12 @@ view.exportToPng = async function () {
         const dotRadius = isSmall ? 2.5 : 3.5;
 
         for (let idx = 0; idx < totalLinesCount; idx++) {
-            if (idx >= dotConfig.linesCount) break;
+            const lineObj = lines[idx];
+            const hasText = lineObj && lineObj.words.length > 0;
+            if (!hasText && idx >= dotConfig.linesCount) break;
 
             const yPos = firstBaselineY + (idx * lineHeightPx);
-            const lineObj = lines[idx];
-            let rawLineText = (lineObj && lineObj.words.length > 0) ? lineObj.words[0].text : '';
+            let rawLineText = hasText ? lineObj.words[0].text : '';
             if (!rawLineText) {
                 const rawLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
                 rawLineText = rawLines.length > 0 ? rawLines[0] : 'a';
@@ -1726,11 +1759,11 @@ view.exportToPng = async function () {
             const startPoint = model.getGlyphStartPoint(charUnit);
 
             const dotY = yPos - (startPoint.y * olyUnitPx);
-            const wordOffset = (lineObj && lineObj.words.length > 0) ? lineObj.words[0].offsetLeft : 0;
+            const wordOffset = hasText ? lineObj.words[0].offsetLeft : 0;
             const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx);
 
             for (let j = 0; j < dotConfig.repetitions; j++) {
-                if (dotConfig.fullDot || idx === 0 || j === 0) {
+                if (hasText || dotConfig.fullDot || j === 0) {
                     const dotX = startX0 + (j * bigGridPx * dotConfig.spaces);
                     ctx.beginPath();
                     ctx.fillStyle = dotConfig.color;
@@ -1745,7 +1778,6 @@ view.exportToPng = async function () {
 
     // 5. Trigger Download
     const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    const layout = $('#board-color-select').val();
     const fileName = view.generateFileName(layout, rawInputLines[0] || 'chu_dep');
 
     canvas.toBlob(function (blob) {
