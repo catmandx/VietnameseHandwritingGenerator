@@ -109,6 +109,16 @@
 
               <div id="dotting-options" class="dotting-options-wrapper" style="display: none;">
                 <div class="tool-item">
+                  <label for="dotting-line-select" title="Chọn dòng để cài đặt riêng hoặc áp dụng chung"><i class="fa-solid fa-bars"></i> Dòng:</label>
+                  <select id="dotting-line-select" style="padding: 2px 6px; font-size: 0.82rem; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="all">Tất cả các dòng</option>
+                  </select>
+                  <button type="button" id="btn-reset-line-dotting" class="btn-icon-subtle no-print" title="Đặt lại dòng này về mặc định chung" style="display: none; background: none; border: none; cursor: pointer; color: #dc2626; padding: 2px 4px; font-size: 0.85rem;">
+                    <i class="fa-solid fa-rotate-left"></i>
+                  </button>
+                </div>
+
+                <div class="tool-item">
                   <label for="dotting-spaces-input" title="Khoảng cách giữa 2 chấm (theo số ô lớn)">Cách:</label>
                   <input type="number" id="dotting-spaces-input" min="1" max="10" value="2" class="num-input-sm" title="Khoảng cách giữa các chấm (số ô lớn)" />
                   <span class="unit-text">ô</span>

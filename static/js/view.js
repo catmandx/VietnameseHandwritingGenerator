@@ -1,5 +1,6 @@
 const view = {};
 window.view = view;
+view.lineDotConfigs = {};
 
 view.sampleTexts = {
     "sample1": "Nét chữ nết người",
@@ -58,6 +59,7 @@ view.init = function () {
     $('#dotting-checkbox').on('change', function () {
         if (this.checked) {
             $('#dotting-options').show();
+            view.updateDottingLineSelect();
             view.updateDottingControlsState();
         } else {
             $('#dotting-options').hide();
@@ -65,13 +67,57 @@ view.init = function () {
         view.render();
     });
 
+    $('#dotting-line-select').on('change', function () {
+        const val = this.value;
+        if (val === 'all') {
+            const globalCfg = view.getDottingConfig();
+            $('#dotting-spaces-input').val(globalCfg.spaces);
+            $('#dotting-reps-input').val(globalCfg.repetitions);
+            $('#dotting-fulldot-checkbox').prop('checked', globalCfg.fullDot);
+            $('#btn-reset-line-dotting').hide();
+        } else {
+            const lineIdx = parseInt(val, 10);
+            const cfg = view.getDottingConfig(lineIdx);
+            $('#dotting-spaces-input').val(cfg.spaces);
+            $('#dotting-reps-input').val(cfg.repetitions);
+            $('#dotting-fulldot-checkbox').prop('checked', cfg.fullDot);
+            if (view.lineDotConfigs[lineIdx] && view.lineDotConfigs[lineIdx].isCustom) {
+                $('#btn-reset-line-dotting').show();
+            } else {
+                $('#btn-reset-line-dotting').hide();
+            }
+        }
+        view.updateDottingControlsState();
+    });
+
+    $('#btn-reset-line-dotting').on('click', function () {
+        const val = $('#dotting-line-select').val();
+        if (val !== 'all') {
+            const lineIdx = parseInt(val, 10);
+            delete view.lineDotConfigs[lineIdx];
+            view.updateDottingLineSelect();
+            $('#dotting-line-select').val(val).trigger('change');
+            view.render();
+        }
+    });
+
     $('#dotting-spaces-input').on('input change', function () {
         let val = parseInt(this.value, 10);
         if (isNaN(val) || val < 1) val = 1;
         if (val > 10) val = 10;
         this.value = val;
+
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].spaces = val;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        }
         view.updateDottingControlsState();
         view.render();
+        view.updateDottingLineSelect();
     });
 
     $('#dotting-reps-input').on('input change', function () {
@@ -79,6 +125,15 @@ view.init = function () {
         if (isNaN(val) || val < 1) val = 1;
         if (val > 50) val = 50;
         this.value = val;
+
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].repetitions = val;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        }
         view.render();
     });
 
@@ -88,9 +143,18 @@ view.init = function () {
         if (val > 30) val = 30;
         this.value = val;
         view.render();
+        view.updateDottingLineSelect();
     });
 
     $('#dotting-fulldot-checkbox').on('change', function () {
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].fullDot = this.checked;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        }
         view.render();
     });
 
@@ -99,47 +163,75 @@ view.init = function () {
     });
 
     view.updateDottingControlsState();
+    view.updateDottingLineSelect();
 
     // Trigger initial render
     view.render();
 };
 
 view.isDottingActive = function () {
+    const rawVal = $('#input').val() || '';
+    const hasAnyText = rawVal.trim().length > 0;
+    if (!hasAnyText) return false;
     return $('#dotting-checkbox').is(':checked');
 };
 
-view.getDottingConfig = function () {
+view.getDottingConfig = function (lineIndex) {
     const enabled = view.isDottingActive();
-    const spaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
-    const linesCount = Math.max(1, parseInt($('#dotting-lines-input').val(), 10) || 1);
-    const fullDot = $('#dotting-fulldot-checkbox').is(':checked');
-    const color = $('#dotting-color-input').val() || '#e53935';
-
     const layout = $('#board-color-select').val();
     const isBlackboard = (layout === 'blackboard');
     const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
 
-    let repetitions;
+    const globalSpaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
+    const globalLinesCount = Math.max(1, parseInt($('#dotting-lines-input').val(), 10) || 1);
+    const globalFullDot = $('#dotting-fulldot-checkbox').is(':checked');
+    const color = $('#dotting-color-input').val() || '#e53935';
+
+    let globalReps;
     if (isWhite11x14) {
-        // Automatic for 11x14 layout: Math.floor((11 + 1) / spaces), clamped to [1, 11]
-        repetitions = Math.min(11, Math.max(1, Math.floor(12 / spaces)));
+        globalReps = Math.min(11, Math.max(1, Math.floor(12 / globalSpaces)));
     } else if (isBlackboard) {
-        // Automatic for 3x1 mini blackboard: Math.floor((3 + 1) / spaces), clamped to [1, 3]
-        repetitions = Math.min(3, Math.max(1, Math.floor(4 / spaces)));
+        globalReps = Math.min(3, Math.max(1, Math.floor(4 / globalSpaces)));
     } else {
-        // Infinite canvases (black, white): user chooses number of repetitions
-        repetitions = Math.max(1, parseInt($('#dotting-reps-input').val(), 10) || 5);
+        globalReps = Math.max(1, parseInt($('#dotting-reps-input').val(), 10) || 5);
+    }
+
+    if (lineIndex !== undefined && lineIndex !== null && view.lineDotConfigs && view.lineDotConfigs[lineIndex]) {
+        const lineCfg = view.lineDotConfigs[lineIndex];
+        const spaces = lineCfg.spaces !== undefined ? lineCfg.spaces : globalSpaces;
+        let reps;
+        if (isWhite11x14) {
+            reps = Math.min(11, Math.max(1, Math.floor(12 / spaces)));
+        } else if (isBlackboard) {
+            reps = Math.min(3, Math.max(1, Math.floor(4 / spaces)));
+        } else {
+            reps = lineCfg.repetitions !== undefined ? lineCfg.repetitions : globalReps;
+        }
+        const fullDot = lineCfg.fullDot !== undefined ? lineCfg.fullDot : globalFullDot;
+
+        return {
+            enabled: enabled,
+            spaces: spaces,
+            repetitions: reps,
+            linesCount: globalLinesCount,
+            fullDot: fullDot,
+            color: color,
+            isBlackboard: isBlackboard,
+            isWhite11x14: isWhite11x14,
+            isCustom: !!lineCfg.isCustom
+        };
     }
 
     return {
         enabled: enabled,
-        spaces: spaces,
-        repetitions: repetitions,
-        linesCount: linesCount,
-        fullDot: fullDot,
+        spaces: globalSpaces,
+        repetitions: globalReps,
+        linesCount: globalLinesCount,
+        fullDot: globalFullDot,
         color: color,
         isBlackboard: isBlackboard,
-        isWhite11x14: isWhite11x14
+        isWhite11x14: isWhite11x14,
+        isCustom: false
     };
 };
 
@@ -147,7 +239,24 @@ view.updateDottingControlsState = function () {
     const layout = $('#board-color-select').val();
     const isBlackboard = (layout === 'blackboard');
     const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
-    const spaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
+
+    const selectedLine = $('#dotting-line-select').val();
+    let spaces, reps;
+
+    if (selectedLine && selectedLine !== 'all') {
+        const lineIdx = parseInt(selectedLine, 10);
+        const cfg = view.getDottingConfig(lineIdx);
+        spaces = cfg.spaces;
+        reps = cfg.repetitions;
+        if (view.lineDotConfigs[lineIdx] && view.lineDotConfigs[lineIdx].isCustom) {
+            $('#btn-reset-line-dotting').show();
+        } else {
+            $('#btn-reset-line-dotting').hide();
+        }
+    } else {
+        spaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
+        $('#btn-reset-line-dotting').hide();
+    }
 
     const $repsInput = $('#dotting-reps-input');
     const $repsBadge = $('#dotting-reps-badge');
@@ -163,17 +272,51 @@ view.updateDottingControlsState = function () {
     } else {
         $repsInput.prop('disabled', false);
         $repsBadge.text('Tự do').attr('title', 'Tự do chọn số chấm lặp trên dòng vô hạn');
+        if (reps !== undefined) {
+            $repsInput.val(reps);
+        }
+    }
+};
+
+view.updateDottingLineSelect = function () {
+    const $select = $('#dotting-line-select');
+    if (!$select.length) return;
+    const currentVal = $select.val() || 'all';
+
+    const rawLines = ($('#input').val() || '').split('\n');
+    const hasAnyText = ($('#input').val() || '').trim().length > 0;
+    const dotConfig = view.getDottingConfig();
+    const totalLines = hasAnyText ? Math.max(rawLines.length, dotConfig.linesCount || 1) : 0;
+
+    let html = '<option value="all">Tất cả các dòng</option>';
+    for (let i = 0; i < totalLines; i++) {
+        const lineText = (rawLines[i] || '').trim();
+        const customCfg = view.lineDotConfigs[i];
+        const cfg = view.getDottingConfig(i);
+        const customBadge = (customCfg && customCfg.isCustom) ? ` [Cách ${cfg.spaces} ô]` : '';
+        const preview = lineText ? ` "${lineText.slice(0, 15)}${lineText.length > 15 ? '...' : ''}"` : ' (dòng bài tập)';
+        html += `<option value="${i}">Dòng ${i + 1}${customBadge}:${preview}</option>`;
+    }
+    $select.html(html);
+
+    if ($select.find(`option[value="${currentVal}"]`).length) {
+        $select.val(currentVal);
+    } else {
+        $select.val('all');
     }
 };
 
 view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
-    if (!config) config = view.getDottingConfig();
-    if (!config.enabled) {
+    if (!config) config = view.getDottingConfig(lineIndex);
+    const hasAnyText = ($('#input').val() || '').trim().length > 0;
+    if (!config.enabled || !hasAnyText) {
         $line.find('.guide-dots-layer').remove();
+        $line.find('.line-dot-controls').remove();
         return;
     }
 
     $line.find('.guide-dots-layer').remove();
+    $line.find('.line-dot-controls').remove();
 
     // 1. Check if this line has text
     let wordTokens = (lineTokens || []).filter(t => t.type === 'word');
@@ -252,27 +395,31 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
 
     const dotY = baselineY - (startPoint.y * olyUnitPx);
 
-    // 4. Measure start X
+    // 4. Measure start X (accounting for word stretch!)
     let startX0 = 0;
     const $firstWord = $line.children('.word').first();
     if ($firstWord.length) {
-        startX0 = $firstWord[0].offsetLeft + (startPoint.x * olyUnitPx);
+        const stretch = parseFloat($firstWord.attr('data-stretch')) || 1.0;
+        startX0 = $firstWord[0].offsetLeft + (startPoint.x * olyUnitPx * stretch);
     } else {
         // On empty line, align with preceding line with words if possible
         let foundWordOffset = null;
+        let foundWordStretch = 1.0;
         for (let i = lineIndex - 1; i >= 0; i--) {
             const $prevWord = $(`#line-${i}`).children('.word').first();
             if ($prevWord.length) {
                 foundWordOffset = $prevWord[0].offsetLeft;
+                foundWordStretch = parseFloat($prevWord.attr('data-stretch')) || 1.0;
                 break;
             }
         }
         if (foundWordOffset !== null) {
-            startX0 = foundWordOffset + (startPoint.x * olyUnitPx);
+            startX0 = foundWordOffset + (startPoint.x * olyUnitPx * foundWordStretch);
         } else {
             const $line0Word = $('#line-0').children('.word').first();
             if ($line0Word.length) {
-                startX0 = $line0Word[0].offsetLeft + (startPoint.x * olyUnitPx);
+                const l0Stretch = parseFloat($line0Word.attr('data-stretch')) || 1.0;
+                startX0 = $line0Word[0].offsetLeft + (startPoint.x * olyUnitPx * l0Stretch);
             } else {
                 startX0 = startPoint.x * olyUnitPx;
             }
@@ -296,8 +443,18 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
             $dotsLayer.append($dot);
         }
     }
-
     $line.append($dotsLayer);
+
+    // 6. Build line-specific quick controls badge
+    const isCustom = !!config.isCustom;
+    const $lineControls = $(`
+        <div class="line-dot-controls no-print" data-line-idx="${lineIndex}">
+            <button type="button" class="btn-line-dot-badge ${isCustom ? 'is-custom' : ''}" title="Dòng ${lineIndex + 1}: Cách ${config.spaces} ô (Nhấp để chỉnh riêng)">
+                <i class="fa-solid fa-circle-dot"></i> Cách ${config.spaces} ô
+            </button>
+        </div>
+    `);
+    $line.append($lineControls);
 };
 
 view.escapeHtml = function (str) {
@@ -317,8 +474,9 @@ view.render = function () {
     const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
     let rawLines = $input.val().split('\n');
 
+    const hasAnyText = $input.val().trim().length > 0;
     const dotConfig = view.getDottingConfig();
-    if (dotConfig && dotConfig.enabled && dotConfig.linesCount > rawLines.length) {
+    if (dotConfig && dotConfig.enabled && hasAnyText && dotConfig.linesCount > rawLines.length) {
         while (rawLines.length < dotConfig.linesCount) {
             rawLines.push('');
         }
@@ -414,6 +572,7 @@ view.render = function () {
         view.updateLines(linesData);
         $result.css({ 'font-size': '', 'top': '' });
     }
+    view.updateDottingLineSelect();
 };
 
 view.syncBlackboards = function (linesData) {
@@ -658,6 +817,9 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
         $line.empty().html('&nbsp;');
         if (view.isDottingActive()) {
             view.renderDotsForLine($line, lineTokens, lineIndex);
+        } else {
+            $line.find('.guide-dots-layer').remove();
+            $line.find('.line-dot-controls').remove();
         }
         return;
     }
@@ -705,6 +867,9 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
     $line.empty().html(html);
     if (view.isDottingActive()) {
         view.renderDotsForLine($line, lineTokens, lineIndex);
+    } else {
+        $line.find('.guide-dots-layer').remove();
+        $line.find('.line-dot-controls').remove();
     }
 };
 
@@ -821,6 +986,11 @@ view.setupDragInteractions = function () {
         let newMargin = dragState.startMargin + deltaX;
         newMargin = Math.max(dragState.minMargin, newMargin);
         dragState.wordEl.style.marginLeft = Math.round(newMargin) + 'px';
+        if (view.isDottingActive()) {
+            const $line = dragState.$word.closest('p.line');
+            const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
+            view.renderDotsForLine($line, null, lineIdx);
+        }
     }
 
     $container.on('pointermove mousemove', '.btn-word-drag', handlePointerMove);
@@ -876,6 +1046,11 @@ view.setupDragInteractions = function () {
                 'width': '',
                 'transform': ''
             });
+            if (view.isDottingActive()) {
+                const $line = $word.closest('p.line');
+                const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
+                view.renderDotsForLine($line, null, lineIdx);
+            }
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -1001,6 +1176,11 @@ view.setupDragInteractions = function () {
             'transform': 'scaleX(' + newScale + ')',
             'transform-origin': '0 0'
         });
+
+        if (view.isDottingActive() && stretchState.$line) {
+            const lineIdx = parseInt(stretchState.$line.attr('id').replace('line-', ''), 10) || 0;
+            view.renderDotsForLine(stretchState.$line, null, lineIdx);
+        }
     }
 
     $container.on('pointermove mousemove', '.btn-word-stretch', handleStretchMove);
@@ -1031,6 +1211,10 @@ view.setupDragInteractions = function () {
         if (stretchState.$guideline) {
             stretchState.$guideline.removeClass('is-snapped').hide();
         }
+        if (view.isDottingActive() && stretchState.$line) {
+            const lineIdx = parseInt(stretchState.$line.attr('id').replace('line-', ''), 10) || 0;
+            view.renderDotsForLine(stretchState.$line, null, lineIdx);
+        }
         stretchState = null;
     }
 
@@ -1048,6 +1232,11 @@ view.setupDragInteractions = function () {
             'width': '',
             'transform': ''
         });
+        if (view.isDottingActive()) {
+            const $line = $word.closest('p.line');
+            const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
+            view.renderDotsForLine($line, null, lineIdx);
+        }
     });
 
     // Reset button .btn-word-reset: resets BOTH margin-left and stretch
@@ -1079,7 +1268,7 @@ view.setupDragInteractions = function () {
 
     // Double-click empty line background: reset all words on that line
     $container.on('dblclick', 'p.line', function (e) {
-        if ($(e.target).closest('.word').length) return;
+        if ($(e.target).closest('.word, .line-dot-controls').length) return;
         $(this).find('.word').each(function () {
             this.style.marginLeft = '0px';
             this.style.width = '';
@@ -1089,6 +1278,114 @@ view.setupDragInteractions = function () {
                 'transform': ''
             });
         });
+        if (view.isDottingActive()) {
+            const lineIdx = parseInt($(this).attr('id').replace('line-', ''), 10) || 0;
+            view.renderDotsForLine($(this), null, lineIdx);
+        }
+    });
+
+    // Line dotting badge popover click handlers
+    $container.on('click', '.btn-line-dot-badge', function (e) {
+        e.stopPropagation();
+        const $badge = $(this);
+        const $controls = $badge.closest('.line-dot-controls');
+        const lineIdx = parseInt($controls.attr('data-line-idx'), 10);
+
+        // If clicking on already open popover button, toggle close
+        if ($controls.hasClass('is-open')) {
+            $('.line-dot-popover').remove();
+            $controls.removeClass('is-open');
+            return;
+        }
+
+        // Close any other open popovers
+        $('.line-dot-popover').remove();
+        $('.line-dot-controls').removeClass('is-open');
+
+        // Select this line in top toolbar
+        $('#dotting-line-select').val(lineIdx).trigger('change');
+
+        const cfg = view.getDottingConfig(lineIdx);
+        const $popover = $(`
+            <div class="line-dot-popover no-print">
+                <div class="popover-header">
+                    <strong>Dòng ${lineIdx + 1}</strong>
+                    <button type="button" class="popover-close">&times;</button>
+                </div>
+                <div class="popover-row">
+                    <label>Khoảng cách:</label>
+                    <div class="step-control">
+                        <button type="button" class="btn-step" data-action="dec">-</button>
+                        <span class="step-val">${cfg.spaces} ô</span>
+                        <button type="button" class="btn-step" data-action="inc">+</button>
+                    </div>
+                </div>
+                <div class="popover-row">
+                    <label>Số chấm:</label>
+                    <span class="step-val">${cfg.repetitions}</span>
+                </div>
+                <div class="popover-row">
+                    <label style="cursor: pointer;">
+                        <input type="checkbox" class="popover-fulldot" ${cfg.fullDot ? 'checked' : ''} /> Chấm hết
+                    </label>
+                </div>
+                ${cfg.isCustom ? '<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>' : ''}
+            </div>
+        `);
+
+        $controls.addClass('is-open').append($popover);
+    });
+
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.line-dot-controls').length) {
+            $('.line-dot-popover').remove();
+            $('.line-dot-controls').removeClass('is-open');
+        }
+    });
+
+    $container.on('click', '.popover-close', function (e) {
+        e.stopPropagation();
+        $('.line-dot-popover').remove();
+        $('.line-dot-controls').removeClass('is-open');
+    });
+
+    $container.on('click', '.line-dot-popover .btn-step', function (e) {
+        e.stopPropagation();
+        const action = $(this).attr('data-action');
+        const lineIdx = parseInt($(this).closest('.line-dot-controls').attr('data-line-idx'), 10);
+        const cfg = view.getDottingConfig(lineIdx);
+        let newSpaces = cfg.spaces + (action === 'inc' ? 1 : -1);
+        newSpaces = Math.max(1, Math.min(10, newSpaces));
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].spaces = newSpaces;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        $('#dotting-line-select').val(lineIdx).trigger('change');
+        view.render();
+        $(`#line-${lineIdx} .btn-line-dot-badge`).trigger('click');
+    });
+
+    $container.on('change', '.line-dot-popover .popover-fulldot', function (e) {
+        e.stopPropagation();
+        const lineIdx = parseInt($(this).closest('.line-dot-controls').attr('data-line-idx'), 10);
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].fullDot = this.checked;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        $('#dotting-line-select').val(lineIdx).trigger('change');
+        view.render();
+        $(`#line-${lineIdx} .btn-line-dot-badge`).trigger('click');
+    });
+
+    $container.on('click', '.line-dot-popover .btn-popover-reset', function (e) {
+        e.stopPropagation();
+        const lineIdx = parseInt($(this).closest('.line-dot-controls').attr('data-line-idx'), 10);
+        delete view.lineDotConfigs[lineIdx];
+        $('#dotting-line-select').val(lineIdx).trigger('change');
+        view.render();
+        $('.line-dot-popover').remove();
+        $('.line-dot-controls').removeClass('is-open');
     });
 };
 
@@ -1298,9 +1595,10 @@ view.exportBlackboardToPng = async function () {
                 ctx.restore();
             }
 
-            const dotConfig = view.getDottingConfig();
+            const dotConfig = view.getDottingConfig(bIdx);
             const hasText = words.length > 0;
-            if (dotConfig && dotConfig.enabled && (hasText || bIdx < dotConfig.linesCount)) {
+            const hasAnyText = ($('#input').val() || '').trim().length > 0;
+            if (dotConfig && dotConfig.enabled && hasAnyText && (hasText || bIdx < dotConfig.linesCount)) {
                 let rawLine = words.length > 0 ? words[0].text : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
                 const charUnit = model.getFirstCharUnit(rawLine);
                 const startPoint = model.getGlyphStartPoint(charUnit);
@@ -1311,7 +1609,8 @@ view.exportBlackboardToPng = async function () {
 
                 const dotY = baselineY - (startPoint.y * olyUnitPx);
                 const wordOffset = words.length > 0 ? (words[0].offsetLeft * S) : 0;
-                const startX0 = startX + wordOffset + (startPoint.x * olyUnitPx);
+                const firstStretch = words.length > 0 && words[0].stretch ? words[0].stretch : 1.0;
+                const startX0 = startX + wordOffset + (startPoint.x * olyUnitPx * firstStretch);
 
                 ctx.save();
                 if (isItalics) {
@@ -1466,6 +1765,8 @@ view.exportWhite11x14ToPng = async function () {
 
             const linesPerPage = isSmall ? 14 : 7;
             const dotConfig = view.getDottingConfig();
+            const $lines = $(boardEl).find('p.line');
+            const pageTexts = [];
 
             $lines.each(function (lIdx) {
                 const globalLineIdx = (pIdx * linesPerPage) + lIdx;
@@ -1502,7 +1803,9 @@ view.exportWhite11x14ToPng = async function () {
                 });
 
                 const hasText = words.length > 0;
-                if (dotConfig && dotConfig.enabled && (hasText || globalLineIdx < dotConfig.linesCount)) {
+                const hasAnyText = ($('#input').val() || '').trim().length > 0;
+                const lineDotConfig = view.getDottingConfig(globalLineIdx);
+                if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || globalLineIdx < lineDotConfig.linesCount)) {
                     let rawLineText = words.length > 0 ? words[0].text : '';
                     if (!rawLineText) {
                         const rawLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -1517,13 +1820,14 @@ view.exportWhite11x14ToPng = async function () {
 
                     const dotY = yPos - (startPoint.y * olyUnitPx);
                     const wordOffset = words.length > 0 ? words[0].offsetLeft : 0;
-                    const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx);
+                    const firstStretch = words.length > 0 && words[0].stretch ? words[0].stretch : 1.0;
+                    const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx * firstStretch);
 
-                    for (let j = 0; j < dotConfig.repetitions; j++) {
-                        if (hasText || dotConfig.fullDot || j === 0) {
-                            const dotX = startX0 + (j * blockWidth * dotConfig.spaces);
+                    for (let j = 0; j < lineDotConfig.repetitions; j++) {
+                        if (hasText || lineDotConfig.fullDot || j === 0) {
+                            const dotX = startX0 + (j * blockWidth * lineDotConfig.spaces);
                             ctx.beginPath();
-                            ctx.fillStyle = dotConfig.color;
+                            ctx.fillStyle = lineDotConfig.color;
                             ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
                             ctx.fill();
                         }
@@ -1604,8 +1908,9 @@ view.exportToPng = async function () {
         });
     });
 
-    const dotConfig = view.getDottingConfig();
-    if (lines.length === 0 || (!lines.some(l => l.words.length > 0) && !(dotConfig && dotConfig.enabled))) {
+    const hasAnyText = ($('#input').val() || '').trim().length > 0;
+    const dotConfig = hasAnyText ? view.getDottingConfig() : null;
+    if (lines.length === 0 || !hasAnyText) {
         alert("Chưa có nội dung để xuất ảnh!");
         return;
     }
@@ -1640,9 +1945,13 @@ view.exportToPng = async function () {
     });
 
     if (dotConfig && dotConfig.enabled) {
-        const maxDotsRight = subGridPx + (dotConfig.repetitions * bigGridPx * dotConfig.spaces);
-        if (maxDotsRight > maxLineRight) {
-            maxLineRight = maxDotsRight;
+        const totalLinesCount = Math.max(lines.length, dotConfig.linesCount || 0);
+        for (let idx = 0; idx < totalLinesCount; idx++) {
+            const lineCfg = view.getDottingConfig(idx);
+            const maxDotsRight = subGridPx + (lineCfg.repetitions * bigGridPx * lineCfg.spaces);
+            if (maxDotsRight > maxLineRight) {
+                maxLineRight = maxDotsRight;
+            }
         }
     }
 
@@ -1747,7 +2056,8 @@ view.exportToPng = async function () {
         for (let idx = 0; idx < totalLinesCount; idx++) {
             const lineObj = lines[idx];
             const hasText = lineObj && lineObj.words.length > 0;
-            if (!hasText && idx >= dotConfig.linesCount) break;
+            const lineDotConfig = view.getDottingConfig(idx);
+            if (!hasText && idx >= lineDotConfig.linesCount) break;
 
             const yPos = firstBaselineY + (idx * lineHeightPx);
             let rawLineText = hasText ? lineObj.words[0].text : '';
@@ -1760,13 +2070,14 @@ view.exportToPng = async function () {
 
             const dotY = yPos - (startPoint.y * olyUnitPx);
             const wordOffset = hasText ? lineObj.words[0].offsetLeft : 0;
-            const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx);
+            const firstStretch = hasText && lineObj.words[0].stretch ? lineObj.words[0].stretch : 1.0;
+            const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx * firstStretch);
 
-            for (let j = 0; j < dotConfig.repetitions; j++) {
-                if (hasText || dotConfig.fullDot || j === 0) {
-                    const dotX = startX0 + (j * bigGridPx * dotConfig.spaces);
+            for (let j = 0; j < lineDotConfig.repetitions; j++) {
+                if (hasText || lineDotConfig.fullDot || j === 0) {
+                    const dotX = startX0 + (j * bigGridPx * lineDotConfig.spaces);
                     ctx.beginPath();
-                    ctx.fillStyle = dotConfig.color;
+                    ctx.fillStyle = lineDotConfig.color;
                     ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
                     ctx.fill();
                 }
