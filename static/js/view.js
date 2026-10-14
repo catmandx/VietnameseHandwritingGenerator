@@ -13,8 +13,32 @@ view.escapeHtml = function (str) {
 view.lineDotConfigs = {};
 view.prevLineFirstChars = [];
 
+view.wordDotConfigs = {};
+
+view.getActiveDotConfig = function (charUnit, lineIndex, wordIndex) {
+    if (!charUnit) {
+        charUnit = 'a';
+    }
+    const wordKey = `${lineIndex}_${wordIndex || 0}`;
+    const wordCfg = view.wordDotConfigs && view.wordDotConfigs[wordKey];
+    const lineCfg = view.lineDotConfigs && view.lineDotConfigs[lineIndex];
+
+    // 1. Dynamic dotting check (runtime custom dot coordinates hook)
+    if (wordCfg && Array.isArray(wordCfg.customDots) && wordCfg.customDots.length > 0) {
+        return model.getGlyphDotConfig(charUnit, null, wordCfg.customDots);
+    }
+    if (lineCfg && Array.isArray(lineCfg.customDots) && lineCfg.customDots.length > 0) {
+        return model.getGlyphDotConfig(charUnit, null, lineCfg.customDots);
+    }
+
+    // 2. Selected dotConfigId check
+    const chosenId = (wordCfg && wordCfg.dotConfigId) || (lineCfg && lineCfg.dotConfigId);
+    return model.getGlyphDotConfig(charUnit, chosenId);
+};
+
 view.resetLineDotConfigs = function () {
     view.lineDotConfigs = {};
+    view.wordDotConfigs = {};
     if (window.model && typeof model.getFirstCharUnit === 'function') {
         view.prevLineFirstChars = ($('#input').val() || '').split('\n').map(l => model.getFirstCharUnit(l));
     }
@@ -41,6 +65,11 @@ view.syncLineDotConfigs = function (newLines) {
         if (i >= newLines.length || newFirstChars[i] !== view.prevLineFirstChars[i]) {
             if (view.lineDotConfigs && view.lineDotConfigs[i]) {
                 delete view.lineDotConfigs[i];
+            }
+            if (view.wordDotConfigs) {
+                Object.keys(view.wordDotConfigs).forEach(k => {
+                    if (k.startsWith(`${i}_`)) delete view.wordDotConfigs[k];
+                });
             }
         }
     }
@@ -423,7 +452,8 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         charUnit = found;
     }
 
-    const startPoint = model.getGlyphStartPoint(charUnit);
+    const activeDotConfig = view.getActiveDotConfig(charUnit, lineIndex, 0);
+    const dots = (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) ? activeDotConfig.dots : [{ x: 0.25, y: 1.00 }];
 
     // 2. Determine geometry units
     const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $line.closest('.result-text').hasClass('small') || $('#result').hasClass('small');
@@ -455,14 +485,13 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         }
     }
 
-    const dotY = baselineY - (startPoint.y * olyUnitPx);
-
-    // 4. Measure start X (accounting for word stretch!)
-    let startX0 = 0;
+    // 4. Measure base X and stretch
+    let baseWordX = 0;
+    let stretch = 1.0;
     const $firstWord = $line.children('.word').first();
     if ($firstWord.length) {
-        const stretch = parseFloat($firstWord.attr('data-stretch')) || 1.0;
-        startX0 = $firstWord[0].offsetLeft + (startPoint.x * olyUnitPx * stretch);
+        stretch = parseFloat($firstWord.attr('data-stretch')) || 1.0;
+        baseWordX = $firstWord[0].offsetLeft;
     } else {
         // On empty line, align with preceding line with words if possible
         let foundWordOffset = null;
@@ -476,14 +505,16 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
             }
         }
         if (foundWordOffset !== null) {
-            startX0 = foundWordOffset + (startPoint.x * olyUnitPx * foundWordStretch);
+            baseWordX = foundWordOffset;
+            stretch = foundWordStretch;
         } else {
             const $line0Word = $('#line-0').children('.word').first();
             if ($line0Word.length) {
-                const l0Stretch = parseFloat($line0Word.attr('data-stretch')) || 1.0;
-                startX0 = $line0Word[0].offsetLeft + (startPoint.x * olyUnitPx * l0Stretch);
+                baseWordX = $line0Word[0].offsetLeft;
+                stretch = parseFloat($line0Word.attr('data-stretch')) || 1.0;
             } else {
-                startX0 = startPoint.x * olyUnitPx;
+                baseWordX = 0;
+                stretch = 1.0;
             }
         }
     }
@@ -494,15 +525,19 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         // Line with text is a model line: ALWAYS draw all dots for that line!
         // Empty line is a practice line: draw all dots if fullDot is true, else only j === 0
         if (hasText || config.fullDot || j === 0) {
-            const dotX = startX0 + (j * blockWidth * config.spaces);
-            const $dot = $('<span class="guide-dot"></span>').css({
-                left: dotX + 'px',
-                top: dotY + 'px',
-                width: dotSizePx + 'px',
-                height: dotSizePx + 'px',
-                backgroundColor: config.color
+            dots.forEach((dot, dotIdx) => {
+                const dotX = baseWordX + (dot.x * olyUnitPx * stretch) + (j * blockWidth * config.spaces);
+                const dotY = baselineY - (dot.y * olyUnitPx);
+                const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
+                const $dot = $('<span class="guide-dot"></span>').css({
+                    left: dotX + 'px',
+                    top: dotY + 'px',
+                    width: dotSizePx + 'px',
+                    height: dotSizePx + 'px',
+                    backgroundColor: config.color
+                }).attr('title', dotTitle);
+                $dotsLayer.append($dot);
             });
-            $dotsLayer.append($dot);
         }
     }
     $line.append($dotsLayer);
@@ -897,10 +932,22 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
             const styleAttr = wordStyles.length ? ` style="${wordStyles.join('; ')};"` : '';
             const textStyleAttr = textStyles.length ? ` style="${textStyles.join('; ')};"` : '';
 
+            const charUnit = model.getFirstCharUnit(token.raw || token.text);
+            const activeDotConfig = view.getActiveDotConfig(charUnit, lineIndex, wordIndex);
+            const dotsCount = (activeDotConfig && activeDotConfig.dots) ? activeDotConfig.dots.length : 1;
+            const isCustomDotCfg = !!(lineDotConfig.dotConfigId || (view.wordDotConfigs && view.wordDotConfigs[`${lineIndex}_${wordIndex}`]));
+
             const dotBadgeHtml = (isDotActive && wordIndex === 0) ? `
                 <span class="line-dot-wrapper">
                     <button type="button" class="btn-line-dot-badge ${lineDotConfig.isCustom ? 'is-custom' : ''}" data-line-idx="${lineIndex}" title="Dòng ${lineIndex + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)">
                         <i class="fa-solid fa-circle-dot"></i> Cách ${lineDotConfig.spaces} ô
+                    </button>
+                </span>` : '';
+
+            const dotConfigBadgeHtml = isDotActive ? `
+                <span class="word-dot-wrapper">
+                    <button type="button" class="btn-word-dot-badge ${isCustomDotCfg ? 'is-custom' : ''}" data-line-idx="${lineIndex}" data-word-idx="${wordIndex}" data-char="${view.escapeHtml(charUnit)}" title="Cấu hình chấm chữ '${view.escapeHtml(charUnit)}': ${view.escapeHtml(activeDotConfig.name)} (${dotsCount} chấm)">
+                        <i class="fa-solid fa-braille"></i> ${dotsCount} chấm <i class="fa-solid fa-caret-down" style="font-size: 0.65em; margin-left: 2px;"></i>
                     </button>
                 </span>` : '';
 
@@ -910,6 +957,7 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
                     `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
                     `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
                     dotBadgeHtml +
+                    dotConfigBadgeHtml +
                 `</span>` +
                 `<span class="word-text"${textStyleAttr}>${view.escapeHtml(token.text)}</span>` +
                 `<span class="btn-word-stretch no-print" title="Kéo để kéo giãn chữ (Nhấp đúp để đặt lại cỡ chữ)"></span>` +
@@ -1366,6 +1414,24 @@ view.setupDragInteractions = function () {
         $('#dotting-line-select').val(lineIdx).trigger('change');
 
         const cfg = view.getDottingConfig(lineIdx);
+        const lineFirstWord = $line.children('.word').first();
+        const lineRawText = lineFirstWord.length ? (lineFirstWord.attr('data-raw') || lineFirstWord.find('.word-text').text()) : '';
+        const lineCharUnit = model.getFirstCharUnit(lineRawText);
+        const lineActiveDotCfg = view.getActiveDotConfig(lineCharUnit, lineIdx, 0);
+        const lineAvailableCfgs = model.getGlyphDotConfigs(lineCharUnit);
+
+        let cfgOptionsHtml = '';
+        if (lineAvailableCfgs && lineAvailableCfgs.length > 1) {
+            cfgOptionsHtml = `
+                <div class="popover-row">
+                    <label>Mẫu chấm:</label>
+                    <select class="form-select form-select-sm popover-cfg-select" style="max-width: 125px; font-size: 0.75rem; padding: 1px 4px;">
+                        ${lineAvailableCfgs.map(c => `<option value="${view.escapeHtml(c.id)}" ${c.id === lineActiveDotCfg.id ? 'selected' : ''}>${view.escapeHtml(c.name)} (${c.dots.length}c)</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        }
+
         const $popover = $(`
             <div class="line-dot-popover no-print">
                 <div class="popover-header">
@@ -1384,6 +1450,7 @@ view.setupDragInteractions = function () {
                     <label>Số chấm:</label>
                     <span class="step-val step-reps-val">${cfg.repetitions}</span>
                 </div>
+                ${cfgOptionsHtml}
                 <div class="popover-row">
                     <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                         <input type="checkbox" class="popover-fulldot" ${cfg.fullDot ? 'checked' : ''} /> Chấm hết dòng
@@ -1396,9 +1463,127 @@ view.setupDragInteractions = function () {
         $wrapper.append($popover);
     });
 
+    // Word dotting configuration popover click handler
+    $container.on('click', '.btn-word-dot-badge', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $badge = $(this);
+        const $wrapper = $badge.closest('.word-dot-wrapper');
+        const $word = $badge.closest('.word');
+        const $line = $badge.closest('p.line');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+        const wordIdx = parseInt($badge.attr('data-word-idx'), 10);
+        const charUnit = $badge.attr('data-char') || 'a';
+
+        // Toggle close if already open
+        if ($wrapper.children('.word-dot-config-popover').length) {
+            $('.word-dot-config-popover, .line-dot-popover').remove();
+            $('.word').removeClass('is-dotting-open');
+            $('p.line').removeClass('has-dot-popover');
+            return;
+        }
+
+        // Close any other open popovers
+        $('.word-dot-config-popover, .line-dot-popover').remove();
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+
+        $line.addClass('has-dot-popover');
+        $word.addClass('is-dotting-open');
+
+        const activeConfig = view.getActiveDotConfig(charUnit, lineIdx, wordIdx);
+        const configs = model.getGlyphDotConfigs(charUnit);
+
+        let configsHtml = '';
+        configs.forEach((cfg) => {
+            const isSelected = (cfg.id === activeConfig.id);
+            const dotCount = (cfg.dots && cfg.dots.length) || 1;
+            configsHtml += `
+                <div class="dot-cfg-item ${isSelected ? 'is-selected' : ''}" data-config-id="${view.escapeHtml(cfg.id)}">
+                    <div class="dot-cfg-item-main">
+                        <div class="dot-cfg-item-title">
+                            <strong>${view.escapeHtml(cfg.name)}</strong>
+                            <span class="badge bg-danger rounded-pill">${dotCount} chấm</span>
+                        </div>
+                        ${cfg.desc ? `<div class="dot-cfg-item-desc">${view.escapeHtml(cfg.desc)}</div>` : ''}
+                    </div>
+                    ${isSelected ? '<i class="fa-solid fa-check text-success dot-cfg-check"></i>' : ''}
+                </div>
+            `;
+        });
+
+        const $popover = $(`
+            <div class="word-dot-config-popover no-print" data-line-idx="${lineIdx}" data-word-idx="${wordIdx}" data-char="${view.escapeHtml(charUnit)}">
+                <div class="popover-header">
+                    <div class="d-flex align-items-center gap-1">
+                        <i class="fa-solid fa-braille text-danger"></i>
+                        <strong>Cấu hình chấm:</strong>
+                        <span class="badge bg-primary text-white" style="font-family: HP001, serif; font-size: 0.95rem; line-height: 1;">${view.escapeHtml(charUnit)}</span>
+                    </div>
+                    <button type="button" class="popover-close" title="Đóng">&times;</button>
+                </div>
+                <div class="dot-cfg-list">
+                    ${configsHtml}
+                </div>
+                <div class="popover-dynamic-teaser">
+                    <div class="dynamic-badge">
+                        <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> <strong>Chấm tự do (Sắp ra mắt)</strong>
+                    </div>
+                    <div class="dynamic-hint">
+                        Sắp xếp và định vị các điểm chấm tự do trực tiếp trên bảng.
+                    </div>
+                </div>
+            </div>
+        `);
+
+        $wrapper.append($popover);
+    });
+
+    $container.on('click', '.word-dot-config-popover .dot-cfg-item', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $item = $(this);
+        const $popover = $item.closest('.word-dot-config-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+        const wordIdx = parseInt($popover.attr('data-word-idx'), 10);
+        const configId = $item.attr('data-config-id');
+
+        if (!view.lineDotConfigs[lineIdx]) {
+            view.lineDotConfigs[lineIdx] = {};
+        }
+        view.lineDotConfigs[lineIdx].dotConfigId = configId;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        if (!view.wordDotConfigs) view.wordDotConfigs = {};
+        view.wordDotConfigs[`${lineIdx}_${wordIdx}`] = { dotConfigId: configId };
+
+        $('.word-dot-config-popover, .line-dot-popover').remove();
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+
+        $('#btn-reset-line-dotting').show();
+        view.render();
+    });
+
+    $container.on('change', '.line-dot-popover .popover-cfg-select', function (e) {
+        const $popover = $(this).closest('.line-dot-popover');
+        const $wrapper = $popover.closest('.line-dot-wrapper');
+        const $badge = $wrapper.children('.btn-line-dot-badge');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+        const newCfgId = $(this).val();
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].dotConfigId = newCfgId;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        $badge.addClass('is-custom');
+        $('#btn-reset-line-dotting').show();
+        view.render();
+    });
+
     $(document).on('click', function (e) {
-        if (!$(e.target).closest('.line-dot-wrapper, .line-dot-popover').length) {
-            $('.line-dot-popover').remove();
+        if (!$(e.target).closest('.line-dot-wrapper, .line-dot-popover, .word-dot-wrapper, .word-dot-config-popover').length) {
+            $('.line-dot-popover, .word-dot-config-popover').remove();
             $('.word').removeClass('is-dotting-open');
             $('p.line').removeClass('has-dot-popover');
         }
@@ -1407,7 +1592,7 @@ view.setupDragInteractions = function () {
     $container.on('click', '.popover-close', function (e) {
         e.stopPropagation();
         e.preventDefault();
-        $('.line-dot-popover').remove();
+        $('.line-dot-popover, .word-dot-config-popover').remove();
         $('.word').removeClass('is-dotting-open');
         $('p.line').removeClass('has-dot-popover');
     });
@@ -1488,6 +1673,11 @@ view.setupDragInteractions = function () {
         const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
 
         delete view.lineDotConfigs[lineIdx];
+        if (view.wordDotConfigs) {
+            Object.keys(view.wordDotConfigs).forEach(k => {
+                if (k.startsWith(`${lineIdx}_`)) delete view.wordDotConfigs[k];
+            });
+        }
         const defaultCfg = view.getDottingConfig(lineIdx);
 
         const $line = $(`#line-${lineIdx}`);
@@ -1496,6 +1686,7 @@ view.setupDragInteractions = function () {
                    .attr('title', `Dòng ${lineIdx + 1}: Cách ${defaultCfg.spaces} ô (Nhấp để chỉnh riêng)`)
                    .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${defaultCfg.spaces} ô`);
         });
+        $line.find('.btn-word-dot-badge').removeClass('is-custom');
 
         view.renderDotsForLine($line, null, lineIdx);
         view.updateDottingLineSelect();
@@ -1783,16 +1974,16 @@ view.exportBlackboardToPng = async function () {
             if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || bIdx < lineDotConfig.linesCount)) {
                 let rawLine = words.length > 0 ? (words[0].raw || rawInputLines[bIdx] || words[0].text) : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
                 const charUnit = model.getFirstCharUnit(rawLine);
-                const startPoint = model.getGlyphStartPoint(charUnit);
+                const activeDotConfig = view.getActiveDotConfig(charUnit, bIdx, 0);
+                const dots = (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) ? activeDotConfig.dots : [{ x: 0.25, y: 1.00 }];
 
                 const olyUnitPx = (isSmall ? 28.932 : 56.3) * S;
                 const blockWidth = 225.2 * S;
                 const dotRadius = (isSmall ? 4 : 7) * S;
 
-                const dotY = baselineY - (startPoint.y * olyUnitPx);
                 const wordOffset = words.length > 0 ? (words[0].offsetLeft * S) : 0;
                 const firstStretch = words.length > 0 && words[0].stretch ? words[0].stretch : 1.0;
-                const startX0 = startX + wordOffset + (startPoint.x * olyUnitPx * firstStretch);
+                const baseWordX = startX + wordOffset;
 
                 ctx.save();
                 if (isItalics) {
@@ -1803,14 +1994,17 @@ view.exportBlackboardToPng = async function () {
 
                 for (let j = 0; j < lineDotConfig.repetitions; j++) {
                     if (hasText || lineDotConfig.fullDot || j === 0) {
-                        const dotX = startX0 + (j * blockWidth * lineDotConfig.spaces);
-                        ctx.beginPath();
-                        ctx.fillStyle = lineDotConfig.color;
-                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-                        ctx.lineWidth = 1 * S;
-                        ctx.stroke();
+                        for (const dot of dots) {
+                            const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + (j * blockWidth * lineDotConfig.spaces);
+                            const dotY = baselineY - (dot.y * olyUnitPx);
+                            ctx.beginPath();
+                            ctx.fillStyle = lineDotConfig.color;
+                            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                            ctx.lineWidth = 1 * S;
+                            ctx.stroke();
+                        }
                     }
                 }
                 ctx.restore();
@@ -1992,24 +2186,27 @@ view.exportWhite11x14ToPng = async function () {
                         rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
                     }
                     const charUnit = model.getFirstCharUnit(rawLineText);
-                    const startPoint = model.getGlyphStartPoint(charUnit);
+                    const activeDotConfig = view.getActiveDotConfig(charUnit, globalLineIdx, 0);
+                    const dots = (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) ? activeDotConfig.dots : [{ x: 0.25, y: 1.00 }];
 
                     const olyUnitPx = isSmall ? 9.6 : 19.2;
                     const blockWidth = 76.8;
                     const dotRadius = isSmall ? 2.5 : 3.5;
 
-                    const dotY = yPos - (startPoint.y * olyUnitPx);
                     const wordOffset = words.length > 0 ? words[0].offsetLeft : 0;
                     const firstStretch = words.length > 0 && words[0].stretch ? words[0].stretch : 1.0;
-                    const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx * firstStretch);
+                    const baseWordX = gridOriginX + wordOffset;
 
                     for (let j = 0; j < lineDotConfig.repetitions; j++) {
                         if (hasText || lineDotConfig.fullDot || j === 0) {
-                            const dotX = startX0 + (j * blockWidth * lineDotConfig.spaces);
-                            ctx.beginPath();
-                            ctx.fillStyle = lineDotConfig.color;
-                            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                            ctx.fill();
+                            for (const dot of dots) {
+                                const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + (j * blockWidth * lineDotConfig.spaces);
+                                const dotY = yPos - (dot.y * olyUnitPx);
+                                ctx.beginPath();
+                                ctx.fillStyle = lineDotConfig.color;
+                                ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
                         }
                     }
                 }
@@ -2246,20 +2443,23 @@ view.exportToPng = async function () {
                 rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
             }
             const charUnit = model.getFirstCharUnit(rawLineText);
-            const startPoint = model.getGlyphStartPoint(charUnit);
+            const activeDotConfig = view.getActiveDotConfig(charUnit, idx, 0);
+            const dots = (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) ? activeDotConfig.dots : [{ x: 0.25, y: 1.00 }];
 
-            const dotY = yPos - (startPoint.y * olyUnitPx);
             const wordOffset = hasText ? lineObj.words[0].offsetLeft : 0;
             const firstStretch = hasText && lineObj.words[0].stretch ? lineObj.words[0].stretch : 1.0;
-            const startX0 = gridOriginX + wordOffset + (startPoint.x * olyUnitPx * firstStretch);
+            const baseWordX = gridOriginX + wordOffset;
 
             for (let j = 0; j < lineDotConfig.repetitions; j++) {
                 if (hasText || lineDotConfig.fullDot || j === 0) {
-                    const dotX = startX0 + (j * bigGridPx * lineDotConfig.spaces);
-                    ctx.beginPath();
-                    ctx.fillStyle = lineDotConfig.color;
-                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                    ctx.fill();
+                    for (const dot of dots) {
+                        const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + (j * bigGridPx * lineDotConfig.spaces);
+                        const dotY = yPos - (dot.y * olyUnitPx);
+                        ctx.beginPath();
+                        ctx.fillStyle = lineDotConfig.color;
+                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             }
         }

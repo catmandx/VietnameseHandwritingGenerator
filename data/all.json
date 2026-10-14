@@ -60,9 +60,38 @@
       }
     ],
     "startPoint": {
-      "x": 1.5,
-      "y": 1.5
-    }
+      "x": 0.65,
+      "y": 1.75
+    },
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm: Dưới ĐK 3 khoảng 2/3 ô",
+        "dots": [
+          { "x": 0.65, "y": 1.75, "label": "Đặt bút" }
+        ]
+      },
+      {
+        "id": "strokes",
+        "name": "2. Bắt đầu 2 nét",
+        "desc": "2 chấm: Bắt đầu nét cong kín & nét móc ngược",
+        "dots": [
+          { "x": 0.65, "y": 1.75, "label": "Nét 1" },
+          { "x": 1.00, "y": 2.00, "label": "Nét 2" }
+        ]
+      },
+      {
+        "id": "stages",
+        "name": "3. Đầy đủ các điểm uốn",
+        "desc": "3 chấm: Đặt bút, chuyển nét móc và dừng bút",
+        "dots": [
+          { "x": 0.65, "y": 1.75, "label": "Đặt bút" },
+          { "x": 1.00, "y": 2.00, "label": "Nét 2" },
+          { "x": 1.50, "y": 1.00, "label": "Dừng bút" }
+        ]
+      }
+    ]
   },
   "b": {
     "baseGlyph": 98,
@@ -3392,6 +3421,40 @@
           "level": "563"
         }
       }
+    ],
+    "startPoint": {
+      "x": 0.40,
+      "y": 4.00
+    },
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm: Bắt đầu nét móc ngược trái (ĐK 6)",
+        "dots": [
+          { "x": 0.40, "y": 4.00, "label": "Nét 1" }
+        ]
+      },
+      {
+        "id": "strokes",
+        "name": "2. Bắt đầu các nét",
+        "desc": "2 chấm: Bắt đầu Nét 1 & Nét 2 riêng biệt",
+        "dots": [
+          { "x": 0.40, "y": 4.00, "label": "Nét 1" },
+          { "x": 0.80, "y": 4.50, "label": "Nét 2" }
+        ]
+      },
+      {
+        "id": "stages",
+        "name": "3. Chi tiết các điểm neo",
+        "desc": "4 chấm: Đặt bút, bắt đầu nét 2, thắt lưng, dừng bút",
+        "dots": [
+          { "x": 0.40, "y": 4.00, "label": "Đặt bút" },
+          { "x": 0.80, "y": 4.50, "label": "Bắt đầu nét 2" },
+          { "x": 1.30, "y": 2.50, "label": "Thắt lưng" },
+          { "x": 0.80, "y": 2.00, "label": "Dừng bút" }
+        ]
+      }
     ]
   },
   "Ă": {
@@ -3749,6 +3812,42 @@
         "accent": {
           "level": "965"
         }
+      }
+    ],
+    "startPoint": {
+      "x": 0.40,
+      "y": 4.00
+    },
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm: Bắt đầu Nét 1 cong trái",
+        "dots": [
+          { "x": 0.40, "y": 4.00, "label": "Nét 1" }
+        ]
+      },
+      {
+        "id": "strokes",
+        "name": "2. Bắt đầu các nét",
+        "desc": "3 chấm: Nét 1 cong trái, Nét 2 khuyết xuôi, Nét 3 lượn ngang",
+        "dots": [
+          { "x": 0.40, "y": 4.00, "label": "Nét 1" },
+          { "x": 1.80, "y": 4.50, "label": "Nét 2" },
+          { "x": 0.80, "y": 2.50, "label": "Nét 3" }
+        ]
+      },
+      {
+        "id": "stages",
+        "name": "3. Chi tiết 5 điểm neo",
+        "desc": "5 chấm: Đầy đủ các điểm uốn chuyển hướng của chữ H",
+        "dots": [
+          { "x": 0.40, "y": 4.00, "label": "Đặt bút nét 1" },
+          { "x": 1.00, "y": 1.00, "label": "Dừng nét 1" },
+          { "x": 1.80, "y": 4.50, "label": "Bắt đầu nét 2" },
+          { "x": 2.20, "y": 1.00, "label": "Dừng nét 2" },
+          { "x": 0.80, "y": 2.50, "label": "Nét 3" }
+        ]
       }
     ]
   },

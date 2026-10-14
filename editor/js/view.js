@@ -11,8 +11,9 @@ view.showComponents = function(name){
             let baseListHtml = baseList.html();
             let sortedData = Object.fromEntries(Object.entries(model.glyphData).sort())
             for (const [base, data] of Object.entries(sortedData)) {
-                let hasDot = data && data.startPoint && typeof data.startPoint.x === 'number';
-                let dotBadge = hasDot ? `<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="Điểm đặt bút: (${data.startPoint.x}, ${data.startPoint.y})">●</span>` : '';
+                let hasDot = data && ((data.dotConfigs && data.dotConfigs.length) || (data.startPoint && typeof data.startPoint.x === 'number'));
+                let dotCount = (data && data.dotConfigs && data.dotConfigs.length) ? `${data.dotConfigs.length} cấu hình` : (hasDot ? '1 điểm' : '');
+                let dotBadge = hasDot ? `<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="Cấu hình chấm: ${dotCount}">●</span>` : '';
                 baseListHtml += `
                     ${components.baseCard.replaceAll("{{name}}", view.escapeXml(base)).replace("{{dotBadge}}", dotBadge)}
                 `
@@ -69,7 +70,7 @@ view.populateEditForm = function (e){
         view.populateTypeEditor(type, numOfTypes);
     }
     const glyphInfo = view.getFirstStandaloneLevelGlyph(charData, baseChar);
-    view.initStartPointEditor(baseChar, charData.startPoint, glyphInfo);
+    view.initStartPointEditor(baseChar, charData.startPoint, glyphInfo, charData.dotConfigs);
 }
 
 view.setUpEditModal = function (){
@@ -183,8 +184,10 @@ view.updateBaseCardBadge = function(baseChar) {
     if (!$card.length) return;
     $card.find('.dot-badge').remove();
     const data = model.glyphData[baseChar];
-    if (data && data.startPoint && typeof data.startPoint.x === 'number') {
-        $card.prepend(`<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="Điểm đặt bút: (${data.startPoint.x}, ${data.startPoint.y})">●</span>`);
+    let hasDot = data && ((data.dotConfigs && data.dotConfigs.length) || (data.startPoint && typeof data.startPoint.x === 'number'));
+    if (hasDot) {
+        let count = (data.dotConfigs && data.dotConfigs.length) ? `${data.dotConfigs.length} cấu hình` : '1 điểm';
+        $card.prepend(`<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="Cấu hình chấm: ${count}">●</span>`);
     }
 };
 
@@ -266,7 +269,7 @@ view.getFirstStandaloneLevelGlyph = function(charData, fallbackChar) {
     };
 };
 
-view.initStartPointEditor = function(baseChar, startPoint, glyphInfo) {
+view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs) {
     const $container = $('#startPointPreviewContainer');
     if (!$container.length) return;
 
@@ -290,11 +293,49 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo) {
     const HEIGHT = ROWS * CELL_PX; // 324px
     const ORIGIN_X = 36; // 1 ô ly margin on left (X = 0)
     const BASELINE_Y = 216; // 6 ô ly from top, leaving 3 ô ly for descenders (Y = 0)
-    const FONT_SIZE = CELL_PX * (2048 / 412); // ~178.95px (so 2-li lowercase letters are exactly 72px high = 2 cells)
+    const FONT_SIZE = CELL_PX * (2048 / 412); // ~178.95px
 
-    // Build SVG Grid with ô ly lines
+    // 1. Initialize configurations
+    let configs = [];
+    let isInitiallyEnabled = false;
+
+    if (dotConfigs && Array.isArray(dotConfigs) && dotConfigs.length > 0) {
+        configs = JSON.parse(JSON.stringify(dotConfigs));
+        isInitiallyEnabled = true;
+    } else if (startPoint && typeof startPoint.x === 'number' && typeof startPoint.y === 'number') {
+        configs = [{
+            id: 'start',
+            name: '1. Điểm đặt bút (Chuẩn)',
+            desc: '1 chấm chuẩn',
+            dots: [{ x: startPoint.x, y: startPoint.y, label: 'Nét 1' }]
+        }];
+        isInitiallyEnabled = true;
+    } else if (window.model && window.model.defaultDotConfigs && window.model.defaultDotConfigs[baseChar]) {
+        configs = JSON.parse(JSON.stringify(window.model.defaultDotConfigs[baseChar]));
+        isInitiallyEnabled = false;
+    } else {
+        let defaultX = 0.50;
+        let defaultY = 1.75;
+        if (window.model && window.model.defaultStartPoints && window.model.defaultStartPoints[baseChar]) {
+            defaultX = window.model.defaultStartPoints[baseChar].x;
+            defaultY = window.model.defaultStartPoints[baseChar].y;
+        }
+        configs = [{
+            id: 'start',
+            name: '1. Điểm đặt bút (Chuẩn)',
+            desc: '1 chấm chuẩn',
+            dots: [{ x: defaultX, y: defaultY, label: 'Nét 1' }]
+        }];
+        isInitiallyEnabled = false;
+    }
+
+    let activeConfigIdx = 0;
+    let activeDotIdx = 0;
+    let isEnabled = isInitiallyEnabled;
+
+    // 2. Build SVG Grid
     let svgHtml = `
-    <svg id="startPointSvg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" style="display: block; width: 100%; height: 100%;">
+    <svg id="startPointSvg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" style="display: block; width: 100%; height: 100%; cursor: crosshair;">
         <defs>
             <pattern id="subgrid" width="9" height="9" patternUnits="userSpaceOnUse">
                 <path d="M 9 0 L 0 0 0 9" fill="none" stroke="#f1f5f9" stroke-width="0.75" />
@@ -330,70 +371,324 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo) {
         <line x1="${ORIGIN_X}" y1="0" x2="${ORIGIN_X}" y2="${HEIGHT}" stroke="#2563eb" stroke-width="1.5" />
         <text x="${ORIGIN_X + 4}" y="${HEIGHT - 6}" font-size="9" font-weight="bold" fill="#2563eb">X=0</text>
 
-        <!-- Render Glyph (First Level No-Need-Prev standalone glyph) -->
+        <!-- Render Glyph -->
         <text id="previewGlyphText" x="${ORIGIN_X}" y="${BASELINE_Y}" font-family="HP001, serif" font-size="${FONT_SIZE}" fill="#1e293b" font-weight="bold" pointer-events="none" style="user-select: none;">${view.escapeXml(displayGlyph)}</text>
 
-        <!-- Draggable Dot Handle -->
-        <g id="svgDotGroup" style="display: none; cursor: grab;">
-            <circle id="svgDotHalo" cx="0" cy="0" r="14" fill="rgba(239, 68, 68, 0.25)"></circle>
-            <circle id="svgDotCenter" cx="0" cy="0" r="6" fill="#ef4444" stroke="#ffffff" stroke-width="2"></circle>
-            <rect id="svgDotBadgeBg" x="-32" y="-25" width="64" height="16" rx="4" fill="rgba(15, 23, 42, 0.85)"></rect>
-            <text id="svgDotCoords" x="0" y="-13" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">(0, 0)</text>
-        </g>
+        <!-- SVG Dots Layer -->
+        <g id="svgDotsLayer"></g>
     </svg>
     `;
 
     $container.html(svgHtml);
 
     const $svg = $('#startPointSvg');
-    const $dotGroup = $('#svgDotGroup');
-    const $dotCoords = $('#svgDotCoords');
+    const $dotsLayer = $('#svgDotsLayer');
     const $hasStartPoint = $('#hasStartPoint');
-    const $inputX = $('#startPointX');
-    const $inputY = $('#startPointY');
+    const $inputX = $('#dotInputX');
+    const $inputY = $('#dotInputY');
+    const $inputLabel = $('#dotInputLabel');
+    const $inputConfigName = $('#dotConfigName');
+    const $inputConfigDesc = $('#dotConfigDesc');
     const $btnSnap = $('#btnSnapOly');
-    const $btnClear = $('#btnClearStartPoint');
+    const $btnAddDot = $('#btnAddDot');
+    const $btnDeleteDot = $('#btnDeleteDot');
+    const $btnAddNewConfig = $('#btnAddNewConfig');
+    const $btnDeleteCurrentConfig = $('#btnDeleteCurrentConfig');
+    const $tabsContainer = $('#dotConfigTabsContainer');
+    const $dotsListContainer = $('#configDotsListContainer');
+    const $dotConfigsJson = $('#dotConfigsJson');
+    const $hiddenX = $('#startPointX');
+    const $hiddenY = $('#startPointY');
 
-    function updateDotPosition(xOly, yOly, active) {
-        if (!active) {
-            $dotGroup.hide();
+    function getCurrentConfig() {
+        if (!configs[activeConfigIdx]) {
+            activeConfigIdx = 0;
+        }
+        return configs[activeConfigIdx];
+    }
+
+    function getCurrentDot() {
+        const cfg = getCurrentConfig();
+        if (!cfg.dots || cfg.dots.length === 0) {
+            cfg.dots = [{ x: 0.50, y: 1.75, label: 'Nét 1' }];
+        }
+        if (!cfg.dots[activeDotIdx]) {
+            activeDotIdx = 0;
+        }
+        return cfg.dots[activeDotIdx];
+    }
+
+    function syncHiddenInputs() {
+        $hasStartPoint.prop('checked', isEnabled);
+        if (isEnabled && configs.length > 0) {
+            $dotConfigsJson.val(JSON.stringify(configs));
+            const firstDot = configs[0]?.dots?.[0];
+            if (firstDot && typeof firstDot.x === 'number' && typeof firstDot.y === 'number') {
+                $hiddenX.val(firstDot.x.toFixed(2));
+                $hiddenY.val(firstDot.y.toFixed(2));
+            } else {
+                $hiddenX.val('');
+                $hiddenY.val('');
+            }
+        } else {
+            $dotConfigsJson.val('');
+            $hiddenX.val('');
+            $hiddenY.val('');
+        }
+    }
+
+    function renderConfigTabs() {
+        let html = '';
+        configs.forEach((cfg, idx) => {
+            const isActive = (idx === activeConfigIdx);
+            const btnClass = isActive ? 'btn-primary text-white shadow-sm' : 'btn-outline-secondary bg-white';
+            const dotCount = (cfg.dots && cfg.dots.length) || 0;
+            html += `
+                <button type="button" class="btn btn-sm ${btnClass} config-tab-pill py-1 px-2 d-inline-flex align-items-center gap-1" data-config-idx="${idx}" style="font-size: 0.8rem;">
+                    <span>${view.escapeXml(cfg.name || ('Cấu hình ' + (idx + 1)))}</span>
+                    <span class="badge ${isActive ? 'bg-white text-primary' : 'bg-secondary text-white'} rounded-pill" style="font-size: 0.68rem;">${dotCount} chấm</span>
+                </button>
+            `;
+        });
+        $tabsContainer.html(html);
+    }
+
+    function renderConfigMetadata() {
+        const cfg = getCurrentConfig();
+        $inputConfigName.val(cfg.name || '');
+        $inputConfigDesc.val(cfg.desc || '');
+    }
+
+    function renderDotsList() {
+        const cfg = getCurrentConfig();
+        let html = '';
+        cfg.dots.forEach((dot, idx) => {
+            const isActive = (idx === activeDotIdx);
+            const badgeClass = isActive ? 'bg-danger text-white shadow-sm' : 'bg-light text-dark border';
+            const labelStr = dot.label ? `: ${view.escapeXml(dot.label)}` : '';
+            html += `
+                <button type="button" class="btn btn-xs ${badgeClass} dot-item-pill py-0 px-2" data-dot-idx="${idx}" style="font-size: 0.75rem; cursor: pointer;">
+                    <strong>Chấm ${idx + 1}</strong>${labelStr} <span class="small text-muted ${isActive ? 'text-white-50' : ''}">(${dot.x.toFixed(2)}, ${dot.y.toFixed(2)})</span>
+                </button>
+            `;
+        });
+        $dotsListContainer.html(html);
+    }
+
+    function renderActiveDotInputs() {
+        const dot = getCurrentDot();
+        $('#selectedDotHeading').html(`
+            <i class="fa-solid fa-circle-dot text-danger"></i> Chấm đang chọn: <strong>Chấm ${activeDotIdx + 1}</strong>
+        `);
+        $inputX.val(dot.x.toFixed(2));
+        $inputY.val(dot.y.toFixed(2));
+        $inputLabel.val(dot.label || '');
+    }
+
+    function renderSvgDots() {
+        $dotsLayer.empty();
+        if (!isEnabled) return;
+
+        const cfg = getCurrentConfig();
+        cfg.dots.forEach((dot, idx) => {
+            const px = ORIGIN_X + dot.x * CELL_PX;
+            const py = BASELINE_Y - dot.y * CELL_PX;
+            const isActive = (idx === activeDotIdx);
+
+            let $g = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'))
+                .attr('class', `svg-dot-node ${isActive ? 'is-active' : ''}`)
+                .attr('data-dot-idx', idx)
+                .attr('transform', `translate(${px}, ${py})`)
+                .css('cursor', isActive ? 'grab' : 'pointer');
+
+            if (isActive) {
+                // Active Halo
+                let $halo = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 15)
+                    .attr('fill', 'rgba(239, 68, 68, 0.25)');
+                // Active Center
+                let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 7)
+                    .attr('fill', '#ef4444')
+                    .attr('stroke', '#ffffff').attr('stroke-width', 2);
+                // Active Tooltip
+                let tooltipText = `${dot.label || ('Chấm ' + (idx + 1))}: (${dot.x.toFixed(2)}, ${dot.y.toFixed(2)})`;
+                let badgeWidth = Math.max(64, tooltipText.length * 6.5);
+                let $badgeBg = $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
+                    .attr('x', -badgeWidth / 2).attr('y', -26)
+                    .attr('width', badgeWidth).attr('height', 16)
+                    .attr('rx', 4).attr('fill', 'rgba(15, 23, 42, 0.88)');
+                let $badgeText = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
+                    .attr('x', 0).attr('y', -14)
+                    .attr('font-size', '10').attr('font-weight', 'bold')
+                    .attr('fill', '#ffffff').attr('text-anchor', 'middle')
+                    .text(tooltipText);
+
+                $g.append($halo).append($center).append($badgeBg).append($badgeText);
+            } else {
+                // Secondary Dot
+                let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 6)
+                    .attr('fill', '#3b82f6')
+                    .attr('stroke', '#ffffff').attr('stroke-width', 1.5);
+                let $numBadge = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
+                    .attr('x', 8).attr('y', -6)
+                    .attr('font-size', '9').attr('font-weight', 'bold')
+                    .attr('fill', '#1e40af')
+                    .text(`${idx + 1}`);
+
+                $g.append($center).append($numBadge);
+            }
+
+            $dotsLayer.append($g);
+        });
+    }
+
+    function renderAll() {
+        renderConfigTabs();
+        renderConfigMetadata();
+        renderDotsList();
+        renderActiveDotInputs();
+        renderSvgDots();
+        syncHiddenInputs();
+    }
+
+    // Initial render
+    renderAll();
+
+    // 3. User Interactions
+    // Config Tab Selection
+    $tabsContainer.on('click', '.config-tab-pill', function(e) {
+        e.preventDefault();
+        activeConfigIdx = parseInt($(this).attr('data-config-idx'), 10) || 0;
+        activeDotIdx = 0;
+        renderAll();
+    });
+
+    // Dot Pill Selection
+    $dotsListContainer.on('click', '.dot-item-pill', function(e) {
+        e.preventDefault();
+        activeDotIdx = parseInt($(this).attr('data-dot-idx'), 10) || 0;
+        renderDotsList();
+        renderActiveDotInputs();
+        renderSvgDots();
+    });
+
+    // SVG Dot Click / Selection
+    $dotsLayer.on('mousedown touchstart', '.svg-dot-node', function(e) {
+        e.stopPropagation();
+        const clickedIdx = parseInt($(this).attr('data-dot-idx'), 10);
+        if (!isNaN(clickedIdx)) {
+            activeDotIdx = clickedIdx;
+            renderDotsList();
+            renderActiveDotInputs();
+            renderSvgDots();
+        }
+    });
+
+    // Metadata changes
+    $inputConfigName.on('input change', function() {
+        getCurrentConfig().name = $(this).val();
+        renderConfigTabs();
+        syncHiddenInputs();
+    });
+
+    $inputConfigDesc.on('input change', function() {
+        getCurrentConfig().desc = $(this).val();
+        syncHiddenInputs();
+    });
+
+    // Active Dot Coordinate Inputs
+    function onDotInputChange() {
+        const xVal = parseFloat($inputX.val());
+        const yVal = parseFloat($inputY.val());
+        const labelVal = $inputLabel.val().trim();
+        const dot = getCurrentDot();
+        if (!isNaN(xVal)) dot.x = Math.round(Math.max(-0.5, Math.min(6.5, xVal)) * 100) / 100;
+        if (!isNaN(yVal)) dot.y = Math.round(Math.max(-3.0, Math.min(6.0, yVal)) * 100) / 100;
+        dot.label = labelVal;
+        renderDotsList();
+        renderSvgDots();
+        syncHiddenInputs();
+    }
+    $inputX.on('input change', onDotInputChange);
+    $inputY.on('input change', onDotInputChange);
+    $inputLabel.on('input change', onDotInputChange);
+
+    // Toggle switch
+    $hasStartPoint.on('change', function() {
+        isEnabled = this.checked;
+        renderAll();
+    });
+
+    // Add Dot
+    $btnAddDot.on('click', function() {
+        const cfg = getCurrentConfig();
+        const curDot = getCurrentDot();
+        const newX = Math.round(Math.min(6.0, curDot.x + 0.5) * 100) / 100;
+        const newY = Math.round(curDot.y * 100) / 100;
+        cfg.dots.push({
+            x: newX,
+            y: newY,
+            label: `Nét ${cfg.dots.length + 1}`
+        });
+        activeDotIdx = cfg.dots.length - 1;
+        isEnabled = true;
+        renderAll();
+    });
+
+    // Delete Dot
+    $btnDeleteDot.on('click', function() {
+        const cfg = getCurrentConfig();
+        if (cfg.dots.length <= 1) {
+            toastr.info('Mỗi cấu hình cần ít nhất 1 điểm chấm.');
             return;
         }
-        const px = ORIGIN_X + xOly * CELL_PX;
-        const py = BASELINE_Y - yOly * CELL_PX;
-        $dotGroup.attr('transform', `translate(${px}, ${py})`);
-        $dotCoords.text(`(${xOly.toFixed(2)}, ${yOly.toFixed(2)})`);
-        $dotGroup.show();
-    }
+        cfg.dots.splice(activeDotIdx, 1);
+        activeDotIdx = Math.max(0, activeDotIdx - 1);
+        renderAll();
+    });
 
-    function setCoordinates(xOly, yOly) {
-        xOly = Math.max(-0.5, Math.min(6.5, xOly));
-        yOly = Math.max(-3.0, Math.min(6.0, yOly));
+    // Add New Config
+    $btnAddNewConfig.on('click', function() {
+        const curDot = getCurrentDot();
+        const newConfigNum = configs.length + 1;
+        configs.push({
+            id: 'cfg_' + Date.now(),
+            name: `${newConfigNum}. Cấu hình mới`,
+            desc: 'Giai đoạn tập viết',
+            dots: [{ x: curDot.x, y: curDot.y, label: 'Nét 1' }]
+        });
+        activeConfigIdx = configs.length - 1;
+        activeDotIdx = 0;
+        isEnabled = true;
+        renderAll();
+    });
 
-        const rx = Math.round(xOly * 100) / 100;
-        const ry = Math.round(yOly * 100) / 100;
+    // Delete Current Config
+    $btnDeleteCurrentConfig.on('click', function() {
+        if (configs.length <= 1) {
+            toastr.warning('Chữ cần giữ lại ít nhất 1 cấu hình. Bạn có thể tắt "Bật cấu hình chấm" nếu không muốn hiển thị.');
+            return;
+        }
+        configs.splice(activeConfigIdx, 1);
+        activeConfigIdx = Math.max(0, activeConfigIdx - 1);
+        activeDotIdx = 0;
+        renderAll();
+    });
 
-        $inputX.val(rx.toFixed(2));
-        $inputY.val(ry.toFixed(2));
-        $hasStartPoint.prop('checked', true);
+    // Snap to 0.25 ô ly
+    $btnSnap.on('click', function() {
+        const dot = getCurrentDot();
+        dot.x = Math.round(dot.x * 4) / 4;
+        dot.y = Math.round(dot.y * 4) / 4;
+        renderActiveDotInputs();
+        renderDotsList();
+        renderSvgDots();
+        syncHiddenInputs();
+    });
 
-        updateDotPosition(rx, ry, true);
-    }
-
-    // Populate initial state
-    if (startPoint && typeof startPoint.x === 'number' && typeof startPoint.y === 'number') {
-        $hasStartPoint.prop('checked', true);
-        $inputX.val(startPoint.x.toFixed(2));
-        $inputY.val(startPoint.y.toFixed(2));
-        updateDotPosition(startPoint.x, startPoint.y, true);
-    } else {
-        $hasStartPoint.prop('checked', false);
-        $inputX.val('');
-        $inputY.val('');
-        updateDotPosition(0, 0, false);
-    }
-
-    // Interaction handling: Dragging and clicking on SVG
+    // SVG Dragging & Clicking
     let isDragging = false;
 
     function getOlyFromEvent(e) {
@@ -406,86 +701,50 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo) {
         const py = (clientY - rect.top) * scaleY;
         const xOly = (px - ORIGIN_X) / CELL_PX;
         const yOly = (BASELINE_Y - py) / CELL_PX;
-        return { x: xOly, y: yOly };
+        return {
+            x: Math.round(Math.max(-0.5, Math.min(6.5, xOly)) * 100) / 100,
+            y: Math.round(Math.max(-3.0, Math.min(6.0, yOly)) * 100) / 100
+        };
     }
 
     $container.on('mousedown touchstart', function(e) {
-        if (e.target.id === 'hasStartPoint') return;
+        if (!isEnabled) {
+            isEnabled = true;
+            $hasStartPoint.prop('checked', true);
+        }
         isDragging = true;
-        $dotGroup.css('cursor', 'grabbing');
         const pos = getOlyFromEvent(e);
-        setCoordinates(pos.x, pos.y);
+        const dot = getCurrentDot();
+        dot.x = pos.x;
+        dot.y = pos.y;
+        renderActiveDotInputs();
+        renderDotsList();
+        renderSvgDots();
+        syncHiddenInputs();
         e.preventDefault();
     });
 
     $(window).off('.startPoint');
     $(window).on('mousemove.startPoint touchmove.startPoint', function(e) {
-        if (!isDragging) return;
+        if (!isDragging || !isEnabled) return;
         const pos = getOlyFromEvent(e);
-        setCoordinates(pos.x, pos.y);
+        const dot = getCurrentDot();
+        dot.x = pos.x;
+        dot.y = pos.y;
+        renderActiveDotInputs();
+        renderDotsList();
+        renderSvgDots();
+        syncHiddenInputs();
     });
 
     $(window).on('mouseup.startPoint touchend.startPoint', function() {
         if (isDragging) {
             isDragging = false;
-            $dotGroup.css('cursor', 'grab');
         }
     });
 
-    // Cleanup window handlers when modal closes
     $('#editBaseModal').one('hidden.bs.modal', function() {
         $(window).off('.startPoint');
-    });
-
-    // Direct manual inputs
-    function onManualInputChange() {
-        const xVal = parseFloat($inputX.val());
-        const yVal = parseFloat($inputY.val());
-        if (!isNaN(xVal) && !isNaN(yVal)) {
-            $hasStartPoint.prop('checked', true);
-            updateDotPosition(xVal, yVal, true);
-        } else if (isNaN(xVal) && isNaN(yVal)) {
-            $hasStartPoint.prop('checked', false);
-            updateDotPosition(0, 0, false);
-        }
-    }
-    $inputX.on('input change', onManualInputChange);
-    $inputY.on('input change', onManualInputChange);
-
-    // Toggle switch
-    $hasStartPoint.on('change', function() {
-        if (this.checked) {
-            let xVal = parseFloat($inputX.val());
-            let yVal = parseFloat($inputY.val());
-            if (isNaN(xVal) || isNaN(yVal)) {
-                setCoordinates(0.5, 1.75);
-            } else {
-                updateDotPosition(xVal, yVal, true);
-            }
-        } else {
-            $inputX.val('');
-            $inputY.val('');
-            updateDotPosition(0, 0, false);
-        }
-    });
-
-    // Snap to 0.25 ô ly (1/4 block)
-    $btnSnap.on('click', function() {
-        let xVal = parseFloat($inputX.val());
-        let yVal = parseFloat($inputY.val());
-        if (!isNaN(xVal) && !isNaN(yVal)) {
-            const snappedX = Math.round(xVal * 4) / 4;
-            const snappedY = Math.round(yVal * 4) / 4;
-            setCoordinates(snappedX, snappedY);
-        }
-    });
-
-    // Clear start point
-    $btnClear.on('click', function() {
-        $hasStartPoint.prop('checked', false);
-        $inputX.val('');
-        $inputY.val('');
-        updateDotPosition(0, 0, false);
     });
 };
 

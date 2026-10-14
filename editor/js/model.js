@@ -92,16 +92,29 @@ model.saveBaseData = function(formData){
     }
     this.glyphData[baseCharacter].types = newBaseTypesData;
 
-    // Handle Start Point (Điểm đặt bút)
+    // Handle Dot Configurations & Start Point
     let hasStartPoint = !!data['hasStartPoint'];
-    let spX = parseFloat(data['startPointX']);
-    let spY = parseFloat(data['startPointY']);
-    if (hasStartPoint && !isNaN(spX) && !isNaN(spY)) {
-        this.glyphData[baseCharacter].startPoint = {
-            x: Math.round(spX * 100) / 100,
-            y: Math.round(spY * 100) / 100
-        };
+    let dotConfigsJson = data['dotConfigsJson'];
+    let parsedConfigs = null;
+    if (dotConfigsJson) {
+        try {
+            parsedConfigs = JSON.parse(dotConfigsJson);
+        } catch (e) {
+            console.error('Failed to parse dotConfigsJson', e);
+        }
+    }
+
+    if (hasStartPoint && Array.isArray(parsedConfigs) && parsedConfigs.length > 0) {
+        this.glyphData[baseCharacter].dotConfigs = parsedConfigs;
+        const firstDot = parsedConfigs[0]?.dots?.[0];
+        if (firstDot && typeof firstDot.x === 'number' && typeof firstDot.y === 'number') {
+            this.glyphData[baseCharacter].startPoint = {
+                x: Math.round(firstDot.x * 100) / 100,
+                y: Math.round(firstDot.y * 100) / 100
+            };
+        }
     } else {
+        delete this.glyphData[baseCharacter].dotConfigs;
         delete this.glyphData[baseCharacter].startPoint;
     }
 

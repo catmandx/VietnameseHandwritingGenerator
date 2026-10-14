@@ -109,65 +109,125 @@ components.baseEditForm = `
     </div>
 </div>
 
-<!-- Start Point (Điểm đặt bút) Editor Section -->
+<!-- Dotting Configurations (Cấu hình chấm ô ly) Editor Section -->
 <div class="card start-point-card mb-4 border shadow-sm">
     <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
         <span class="fw-bold text-primary">
-            <span style="color: #ef4444; font-size: 1.1rem;">●</span> Điểm đặt bút (Start Point)
+            <i class="fa-solid fa-braille text-danger me-1"></i> Cấu hình chấm (Dotting Configurations)
         </span>
         <div class="form-check form-switch m-0">
             <input class="form-check-input" type="checkbox" id="hasStartPoint" name="hasStartPoint">
-            <label class="form-check-label fw-semibold" for="hasStartPoint">Bật điểm đặt bút</label>
+            <label class="form-check-label fw-semibold" for="hasStartPoint">Bật cấu hình chấm</label>
         </div>
     </div>
     <div class="card-body">
-        <div class="row align-items-center">
+        <div class="row">
+            <!-- Left Column: Interactive SVG Grid & Glyph Preview -->
             <div class="col-lg-5 col-md-6 d-flex flex-column align-items-center mb-3 mb-md-0">
                 <div id="startPointPreviewContainer" class="position-relative border rounded bg-white shadow-sm user-select-none" style="width: 288px; height: 324px; cursor: crosshair; touch-action: none; overflow: hidden;">
                     <!-- SVG Grid & Glyph preview rendered dynamically -->
                 </div>
                 <div id="startPointGlyphBadge" class="mt-2 text-center small text-muted"></div>
-                <small class="text-muted mt-1 text-center">Click hoặc kéo chấm đỏ trên lưới để chọn điểm đặt bút</small>
+                <div class="mt-1 text-center small text-muted">
+                    <span>Click chấm để chọn / kéo để định vị</span>
+                </div>
             </div>
+
+            <!-- Right Column: Configurations & Dots Manager -->
             <div class="col-lg-7 col-md-6">
                 <div class="p-3 bg-light rounded border h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="row g-3 align-items-center mb-3">
-                            <div class="col-sm-6">
-                                <label for="startPointX" class="form-label fw-bold mb-1">Tọa độ X (ô ly ngang):</label>
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-white">X</span>
-                                    <input type="number" step="0.05" class="form-control text-center" id="startPointX" name="startPointX" placeholder="Chưa đặt">
-                                    <span class="input-group-text bg-white">ô ly</span>
-                                </div>
-                                <small class="text-muted">Khoảng cách từ mép trái (X = 0)</small>
+                        <!-- Hidden field storing the full dotConfigs JSON for form submission -->
+                        <input type="hidden" id="dotConfigsJson" name="dotConfigsJson" value="">
+                        <!-- Hidden startPoint X/Y for backwards compatibility -->
+                        <input type="hidden" id="startPointX" name="startPointX" value="">
+                        <input type="hidden" id="startPointY" name="startPointY" value="">
+
+                        <!-- Config Selector / Tabs -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-bold small text-secondary text-uppercase mb-0">Cấu hình chấm của chữ:</label>
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" id="btnAddNewConfig" style="font-size: 0.78rem;">
+                                    <i class="fa-solid fa-plus"></i> Thêm cấu hình
+                                </button>
                             </div>
-                            <div class="col-sm-6">
-                                <label for="startPointY" class="form-label fw-bold mb-1">Tọa độ Y (ô ly cao):</label>
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-white">Y</span>
-                                    <input type="number" step="0.05" class="form-control text-center" id="startPointY" name="startPointY" placeholder="Chưa đặt">
-                                    <span class="input-group-text bg-white">ô ly</span>
-                                </div>
-                                <small class="text-muted">Tính từ Baseline kẻ 1 (Y = 0)</small>
+                            <div id="dotConfigTabsContainer" class="d-flex gap-1 flex-wrap">
+                                <!-- Dynamic config pills -->
                             </div>
                         </div>
-                        <div class="d-flex gap-2 flex-wrap mb-3">
+
+                        <!-- Config Metadata Form -->
+                        <div class="row g-2 mb-3 bg-white p-2 rounded border">
+                            <div class="col-sm-6">
+                                <label for="dotConfigName" class="form-label fw-semibold small mb-1">Tên cấu hình:</label>
+                                <input type="text" class="form-control form-control-sm" id="dotConfigName" placeholder="vd: 1. Điểm đặt bút (Chuẩn)">
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="dotConfigDesc" class="form-label fw-semibold small mb-1">Mô tả / Giai đoạn:</label>
+                                <input type="text" class="form-control form-control-sm" id="dotConfigDesc" placeholder="vd: 1 chấm, Nét 1...">
+                            </div>
+                        </div>
+
+                        <!-- Active Dot Selection & Editing -->
+                        <div class="p-2 bg-white rounded border mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold small text-primary" id="selectedDotHeading">
+                                    <i class="fa-solid fa-circle-dot text-danger"></i> Chấm đang chọn: Chấm 1
+                                </span>
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn btn-xs btn-outline-success py-0 px-2" id="btnAddDot" style="font-size: 0.78rem;" title="Thêm chấm mới vào cấu hình này">
+                                        <i class="fa-solid fa-plus"></i> Thêm chấm
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" id="btnDeleteDot" style="font-size: 0.78rem;" title="Xóa chấm này">
+                                        <i class="fa-solid fa-trash"></i> Xóa chấm
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-4">
+                                    <label for="dotInputX" class="form-label small fw-semibold mb-0">X (ngang):</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="0.05" class="form-control text-center px-1" id="dotInputX">
+                                        <span class="input-group-text px-1 bg-light small">li</span>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <label for="dotInputY" class="form-label small fw-semibold mb-0">Y (cao):</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="0.05" class="form-control text-center px-1" id="dotInputY">
+                                        <span class="input-group-text px-1 bg-light small">li</span>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <label for="dotInputLabel" class="form-label small fw-semibold mb-0">Nhãn/Tên nét:</label>
+                                    <input type="text" class="form-control form-control-sm text-center px-1" id="dotInputLabel" placeholder="Nét 1">
+                                </div>
+                            </div>
+
+                            <!-- List of dots in current config -->
+                            <div id="configDotsListContainer" class="d-flex gap-1 flex-wrap pt-1 border-top">
+                                <!-- Dynamic dots badges -->
+                            </div>
+                        </div>
+
+                        <!-- Action Toolbar -->
+                        <div class="d-flex gap-2 flex-wrap mb-2">
                             <button type="button" class="btn btn-sm btn-outline-primary" id="btnSnapOly">
-                                Làm tròn 0.25 ô ly (1/4 ô)
+                                Làm tròn 0.25 ô ly
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger" id="btnClearStartPoint">
-                                Xóa điểm đặt bút
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDeleteCurrentConfig">
+                                Xóa cấu hình này
                             </button>
                         </div>
                     </div>
-                    <div class="alert alert-secondary py-2 px-3 mb-0 small" style="font-size: 0.85rem; line-height: 1.45;">
+
+                    <div class="alert alert-secondary py-2 px-3 mb-0 small" style="font-size: 0.8rem; line-height: 1.4;">
                         <div class="fw-bold mb-1">Quy chuẩn lưới ô ly tiểu học:</div>
                         <ul class="mb-0 ps-3">
-                            <li><span class="badge bg-primary">Đường xanh đậm</span>: Baseline (Y = 0, Đường kẻ 1).</li>
-                            <li><span class="badge bg-info text-dark">Nét đứt nhạt</span>: Đường kẻ 3 (Y = 2.0 - đỉnh chữ <code>a, o, c</code>).</li>
-                            <li><span class="badge bg-info text-dark">Nét đứt cao</span>: Đường kẻ 5 (Y = 5.0 - đỉnh chữ <code>b, l, h</code>).</li>
-                            <li>Tọa độ lưu theo tỷ lệ ô ly, <strong>tự động co giãn chính xác 100%</strong> cho cả cỡ to (72pt) và cỡ nhỏ (37pt).</li>
+                            <li><strong>Baseline kẻ 1 (Y = 0)</strong>: Đường màu xanh đậm.</li>
+                            <li><strong>ĐK 3 (Y = 2.0)</strong>: Đỉnh chữ thấp <code>a, o, c</code>. <strong>ĐK 5 (Y = 5.0)</strong>: Đỉnh nét khuyết <code>b, l, h</code>.</li>
+                            <li>Có thể lưu nhiều cấu hình cho từng giai đoạn tập viết hoặc nét chữ phức hợp (như chữ <code>B</code>, <code>H</code>).</li>
                         </ul>
                     </div>
                 </div>
