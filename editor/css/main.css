@@ -79,3 +79,25 @@ input.glyph-display{
     line-height: 10pt;
     background-color: aquamarine;
 }
+
+#startPointPreviewContainer {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#startPointSvg {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.svg-dot-node {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.config-tab-pill,
+.dot-item-pill {
+    transition: none !important;
+}

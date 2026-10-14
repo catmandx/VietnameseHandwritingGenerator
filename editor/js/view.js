@@ -40,9 +40,24 @@ view.showComponents = function(name){
             
             this.setUpEditModal()
             $(document).off('submit','form#editBaseForm').on('submit','form#editBaseForm',function(e){
-                e.preventDefault()
-                model.saveBaseData($(e.target).serializeArray())
-             });
+                e.preventDefault();
+                const $btn = $('#saveButton');
+                const originalText = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Saving...');
+                setTimeout(() => {
+                    try {
+                        model.saveBaseData($(e.target).serializeArray());
+                        $btn.html('<i class="fa-solid fa-check"></i> Saved!').removeClass('btn-success').addClass('btn-outline-success');
+                        setTimeout(() => {
+                            $btn.prop('disabled', false).html(originalText).removeClass('btn-outline-success').addClass('btn-success');
+                        }, 800);
+                    } catch(err) {
+                        $btn.prop('disabled', false).html(originalText);
+                        console.error(err);
+                        toastr.error('Lỗi khi lưu dữ liệu');
+                    }
+                }, 10);
+            });
             break;
         default:
             app.html(components.loading)
@@ -88,6 +103,11 @@ view.setUpEditModal = function (){
         const $typeRow = $(this).closest('.base-type-editor');
         $typeRow.remove();
         view.reindexTypes();
+    });
+
+    $('#saveButton').off('click').on('click', function(e) {
+        e.preventDefault();
+        $('#editBaseForm').trigger('submit');
     });
 }
 
@@ -502,26 +522,29 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
                 .css('cursor', isActive ? 'grab' : 'pointer');
 
             if (isActive) {
-                // Active Halo
+                // Active Halo (pointer-events: none)
                 let $halo = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
                     .attr('cx', 0).attr('cy', 0).attr('r', 15)
-                    .attr('fill', 'rgba(239, 68, 68, 0.25)');
+                    .attr('fill', 'rgba(239, 68, 68, 0.25)')
+                    .attr('pointer-events', 'none');
                 // Active Center
                 let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
                     .attr('cx', 0).attr('cy', 0).attr('r', 7)
                     .attr('fill', '#ef4444')
                     .attr('stroke', '#ffffff').attr('stroke-width', 2);
-                // Active Tooltip
+                // Active Tooltip Badge (pointer-events: none)
                 let tooltipText = `${dot.label || ('Chấm ' + (idx + 1))}: (${dot.x.toFixed(2)}, ${dot.y.toFixed(2)})`;
                 let badgeWidth = Math.max(64, tooltipText.length * 6.5);
                 let $badgeBg = $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
                     .attr('x', -badgeWidth / 2).attr('y', -26)
                     .attr('width', badgeWidth).attr('height', 16)
-                    .attr('rx', 4).attr('fill', 'rgba(15, 23, 42, 0.88)');
+                    .attr('rx', 4).attr('fill', 'rgba(15, 23, 42, 0.88)')
+                    .attr('pointer-events', 'none');
                 let $badgeText = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
                     .attr('x', 0).attr('y', -14)
                     .attr('font-size', '10').attr('font-weight', 'bold')
                     .attr('fill', '#ffffff').attr('text-anchor', 'middle')
+                    .attr('pointer-events', 'none')
                     .text(tooltipText);
 
                 $g.append($halo).append($center).append($badgeBg).append($badgeText);
@@ -535,6 +558,7 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
                     .attr('x', 8).attr('y', -6)
                     .attr('font-size', '9').attr('font-weight', 'bold')
                     .attr('fill', '#1e40af')
+                    .attr('pointer-events', 'none')
                     .text(`${idx + 1}`);
 
                 $g.append($center).append($numBadge);
@@ -542,6 +566,30 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
 
             $dotsLayer.append($g);
         });
+    }
+
+    // High performance in-place visual updater during dragging (avoids DOM destruction and stringification)
+    function updateActiveDotVisualsOnly(x, y) {
+        const px = ORIGIN_X + x * CELL_PX;
+        const py = BASELINE_Y - y * CELL_PX;
+        const $activeG = $dotsLayer.find('.svg-dot-node.is-active');
+        if ($activeG.length) {
+            $activeG[0].setAttribute('transform', `translate(${px}, ${py})`);
+            const dot = getCurrentDot();
+            const tooltipText = `${dot.label || ('Chấm ' + (activeDotIdx + 1))}: (${x.toFixed(2)}, ${y.toFixed(2)})`;
+            const badgeWidth = Math.max(64, tooltipText.length * 6.5);
+            const rect = $activeG.find('rect')[0];
+            const text = $activeG.find('text')[0];
+            if (rect) {
+                rect.setAttribute('x', -badgeWidth / 2);
+                rect.setAttribute('width', badgeWidth);
+            }
+            if (text) {
+                text.textContent = tooltipText;
+            }
+        }
+        $inputX.val(x.toFixed(2));
+        $inputY.val(y.toFixed(2));
     }
 
     function renderAll() {
@@ -558,28 +606,22 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
 
     // 3. User Interactions
     // Config Tab Selection
-    $tabsContainer.on('click', '.config-tab-pill', function(e) {
+    $tabsContainer.off('click', '.config-tab-pill').on('click', '.config-tab-pill', function(e) {
         e.preventDefault();
-        activeConfigIdx = parseInt($(this).attr('data-config-idx'), 10) || 0;
-        activeDotIdx = 0;
-        renderAll();
+        const idx = parseInt($(this).attr('data-config-idx'), 10);
+        if (!isNaN(idx) && idx !== activeConfigIdx) {
+            activeConfigIdx = idx;
+            activeDotIdx = 0;
+            renderAll();
+        }
     });
 
     // Dot Pill Selection
-    $dotsListContainer.on('click', '.dot-item-pill', function(e) {
+    $dotsListContainer.off('click', '.dot-item-pill').on('click', '.dot-item-pill', function(e) {
         e.preventDefault();
-        activeDotIdx = parseInt($(this).attr('data-dot-idx'), 10) || 0;
-        renderDotsList();
-        renderActiveDotInputs();
-        renderSvgDots();
-    });
-
-    // SVG Dot Click / Selection
-    $dotsLayer.on('mousedown touchstart', '.svg-dot-node', function(e) {
-        e.stopPropagation();
-        const clickedIdx = parseInt($(this).attr('data-dot-idx'), 10);
-        if (!isNaN(clickedIdx)) {
-            activeDotIdx = clickedIdx;
+        const idx = parseInt($(this).attr('data-dot-idx'), 10);
+        if (!isNaN(idx) && idx !== activeDotIdx) {
+            activeDotIdx = idx;
             renderDotsList();
             renderActiveDotInputs();
             renderSvgDots();
@@ -587,13 +629,13 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
     });
 
     // Metadata changes
-    $inputConfigName.on('input change', function() {
+    $inputConfigName.off('input change').on('input change', function() {
         getCurrentConfig().name = $(this).val();
         renderConfigTabs();
         syncHiddenInputs();
     });
 
-    $inputConfigDesc.on('input change', function() {
+    $inputConfigDesc.off('input change').on('input change', function() {
         getCurrentConfig().desc = $(this).val();
         syncHiddenInputs();
     });
@@ -611,18 +653,19 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
         renderSvgDots();
         syncHiddenInputs();
     }
-    $inputX.on('input change', onDotInputChange);
-    $inputY.on('input change', onDotInputChange);
-    $inputLabel.on('input change', onDotInputChange);
+    $inputX.off('input change').on('input change', onDotInputChange);
+    $inputY.off('input change').on('input change', onDotInputChange);
+    $inputLabel.off('input change').on('input change', onDotInputChange);
 
     // Toggle switch
-    $hasStartPoint.on('change', function() {
+    $hasStartPoint.off('change').on('change', function() {
         isEnabled = this.checked;
         renderAll();
     });
 
     // Add Dot
-    $btnAddDot.on('click', function() {
+    $btnAddDot.off('click').on('click', function(e) {
+        e.preventDefault();
         const cfg = getCurrentConfig();
         const curDot = getCurrentDot();
         const newX = Math.round(Math.min(6.0, curDot.x + 0.5) * 100) / 100;
@@ -638,7 +681,8 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
     });
 
     // Delete Dot
-    $btnDeleteDot.on('click', function() {
+    $btnDeleteDot.off('click').on('click', function(e) {
+        e.preventDefault();
         const cfg = getCurrentConfig();
         if (cfg.dots.length <= 1) {
             toastr.info('Mỗi cấu hình cần ít nhất 1 điểm chấm.');
@@ -650,7 +694,8 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
     });
 
     // Add New Config
-    $btnAddNewConfig.on('click', function() {
+    $btnAddNewConfig.off('click').on('click', function(e) {
+        e.preventDefault();
         const curDot = getCurrentDot();
         const newConfigNum = configs.length + 1;
         configs.push({
@@ -666,7 +711,8 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
     });
 
     // Delete Current Config
-    $btnDeleteCurrentConfig.on('click', function() {
+    $btnDeleteCurrentConfig.off('click').on('click', function(e) {
+        e.preventDefault();
         if (configs.length <= 1) {
             toastr.warning('Chữ cần giữ lại ít nhất 1 cấu hình. Bạn có thể tắt "Bật cấu hình chấm" nếu không muốn hiển thị.');
             return;
@@ -678,7 +724,8 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
     });
 
     // Snap to 0.25 ô ly
-    $btnSnap.on('click', function() {
+    $btnSnap.off('click').on('click', function(e) {
+        e.preventDefault();
         const dot = getCurrentDot();
         dot.x = Math.round(dot.x * 4) / 4;
         dot.y = Math.round(dot.y * 4) / 4;
@@ -688,17 +735,29 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
         syncHiddenInputs();
     });
 
-    // SVG Dragging & Clicking
+    // SVG Dragging & Clicking with Unified Pointer Events & Pointer Capture
     let isDragging = false;
 
     function getOlyFromEvent(e) {
         const rect = $svg[0].getBoundingClientRect();
-        const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
-        const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        if (clientX === undefined && e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (clientX === undefined && e.originalEvent) {
+            if (e.originalEvent.touches && e.originalEvent.touches.length > 0) {
+                clientX = e.originalEvent.touches[0].clientX;
+                clientY = e.originalEvent.touches[0].clientY;
+            } else {
+                clientX = e.originalEvent.clientX;
+                clientY = e.originalEvent.clientY;
+            }
+        }
         const scaleX = WIDTH / rect.width;
         const scaleY = HEIGHT / rect.height;
-        const px = (clientX - rect.left) * scaleX;
-        const py = (clientY - rect.top) * scaleY;
+        const px = ((clientX || 0) - rect.left) * scaleX;
+        const py = ((clientY || 0) - rect.top) * scaleY;
         const xOly = (px - ORIGIN_X) / CELL_PX;
         const yOly = (BASELINE_Y - py) / CELL_PX;
         return {
@@ -707,43 +766,76 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
         };
     }
 
-    $container.on('mousedown touchstart', function(e) {
+    $container.off('pointerdown mousedown touchstart').on('pointerdown mousedown touchstart', function(e) {
         if (!isEnabled) {
             isEnabled = true;
             $hasStartPoint.prop('checked', true);
         }
+
+        // Check if user clicked on another dot node (secondary dot)
+        const $dotNode = $(e.target).closest('.svg-dot-node');
+        if ($dotNode.length) {
+            const clickedIdx = parseInt($dotNode.attr('data-dot-idx'), 10);
+            if (!isNaN(clickedIdx) && clickedIdx !== activeDotIdx) {
+                activeDotIdx = clickedIdx;
+                renderDotsList();
+                renderActiveDotInputs();
+                renderSvgDots();
+            }
+        } else {
+            // Clicked on canvas or near active dot -> position active dot immediately
+            const pos = getOlyFromEvent(e);
+            const dot = getCurrentDot();
+            dot.x = pos.x;
+            dot.y = pos.y;
+            updateActiveDotVisualsOnly(pos.x, pos.y);
+        }
+
         isDragging = true;
-        const pos = getOlyFromEvent(e);
-        const dot = getCurrentDot();
-        dot.x = pos.x;
-        dot.y = pos.y;
-        renderActiveDotInputs();
-        renderDotsList();
-        renderSvgDots();
-        syncHiddenInputs();
+        try {
+            if (e.pointerId !== undefined && this.setPointerCapture) {
+                this.setPointerCapture(e.pointerId);
+            }
+        } catch(err) {}
         e.preventDefault();
     });
 
-    $(window).off('.startPoint');
-    $(window).on('mousemove.startPoint touchmove.startPoint', function(e) {
+    $container.off('pointermove mousemove touchmove').on('pointermove mousemove touchmove', function(e) {
         if (!isDragging || !isEnabled) return;
         const pos = getOlyFromEvent(e);
         const dot = getCurrentDot();
         dot.x = pos.x;
         dot.y = pos.y;
-        renderActiveDotInputs();
-        renderDotsList();
-        renderSvgDots();
-        syncHiddenInputs();
+        updateActiveDotVisualsOnly(pos.x, pos.y);
+        e.preventDefault();
     });
 
-    $(window).on('mouseup.startPoint touchend.startPoint', function() {
+    function endDrag(e) {
         if (isDragging) {
             isDragging = false;
+            try {
+                if (e && e.pointerId !== undefined && $container[0].releasePointerCapture) {
+                    $container[0].releasePointerCapture(e.pointerId);
+                }
+            } catch(err) {}
+            renderDotsList();
+            renderActiveDotInputs();
+            syncHiddenInputs();
+        }
+    }
+
+    $container.off('pointerup pointercancel mouseup touchend').on('pointerup pointercancel mouseup touchend', endDrag);
+
+    // Global safety listener in case pointer capture is unsupported
+    $(window).off('.startPoint');
+    $(window).on('pointerup.startPoint pointercancel.startPoint mouseup.startPoint touchend.startPoint', function(e) {
+        if (isDragging) {
+            endDrag(e);
         }
     });
 
-    $('#editBaseModal').one('hidden.bs.modal', function() {
+    $('#editBaseModal').off('hidden.bs.modal.startPoint').one('hidden.bs.modal.startPoint', function() {
+        isDragging = false;
         $(window).off('.startPoint');
     });
 };
