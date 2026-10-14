@@ -1,11 +1,58 @@
 const view = {};
 window.view = view;
+
+view.escapeHtml = function (str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+};
+
 view.lineDotConfigs = {};
+view.prevLineFirstChars = [];
+
 view.resetLineDotConfigs = function () {
     view.lineDotConfigs = {};
+    if (window.model && typeof model.getFirstCharUnit === 'function') {
+        view.prevLineFirstChars = ($('#input').val() || '').split('\n').map(l => model.getFirstCharUnit(l));
+    }
     if ($('#dotting-line-select').length) {
         $('#dotting-line-select').val('all');
         $('#btn-reset-line-dotting').hide();
+    }
+};
+
+view.syncLineDotConfigs = function (newLines) {
+    if (!newLines) {
+        newLines = ($('#input').val() || '').split('\n');
+    }
+    if (!window.model || typeof model.getFirstCharUnit !== 'function') {
+        return;
+    }
+    const newFirstChars = newLines.map(l => model.getFirstCharUnit(l));
+    if (!view.prevLineFirstChars) {
+        view.prevLineFirstChars = [];
+    }
+    const maxLines = Math.max(newLines.length, view.prevLineFirstChars.length);
+    for (let i = 0; i < maxLines; i++) {
+        // If the line was deleted or its first character changed, wipe this line's custom config
+        if (i >= newLines.length || newFirstChars[i] !== view.prevLineFirstChars[i]) {
+            if (view.lineDotConfigs && view.lineDotConfigs[i]) {
+                delete view.lineDotConfigs[i];
+            }
+        }
+    }
+    view.prevLineFirstChars = newFirstChars;
+    if ($('#dotting-line-select').length) {
+        const currentSelected = $('#dotting-line-select').val();
+        if (currentSelected !== 'all') {
+            const lineIdx = parseInt(currentSelected, 10);
+            if (lineIdx >= newLines.length || !view.lineDotConfigs[lineIdx] || !view.lineDotConfigs[lineIdx].isCustom) {
+                $('#btn-reset-line-dotting').hide();
+            }
+        }
     }
 };
 
@@ -22,6 +69,7 @@ view.init = function () {
 
     // Preload blackboard background image
     view.blackboardImg = new Image();
+    view.blackboardImg.crossOrigin = 'anonymous';
     view.blackboardImg.src = '/static/img/blackboard.png';
 
     // Default text if empty
@@ -29,9 +77,14 @@ view.init = function () {
         $input.val("Nét chữ nết người");
     }
 
+    if (window.model && typeof model.getFirstCharUnit === 'function') {
+        view.prevLineFirstChars = ($input.val() || '').split('\n').map(l => model.getFirstCharUnit(l));
+    }
+
     // Input listener (handles typing, paste, cut, composition IME)
+    // Only wipe custom dotting config when the first character of the line changes
     $input.on('input propertychange', function () {
-        view.resetLineDotConfigs();
+        view.syncLineDotConfigs();
         view.render();
     });
 
@@ -305,7 +358,7 @@ view.updateDottingLineSelect = function () {
             const cfg = view.getDottingConfig(i);
             const customBadge = (customCfg && customCfg.isCustom) ? ` [Cách ${cfg.spaces} ô]` : '';
             const preview = ` "${lineText.slice(0, 15)}${lineText.length > 15 ? '...' : ''}"`;
-            html += `<option value="${i}">Dòng ${i + 1}${customBadge}:${preview}</option>`;
+            html += `<option value="${i}">Dòng ${i + 1}${view.escapeHtml(customBadge)}:${view.escapeHtml(preview)}</option>`;
         }
     }
     $select.html(html);
@@ -453,15 +506,6 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         }
     }
     $line.append($dotsLayer);
-};
-
-view.escapeHtml = function (str) {
-    if (!str) return '';
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
 };
 
 view.render = function () {
@@ -974,6 +1018,9 @@ view.setupDragInteractions = function () {
         $word.addClass('is-dragging is-active');
         $('body').addClass('is-word-dragging');
 
+        $(window).off('.wordDrag').on('pointermove.wordDrag', handlePointerMove);
+        $(window).off('pointerup.wordDrag pointercancel.wordDrag blur.wordDrag').on('pointerup.wordDrag pointercancel.wordDrag blur.wordDrag', endDrag);
+
         e.preventDefault();
         e.stopPropagation();
     });
@@ -1001,15 +1048,14 @@ view.setupDragInteractions = function () {
         }
     }
 
-    $container.on('pointermove mousemove', '.btn-word-drag', handlePointerMove);
-    $(window).on('pointermove mousemove', handlePointerMove);
-
     // Pointer up / cancel / blur: finish drag
     function endDrag(e) {
         if (!dragState) return;
         if (e && e.pointerId !== undefined && dragState.pointerId !== undefined && e.pointerId !== dragState.pointerId) {
             return;
         }
+
+        $(window).off('.wordDrag');
 
         if (dragState.handleEl && typeof dragState.handleEl.releasePointerCapture === 'function') {
             try {
@@ -1031,8 +1077,6 @@ view.setupDragInteractions = function () {
         dragState = null;
     }
 
-    $(window).on('pointerup pointercancel mouseup blur', endDrag);
-    $(document).on('pointerup pointercancel mouseup', endDrag);
     $container.on('lostpointercapture', '.btn-word-drag', endDrag);
 
     let lastStretchClick = 0;
@@ -1143,6 +1187,9 @@ view.setupDragInteractions = function () {
         $(handleEl).addClass('is-stretching');
         $('body').addClass('is-word-stretching');
 
+        $(window).off('.wordStretch').on('pointermove.wordStretch', handleStretchMove);
+        $(window).off('pointerup.wordStretch pointercancel.wordStretch blur.wordStretch').on('pointerup.wordStretch pointercancel.wordStretch blur.wordStretch', endStretch);
+
         e.preventDefault();
         e.stopPropagation();
     });
@@ -1191,15 +1238,14 @@ view.setupDragInteractions = function () {
         }
     }
 
-    $container.on('pointermove mousemove', '.btn-word-stretch', handleStretchMove);
-    $(window).on('pointermove mousemove', handleStretchMove);
-
     // Pointer up for stretch
     function endStretch(e) {
         if (!stretchState) return;
         if (e && e.pointerId !== undefined && stretchState.pointerId !== undefined && e.pointerId !== stretchState.pointerId) {
             return;
         }
+
+        $(window).off('.wordStretch');
 
         if (stretchState.handleEl && typeof stretchState.handleEl.releasePointerCapture === 'function') {
             try {
@@ -1226,8 +1272,6 @@ view.setupDragInteractions = function () {
         stretchState = null;
     }
 
-    $(window).on('pointerup pointercancel mouseup blur', endStretch);
-    $(document).on('pointerup pointercancel mouseup', endStretch);
     $container.on('lostpointercapture', '.btn-word-stretch', endStretch);
 
     // Double-click on .btn-word-stretch: reset stretch only back to 100%
@@ -1235,7 +1279,7 @@ view.setupDragInteractions = function () {
         e.stopPropagation();
         e.preventDefault();
         const $word = $(this).closest('.word');
-        $word.css('width', '').removeAttr('data-stretch');
+        $word.css('width', '').removeAttr('data-stretch').removeAttr('data-natural-width');
         $word.children('.word-text').css({
             'width': '',
             'transform': ''
@@ -1262,7 +1306,7 @@ view.setupDragInteractions = function () {
         e.preventDefault();
         const $word = $(this).closest('.word');
         $word.addClass('is-active');
-        $word.css({ 'margin-left': '0px', 'width': '' }).removeAttr('data-stretch');
+        $word.css({ 'margin-left': '0px', 'width': '' }).removeAttr('data-stretch').removeAttr('data-natural-width');
         $word.children('.word-text').css({
             'width': '',
             'transform': ''
@@ -1280,7 +1324,7 @@ view.setupDragInteractions = function () {
         $(this).find('.word').each(function () {
             this.style.marginLeft = '0px';
             this.style.width = '';
-            $(this).removeAttr('data-stretch');
+            $(this).removeAttr('data-stretch').removeAttr('data-natural-width');
             $(this).children('.word-text').css({
                 'width': '',
                 'transform': ''
@@ -1553,6 +1597,9 @@ view.loadSample = function (sampleKey) {
     if (view.sampleTexts[sampleKey]) {
         view.resetLineDotConfigs();
         $('#input').val(view.sampleTexts[sampleKey]);
+        if (window.model && typeof model.getFirstCharUnit === 'function') {
+            view.prevLineFirstChars = view.sampleTexts[sampleKey].split('\n').map(l => model.getFirstCharUnit(l));
+        }
         view.render();
     }
 };
@@ -1668,7 +1715,7 @@ view.exportBlackboardToPng = async function () {
     const exportFontSize = domFontSize * S;
 
     // Get raw input lines for file naming
-    const rawInputLines = $('#input').val().split('\n').map(l => l.replace(/[\t]/g, "    ")).map(l => l.trim()).filter(l => l.length > 0);
+    const rawInputLines = ($('#input').val() || '').split('\n').map(l => l.replace(/[\t]/g, "    ").trim());
 
     const exportSingleBoard = function (bgImg, boardEl, bIdx) {
         return new Promise((resolve) => {
@@ -1769,7 +1816,8 @@ view.exportBlackboardToPng = async function () {
                 ctx.restore();
             }
 
-            const fileName = view.generateFileName('blackboard', rawLineText);
+            const lineSuffix = $boards.length > 1 ? (`_dong${bIdx + 1}`) : '';
+            const fileName = view.generateFileName('blackboard' + lineSuffix, rawLineText);
 
             view.downloadCanvasAsPng(canvas, fileName).then(resolve);
         });
@@ -1810,15 +1858,22 @@ view.exportWhite11x14ToPng = async function () {
         await document.fonts.ready;
     }
 
-    const scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
+    let scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
     const ptToPx = 96 / 72; // 1.3333333333333333
     const subGridPx = 14.4 * ptToPx; // 19.2px
 
     // Dimensions: 46 cells wide (1 + 44 + 1), 60 cells tall (2 + 56 + 2)
     const widthPx = 883.2;
     const heightPx = 1152;
-    const canvasWidth = Math.round(widthPx * scale); // 3533px
-    const canvasHeight = Math.round(heightPx * scale); // 4608px
+    const maxCanvasDim = 8192;
+    const maxCanvasArea = 25000000;
+    if (widthPx * scale > maxCanvasDim || heightPx * scale > maxCanvasDim || (widthPx * scale * heightPx * scale) > maxCanvasArea) {
+        const scaleDim = maxCanvasDim / Math.max(widthPx, heightPx);
+        const scaleArea = Math.sqrt(maxCanvasArea / (widthPx * heightPx));
+        scale = Math.max(1, Math.min(4, Math.floor(Math.min(scaleDim, scaleArea) * 10) / 10));
+    }
+    const canvasWidth = Math.round(widthPx * scale);
+    const canvasHeight = Math.round(heightPx * scale);
 
     const gridOriginX = subGridPx; // 19.2px (1 cell buffer left)
     const gridOriginY = subGridPx * 2; // 38.4px (2 cells buffer top)
@@ -1932,7 +1987,7 @@ view.exportWhite11x14ToPng = async function () {
                 if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || globalLineIdx < lineDotConfig.linesCount)) {
                     let rawLineText = words.length > 0 ? (words[0].raw || words[0].text) : '';
                     if (!rawLineText) {
-                        const rawLines = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                        const rawLines = ($('#input').val() || '').split('\n').map(l => l.trim());
                         const lineFromInput = rawLines[globalLineIdx] || rawLines[0] || 'a';
                         rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
                     }
@@ -2034,7 +2089,7 @@ view.exportToPng = async function () {
         await document.fonts.ready;
     }
 
-    const scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
+    let scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
     const ptToPx = 96 / 72; // 1.3333333333333333
     const subGridPx = 14.4 * ptToPx; // 19.2px
     const bigGridPx = subGridPx * 4; // 76.8px
@@ -2086,9 +2141,18 @@ view.exportToPng = async function () {
     const neededHeight = lastBaselineY + bigGridPx * 2;
     const heightPx = Math.ceil(neededHeight / bigGridPx) * bigGridPx;
 
+    // Item 3.1: Clamp export scale dynamically if dimensions exceed browser canvas memory limits
+    const maxCanvasDim = 8192;
+    const maxCanvasArea = 25000000;
+    if (widthPx * scale > maxCanvasDim || heightPx * scale > maxCanvasDim || (widthPx * scale * heightPx * scale) > maxCanvasArea) {
+        const scaleDim = maxCanvasDim / Math.max(widthPx, heightPx);
+        const scaleArea = Math.sqrt(maxCanvasArea / (widthPx * heightPx));
+        scale = Math.max(1, Math.min(4, Math.floor(Math.min(scaleDim, scaleArea) * 10) / 10));
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = widthPx * scale;
-    canvas.height = heightPx * scale;
+    canvas.width = Math.round(widthPx * scale);
+    canvas.height = Math.round(heightPx * scale);
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
 

@@ -92,16 +92,22 @@ model.getUnicodeStr = function(word){
 }
 
 model.getGlyph = function (base, previous, char, next){
-    utils.log('getGlyph', base, previous, char, next)
+    utils.log('getGlyph', base, previous, char, next);
     let isUppercase = utils.isUpperCase(char);
     let accent = utils.getAccent(char);
-    if(!Object.keys(model.glyphs).includes(base)){return char;}
+    if (!model.glyphs || !model.glyphs[base]) { return char; }
     let currentSet = model.glyphs[base].types;
+    if (!Array.isArray(currentSet)) { return char; }
     for (const type of currentSet) {
-        if ( type.prev.includes(previous) && type.next.includes(next) && type.isCap == isUppercase){
-            let glyphs = String(type.accent[accent]);
-            utils.log(glyphs)
-            return glyphs.split(',').map(glyph => String.fromCharCode(glyph)).join('');
+        if (type.prev.includes(previous) && type.next.includes(next) && type.isCap == isUppercase){
+            if (type.accent && type.accent[accent] !== undefined && type.accent[accent] !== null && String(type.accent[accent]).trim() !== "") {
+                let glyphs = String(type.accent[accent]);
+                utils.log(glyphs);
+                return glyphs.split(',').map(glyph => {
+                    const code = parseInt(glyph.trim(), 10);
+                    return isNaN(code) ? '' : String.fromCharCode(code);
+                }).join('');
+            }
         }
     }
     return char;

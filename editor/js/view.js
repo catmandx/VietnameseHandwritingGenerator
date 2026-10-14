@@ -14,31 +14,31 @@ view.showComponents = function(name){
                 let hasDot = data && data.startPoint && typeof data.startPoint.x === 'number';
                 let dotBadge = hasDot ? `<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="Điểm đặt bút: (${data.startPoint.x}, ${data.startPoint.y})">●</span>` : '';
                 baseListHtml += `
-                    ${components.baseCard.replaceAll("{{name}}", base).replace("{{dotBadge}}", dotBadge)}
+                    ${components.baseCard.replaceAll("{{name}}", view.escapeXml(base)).replace("{{dotBadge}}", dotBadge)}
                 `
             }
             baseList.html(baseListHtml)
             //new base card modal
-            $('#addNewBaseCardModal').on('shown.bs.modal', function () {
+            $('#addNewBaseCardModal').off('shown.bs.modal').on('shown.bs.modal', function () {
                 $('#newBaseCardInput').trigger('focus')
             })
             let newBaseCardForm = $("#newBaseCardForm");
-            newBaseCardForm.on('submit', function(e){
+            newBaseCardForm.off('submit').on('submit', function(e){
                 e.preventDefault();
                 controller.addNewBase(newBaseCardForm.children('input').val())
             })
 
             //Download json button
-            $('#downloadJson').on('click', function(e){
+            $('#downloadJson').off('click').on('click', function(e){
                 model.download('all.json', JSON.stringify(model.glyphData, null, 2))
             })
 
             //edit base
             baseList.children('.baseCard:not(:first-child)')
-                    .on('click', view.populateEditForm)
+                    .off('click').on('click', view.populateEditForm)
             
             this.setUpEditModal()
-            $(document).on('submit','form#editBaseForm',function(e){
+            $(document).off('submit','form#editBaseForm').on('submit','form#editBaseForm',function(e){
                 e.preventDefault()
                 model.saveBaseData($(e.target).serializeArray())
              });
@@ -74,11 +74,57 @@ view.populateEditForm = function (e){
 
 view.setUpEditModal = function (){
     let addNewTypeButton = $('#addNewTypeButton');
-    addNewTypeButton.on('click', function(e){
-        let numOfTypesDisplay = $('#numberOfTypes')
-        numOfTypesDisplay.val(Number(numOfTypesDisplay.val())+1)
-        view.addNewTypeEditor(numOfTypesDisplay.val())
-    })
+    addNewTypeButton.off('click').on('click', function(e){
+        let numOfTypesDisplay = $('#numberOfTypes');
+        let currentCount = $('#editBaseForm .base-type-editor').length;
+        let nextIndex = currentCount + 1;
+        numOfTypesDisplay.val(nextIndex);
+        view.addNewTypeEditor(nextIndex);
+    });
+
+    $(document).off('click', '.btn-delete-type').on('click', '.btn-delete-type', function(e) {
+        e.preventDefault();
+        const $typeRow = $(this).closest('.base-type-editor');
+        $typeRow.remove();
+        view.reindexTypes();
+    });
+}
+
+view.reindexTypes = function() {
+    const listTones = ['level', 'acute', 'lower', 'rising', 'raised', 'heavy'];
+    const $typeRows = $('#editBaseForm .base-type-editor');
+    $typeRows.each(function(idx) {
+        const num = idx + 1;
+        const $row = $(this);
+        $row.attr('id', `type${num}`);
+        $row.find('.type-num').text(`Type ${num}`);
+        $row.find('.btn-delete-type').attr('data-type-num', num);
+        
+        // Capitalization
+        $row.find('label[for^="isCap"]').attr('for', `isCap${num}`);
+        $row.find('input[type="checkbox"][name^="isCap"]').attr('id', `isCap${num}`).attr('name', `isCap${num}`);
+
+        // Tones
+        listTones.forEach(tone => {
+            $row.find(`input[name^="${tone}"]`).not('[name^="glyphinput"]').attr('id', `${tone}${num}`).attr('name', `${tone}${num}`);
+            $row.find(`input[name^="glyphinput${tone}"]`)
+                .attr('id', `glyphinput${tone}${num}`)
+                .attr('name', `glyphinput${tone}${num}`)
+                .attr('for', `${tone}${num}`);
+        });
+
+        // Previous
+        $row.find('textarea[name^="prev"]').attr('id', `prev${num}`).attr('name', `prev${num}`);
+        $row.find('label[for^="noNeedPrev"]').attr('for', `noNeedPrev${num}`);
+        $row.find('input[type="checkbox"][name^="noNeedPrev"]').attr('id', `noNeedPrev${num}`).attr('name', `noNeedPrev${num}`);
+
+        // Next
+        $row.find('textarea[name^="next"]').attr('id', `next${num}`).attr('name', `next${num}`);
+        $row.find('label[for^="noNeedNext"]').attr('for', `noNeedNext${num}`);
+        $row.find('input[type="checkbox"][name^="noNeedNext"]').attr('id', `noNeedNext${num}`).attr('name', `noNeedNext${num}`);
+    });
+
+    $('#numberOfTypes').val($typeRows.length);
 }
 
 view.addNewTypeEditor = function(numOfTypes){
@@ -90,19 +136,20 @@ view.addNewTypeEditor = function(numOfTypes){
 }
 
 view.addPasteHandler = function (glyphInputLevel, numOfTypes){
+    if (!glyphInputLevel) return;
     glyphInputLevel.addEventListener('paste', (e) => {
         e.preventDefault();
         let paste = (e.clipboardData || window.clipboardData).getData('text');
-        let listAccent = paste.trim().split(' ').map(element => element.trim()).filter(element => element.length != 0);;
+        let listAccent = paste.trim().split(' ').map(element => element.trim()).filter(element => element.length != 0);
         
         let listTones = ['level', 'acute', 'lower', 'rising', 'raised', 'heavy'];
+        let container = $(e.currentTarget).closest('.base-type-editor');
 
         for (let j = 0; j < listAccent.length; j++) {
             const glyph = listAccent[j];
             const tone = listTones[j];
-            $('#glyphinput'+tone+numOfTypes).val(glyph);
-            $('#'+tone+numOfTypes).val(glyph.split('').map(char => char.charCodeAt(0)).join(','));
-        
+            container.find(`input[name^="glyphinput${tone}"]`).val(glyph);
+            container.find(`input[name^="${tone}"]`).not('[name^="glyphinput"]').val(glyph.split('').map(char => char.charCodeAt(0)).join(','));
         }
     });
 }
@@ -132,7 +179,7 @@ view.populateTypeEditor = function (typeData, numOfTypes){
 }
 
 view.updateBaseCardBadge = function(baseChar) {
-    const $card = $(`.baseCard[data-base-name="${baseChar}"]`);
+    const $card = $('.baseCard').filter((_, el) => $(el).attr('data-base-name') === baseChar);
     if (!$card.length) return;
     $card.find('.dot-badge').remove();
     const data = model.glyphData[baseChar];

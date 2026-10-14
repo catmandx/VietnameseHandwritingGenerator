@@ -140,7 +140,7 @@ components.baseEditForm = `
                                     <input type="number" step="0.05" class="form-control text-center" id="startPointX" name="startPointX" placeholder="Chưa đặt">
                                     <span class="input-group-text bg-white">ô ly</span>
                                 </div>
-                                <small class="text-muted">Khoảng cách từ mép trái ($X = 0$)</small>
+                                <small class="text-muted">Khoảng cách từ mép trái (X = 0)</small>
                             </div>
                             <div class="col-sm-6">
                                 <label for="startPointY" class="form-label fw-bold mb-1">Tọa độ Y (ô ly cao):</label>
@@ -149,7 +149,7 @@ components.baseEditForm = `
                                     <input type="number" step="0.05" class="form-control text-center" id="startPointY" name="startPointY" placeholder="Chưa đặt">
                                     <span class="input-group-text bg-white">ô ly</span>
                                 </div>
-                                <small class="text-muted">Tính từ Baseline kẻ 1 ($Y = 0$)</small>
+                                <small class="text-muted">Tính từ Baseline kẻ 1 (Y = 0)</small>
                             </div>
                         </div>
                         <div class="d-flex gap-2 flex-wrap mb-3">
@@ -164,9 +164,9 @@ components.baseEditForm = `
                     <div class="alert alert-secondary py-2 px-3 mb-0 small" style="font-size: 0.85rem; line-height: 1.45;">
                         <div class="fw-bold mb-1">Quy chuẩn lưới ô ly tiểu học:</div>
                         <ul class="mb-0 ps-3">
-                            <li><span class="badge bg-primary">Đường xanh đậm</span>: Baseline ($Y = 0$, Đường kẻ 1).</li>
-                            <li><span class="badge bg-info text-dark">Nét đứt nhạt</span>: Đường kẻ 3 ($Y = 2.0$ - đỉnh chữ <code>a, o, c</code>).</li>
-                            <li><span class="badge bg-info text-dark">Nét đứt cao</span>: Đường kẻ 5 ($Y = 5.0$ - đỉnh chữ <code>b, l, h</code>).</li>
+                            <li><span class="badge bg-primary">Đường xanh đậm</span>: Baseline (Y = 0, Đường kẻ 1).</li>
+                            <li><span class="badge bg-info text-dark">Nét đứt nhạt</span>: Đường kẻ 3 (Y = 2.0 - đỉnh chữ <code>a, o, c</code>).</li>
+                            <li><span class="badge bg-info text-dark">Nét đứt cao</span>: Đường kẻ 5 (Y = 5.0 - đỉnh chữ <code>b, l, h</code>).</li>
                             <li>Tọa độ lưu theo tỷ lệ ô ly, <strong>tự động co giãn chính xác 100%</strong> cho cả cỡ to (72pt) và cỡ nhỏ (37pt).</li>
                         </ul>
                     </div>
@@ -178,9 +178,12 @@ components.baseEditForm = `
 </form>
 `
 components.singleTypeEditor = `
-<div class="row base-type-editor border border-3" id="typeNUM-PLACEHOLDER">
-    <div class="col-sm-2 d-flex align-items-center justify-content-center">
-        <p class="type-num">Type NUM-PLACEHOLDER</p>
+<div class="row base-type-editor border border-3 mb-3" id="typeNUM-PLACEHOLDER">
+    <div class="col-sm-2 d-flex flex-column align-items-center justify-content-center p-2">
+        <p class="type-num fw-bold mb-2">Type NUM-PLACEHOLDER</p>
+        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-type" data-type-num="NUM-PLACEHOLDER" title="Xóa Type này">
+            Xóa Type
+        </button>
     </div>
     <div class="col-sm-10">
         <div class="row  d-flex align-items-center p-2">                                
