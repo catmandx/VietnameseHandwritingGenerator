@@ -317,11 +317,10 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
 
     // 1. Initialize configurations
     let configs = [];
-    let isInitiallyEnabled = false;
+    let isInitiallyEnabled = true;
 
     if (dotConfigs && Array.isArray(dotConfigs) && dotConfigs.length > 0) {
         configs = JSON.parse(JSON.stringify(dotConfigs));
-        isInitiallyEnabled = true;
     } else if (startPoint && typeof startPoint.x === 'number' && typeof startPoint.y === 'number') {
         configs = [{
             id: 'start',
@@ -329,10 +328,8 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
             desc: '1 chấm chuẩn',
             dots: [{ x: startPoint.x, y: startPoint.y, label: 'Nét 1' }]
         }];
-        isInitiallyEnabled = true;
     } else if (window.model && window.model.defaultDotConfigs && window.model.defaultDotConfigs[baseChar]) {
         configs = JSON.parse(JSON.stringify(window.model.defaultDotConfigs[baseChar]));
-        isInitiallyEnabled = false;
     } else {
         let defaultX = 0.50;
         let defaultY = 1.75;
@@ -346,7 +343,6 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
             desc: '1 chấm chuẩn',
             dots: [{ x: defaultX, y: defaultY, label: 'Nét 1' }]
         }];
-        isInitiallyEnabled = false;
     }
 
     let activeConfigIdx = 0;
@@ -510,6 +506,13 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
         if (!isEnabled) return;
 
         const cfg = getCurrentConfig();
+        if (!cfg.dots || cfg.dots.length === 0) {
+            cfg.dots = [{ x: 0.50, y: 1.75, label: 'Nét 1' }];
+        }
+        if (activeDotIdx >= cfg.dots.length) {
+            activeDotIdx = 0;
+        }
+
         cfg.dots.forEach((dot, idx) => {
             const px = ORIGIN_X + dot.x * CELL_PX;
             const py = BASELINE_Y - dot.y * CELL_PX;
@@ -570,9 +573,18 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
 
     // High performance in-place visual updater during dragging (avoids DOM destruction and stringification)
     function updateActiveDotVisualsOnly(x, y) {
+        if (!isEnabled) {
+            isEnabled = true;
+            $hasStartPoint.prop('checked', true);
+            renderSvgDots();
+        }
+        let $activeG = $dotsLayer.find('.svg-dot-node.is-active');
+        if (!$activeG.length) {
+            renderSvgDots();
+            $activeG = $dotsLayer.find('.svg-dot-node.is-active');
+        }
         const px = ORIGIN_X + x * CELL_PX;
         const py = BASELINE_Y - y * CELL_PX;
-        const $activeG = $dotsLayer.find('.svg-dot-node.is-active');
         if ($activeG.length) {
             $activeG[0].setAttribute('transform', `translate(${px}, ${py})`);
             const dot = getCurrentDot();
@@ -767,14 +779,16 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
     }
 
     $container.off('pointerdown mousedown touchstart').on('pointerdown mousedown touchstart', function(e) {
+        let wasDisabled = !isEnabled;
         if (!isEnabled) {
             isEnabled = true;
             $hasStartPoint.prop('checked', true);
+            renderSvgDots();
         }
 
         // Check if user clicked on another dot node (secondary dot)
         const $dotNode = $(e.target).closest('.svg-dot-node');
-        if ($dotNode.length) {
+        if ($dotNode.length && !wasDisabled) {
             const clickedIdx = parseInt($dotNode.attr('data-dot-idx'), 10);
             if (!isNaN(clickedIdx) && clickedIdx !== activeDotIdx) {
                 activeDotIdx = clickedIdx;
@@ -820,6 +834,7 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
             } catch(err) {}
             renderDotsList();
             renderActiveDotInputs();
+            renderSvgDots();
             syncHiddenInputs();
         }
     }
