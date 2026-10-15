@@ -12,6 +12,7 @@ view.escapeHtml = function (str) {
 
 view.lineDotConfigs = {};
 view.prevLineFirstChars = [];
+view.userCustomGlobalSpaces = null;
 
 view.wordDotConfigs = {};
 
@@ -39,6 +40,7 @@ view.getActiveDotConfig = function (charUnit, lineIndex, wordIndex) {
 view.resetLineDotConfigs = function () {
     view.lineDotConfigs = {};
     view.wordDotConfigs = {};
+    view.userCustomGlobalSpaces = null;
     if (window.model && typeof model.getFirstCharUnit === 'function') {
         view.prevLineFirstChars = ($('#input').val() || '').split('\n').map(l => model.getFirstCharUnit(l));
     }
@@ -55,6 +57,7 @@ view.syncLineDotConfigs = function (newLines) {
     if (!window.model || typeof model.getFirstCharUnit !== 'function') {
         return;
     }
+    view.userCustomGlobalSpaces = null;
     const newFirstChars = newLines.map(l => model.getFirstCharUnit(l));
     if (!view.prevLineFirstChars) {
         view.prevLineFirstChars = [];
@@ -190,13 +193,18 @@ view.init = function () {
             view.updateDottingLineSelect();
             $('#dotting-line-select').val(val).trigger('change');
             view.render();
+        } else {
+            view.userCustomGlobalSpaces = null;
+            view.lineDotConfigs = {};
+            view.updateDottingLineSelect();
+            view.render();
         }
     });
 
     $('#dotting-spaces-input').on('input change', function () {
         let val = parseInt(this.value, 10);
         if (isNaN(val) || val < 1) val = 1;
-        if (val > 10) val = 10;
+        if (val > 30) val = 30;
         this.value = val;
 
         const selectedLine = $('#dotting-line-select').val();
@@ -205,6 +213,9 @@ view.init = function () {
             if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
             view.lineDotConfigs[lineIdx].spaces = val;
             view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        } else {
+            view.userCustomGlobalSpaces = val;
             $('#btn-reset-line-dotting').show();
         }
         view.updateDottingControlsState();
@@ -282,13 +293,101 @@ view.isDottingActive = function () {
     return $('#dotting-checkbox').is(':checked');
 };
 
-view.getDottingConfig = function (lineIndex) {
+view.calculateAutoSpaces = function (lineIndex, $lineEl) {
+    let $line = $lineEl;
+    if ((!$line || !$line.length) && lineIndex !== undefined && lineIndex !== null) {
+        $line = $(`#line-${lineIndex}`);
+    }
+
+    const layout = $('#board-color-select').val();
+    const isBlackboard = (layout === 'blackboard') || ($line && $line.closest('.board').hasClass('blackboard'));
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || ($line && $line.closest('.result-text').hasClass('small')) || $('#result').hasClass('small');
+
+    const blockWidth = isBlackboard ? 225.2 : 76.8;
+
+    let words = [];
+    if ($line && $line.length) {
+        $line.children('.word').each(function () {
+            const $w = $(this);
+            words.push({
+                offsetLeft: this.offsetLeft,
+                offsetWidth: this.offsetWidth,
+                stretch: parseFloat($w.attr('data-stretch')) || 1.0
+            });
+        });
+    }
+
+    // If this line has no words (e.g. an empty practice line), borrow from first line with words
+    if (words.length === 0) {
+        $('p.line').each(function () {
+            if (words.length > 0) return;
+            const $other = $(this);
+            const $wList = $other.children('.word');
+            if ($wList.length > 0) {
+                $wList.each(function () {
+                    const $w = $(this);
+                    words.push({
+                        offsetLeft: this.offsetLeft,
+                        offsetWidth: this.offsetWidth,
+                        stretch: parseFloat($w.attr('data-stretch')) || 1.0
+                    });
+                });
+            }
+        });
+    }
+
+    // Fallback if DOM not yet rendered (e.g. pre-render or headless)
+    if (words.length === 0) {
+        const rawLines = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const lineText = (lineIndex !== undefined && lineIndex !== null && rawLines[lineIndex]) || rawLines[0];
+        if (lineText && lineText.length > 0) {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                let fontSizePx = 72;
+                if (isBlackboard) {
+                    fontSizePx = isSmall ? 144.66 : 281.5;
+                } else {
+                    fontSizePx = isSmall ? 36 : 72;
+                }
+                const isBold = $('#weight-checkbox').is(':checked');
+                ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
+                const converted = window.model && typeof model.getUnicodeStr === 'function' ? model.getUnicodeStr(lineText) : lineText;
+                const measuredWidth = ctx.measureText(converted).width;
+                const blocks = measuredWidth / blockWidth;
+                return Math.max(1, Math.ceil(blocks - 0.001) + 1);
+            } catch (_) {}
+        }
+        return 2;
+    }
+
+    const firstWord = words[0];
+    const lastWord = words[words.length - 1];
+    const startX = firstWord.offsetLeft;
+    const endX = lastWord.offsetLeft + lastWord.offsetWidth;
+    const totalWidth = Math.max(0, endX - startX);
+    if (totalWidth <= 0) {
+        return 2;
+    }
+
+    const blocks = totalWidth / blockWidth;
+    return Math.max(1, Math.ceil(blocks - 0.001) + 1);
+};
+
+view.getDottingConfig = function (lineIndex, $lineEl) {
     const enabled = view.isDottingActive();
     const layout = $('#board-color-select').val();
     const isBlackboard = (layout === 'blackboard');
     const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
 
-    const globalSpaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
+    const autoSpacesLine0 = view.calculateAutoSpaces(0, $lineEl);
+    let globalSpaces;
+    if (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) {
+        globalSpaces = view.userCustomGlobalSpaces;
+    } else {
+        globalSpaces = autoSpacesLine0;
+    }
+
     const globalLinesCount = Math.max(1, parseInt($('#dotting-lines-input').val(), 10) || 1);
     const globalFullDot = $('#dotting-fulldot-checkbox').is(':checked');
     const globalOutline = $('#dotting-outline-select').val() || 'none';
@@ -303,9 +402,17 @@ view.getDottingConfig = function (lineIndex) {
         globalReps = Math.max(1, parseInt($('#dotting-reps-input').val(), 10) || 5);
     }
 
-    if (lineIndex !== undefined && lineIndex !== null && view.lineDotConfigs && view.lineDotConfigs[lineIndex]) {
-        const lineCfg = view.lineDotConfigs[lineIndex];
-        const spaces = lineCfg.spaces !== undefined ? lineCfg.spaces : globalSpaces;
+    if (lineIndex !== undefined && lineIndex !== null) {
+        const lineCfg = (view.lineDotConfigs && view.lineDotConfigs[lineIndex]) || {};
+        let spaces;
+        if (lineCfg.spaces !== undefined) {
+            spaces = lineCfg.spaces;
+        } else if (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) {
+            spaces = view.userCustomGlobalSpaces;
+        } else {
+            spaces = view.calculateAutoSpaces(lineIndex, $lineEl);
+        }
+
         let reps;
         if (isWhite11x14) {
             reps = Math.min(11, Math.max(1, Math.floor(12 / spaces)));
@@ -341,7 +448,7 @@ view.getDottingConfig = function (lineIndex) {
         color: color,
         isBlackboard: isBlackboard,
         isWhite11x14: isWhite11x14,
-        isCustom: false
+        isCustom: (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null)
     };
 };
 
@@ -358,14 +465,22 @@ view.updateDottingControlsState = function () {
         const cfg = view.getDottingConfig(lineIdx);
         spaces = cfg.spaces;
         reps = cfg.repetitions;
+        $('#dotting-spaces-input').val(spaces);
         if (view.lineDotConfigs[lineIdx] && view.lineDotConfigs[lineIdx].isCustom) {
             $('#btn-reset-line-dotting').show();
         } else {
             $('#btn-reset-line-dotting').hide();
         }
     } else {
-        spaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
-        $('#btn-reset-line-dotting').hide();
+        const cfg0 = view.getDottingConfig(0);
+        spaces = cfg0.spaces;
+        $('#dotting-spaces-input').val(spaces);
+        reps = cfg0.repetitions;
+        if (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) {
+            $('#btn-reset-line-dotting').show();
+        } else {
+            $('#btn-reset-line-dotting').hide();
+        }
     }
 
     const $repsInput = $('#dotting-reps-input');
@@ -420,12 +535,16 @@ view.updateDottingLineSelect = function () {
 };
 
 view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
-    if (!config) config = view.getDottingConfig(lineIndex);
+    if (!config) config = view.getDottingConfig(lineIndex, $line);
     const hasAnyText = ($('#input').val() || '').trim().length > 0;
     if (!config.enabled || !hasAnyText) {
         $line.find('.guide-dots-layer').remove();
         return;
     }
+
+    $line.find('.btn-line-dot-badge')
+        .attr('title', `Dòng ${lineIndex + 1}: Cách ${config.spaces} ô (Nhấp để chỉnh riêng)`)
+        .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${config.spaces} ô`);
 
     $line.find('.guide-dots-layer').remove();
 
@@ -704,6 +823,7 @@ view.render = function () {
         $result.css({ 'font-size': '', 'top': '' });
     }
     view.updateDottingLineSelect();
+    view.updateDottingControlsState();
 };
 
 view.syncBlackboards = function (linesData) {
@@ -956,7 +1076,7 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
 
     let wordIndex = 0;
     let html = '';
-    const lineDotConfig = view.getDottingConfig(lineIndex);
+    let lineDotConfig = view.getDottingConfig(lineIndex);
     const isDotActive = view.isDottingActive();
 
     for (const token of lineTokens) {
@@ -1021,8 +1141,17 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
         }
     }
     $line.empty().html(html);
+
+    const lineCustomSpaces = view.lineDotConfigs && view.lineDotConfigs[lineIndex] && view.lineDotConfigs[lineIndex].spaces !== undefined;
+    if (!lineCustomSpaces && (view.userCustomGlobalSpaces === null || view.userCustomGlobalSpaces === undefined)) {
+        lineDotConfig = view.getDottingConfig(lineIndex, $line);
+        $line.find('.btn-line-dot-badge')
+            .attr('title', `Dòng ${lineIndex + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)`)
+            .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${lineDotConfig.spaces} ô`);
+    }
+
     if (view.isDottingActive()) {
-        view.renderDotsForLine($line, lineTokens, lineIndex);
+        view.renderDotsForLine($line, lineTokens, lineIndex, lineDotConfig);
     } else {
         $line.find('.guide-dots-layer').remove();
     }
@@ -1687,7 +1816,7 @@ view.setupDragInteractions = function () {
         const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
         const cfg = view.getDottingConfig(lineIdx);
         let newSpaces = cfg.spaces + (action === 'inc' ? 1 : -1);
-        newSpaces = Math.max(1, Math.min(10, newSpaces));
+        newSpaces = Math.max(1, Math.min(30, newSpaces));
 
         if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
         view.lineDotConfigs[lineIdx].spaces = newSpaces;
