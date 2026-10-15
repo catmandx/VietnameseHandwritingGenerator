@@ -164,6 +164,7 @@ view.init = function () {
             $('#dotting-spaces-input').val(globalCfg.spaces);
             $('#dotting-reps-input').val(globalCfg.repetitions);
             $('#dotting-fulldot-checkbox').prop('checked', globalCfg.fullDot);
+            $('#dotting-outline-select').val(globalCfg.outline);
             $('#btn-reset-line-dotting').hide();
         } else {
             const lineIdx = parseInt(val, 10);
@@ -171,6 +172,7 @@ view.init = function () {
             $('#dotting-spaces-input').val(cfg.spaces);
             $('#dotting-reps-input').val(cfg.repetitions);
             $('#dotting-fulldot-checkbox').prop('checked', cfg.fullDot);
+            $('#dotting-outline-select').val(cfg.outline);
             if (view.lineDotConfigs[lineIdx] && view.lineDotConfigs[lineIdx].isCustom) {
                 $('#btn-reset-line-dotting').show();
             } else {
@@ -248,6 +250,20 @@ view.init = function () {
         view.render();
     });
 
+    $('#dotting-outline-select').on('change', function () {
+        const val = this.value;
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].outline = val;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        }
+        view.render();
+        view.updateDottingLineSelect();
+    });
+
     $('#dotting-color-input').on('input change', function () {
         view.render();
     });
@@ -275,6 +291,7 @@ view.getDottingConfig = function (lineIndex) {
     const globalSpaces = Math.max(1, parseInt($('#dotting-spaces-input').val(), 10) || 2);
     const globalLinesCount = Math.max(1, parseInt($('#dotting-lines-input').val(), 10) || 1);
     const globalFullDot = $('#dotting-fulldot-checkbox').is(':checked');
+    const globalOutline = $('#dotting-outline-select').val() || 'none';
     const color = $('#dotting-color-input').val() || '#e53935';
 
     let globalReps;
@@ -298,6 +315,7 @@ view.getDottingConfig = function (lineIndex) {
             reps = lineCfg.repetitions !== undefined ? lineCfg.repetitions : globalReps;
         }
         const fullDot = lineCfg.fullDot !== undefined ? lineCfg.fullDot : globalFullDot;
+        const outline = lineCfg.outline !== undefined ? lineCfg.outline : globalOutline;
 
         return {
             enabled: enabled,
@@ -305,6 +323,7 @@ view.getDottingConfig = function (lineIndex) {
             repetitions: reps,
             linesCount: globalLinesCount,
             fullDot: fullDot,
+            outline: outline,
             color: color,
             isBlackboard: isBlackboard,
             isWhite11x14: isWhite11x14,
@@ -318,6 +337,7 @@ view.getDottingConfig = function (lineIndex) {
         repetitions: globalReps,
         linesCount: globalLinesCount,
         fullDot: globalFullDot,
+        outline: globalOutline,
         color: color,
         isBlackboard: isBlackboard,
         isWhite11x14: isWhite11x14,
@@ -424,40 +444,71 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         return;
     }
 
-    // Identify glyph character unit for this line
-    let charUnit = null;
+    // Collect wordsInfo with their text, raw, offsetLeft, and stretch
+    let wordsInfo = [];
     if (hasText) {
-        const rawOrText = wordTokens[0].raw || wordTokens[0].text;
-        charUnit = model.getFirstCharUnit(rawOrText);
+        $line.children('.word').each(function () {
+            const $w = $(this);
+            wordsInfo.push({
+                text: $w.find('.word-text').text() || $w.text(),
+                raw: $w.attr('data-raw') || '',
+                offsetLeft: this.offsetLeft,
+                stretch: parseFloat($w.attr('data-stretch')) || 1.0
+            });
+        });
     } else {
-        // Line is empty, look up preceding line with text or textarea
-        let found = null;
+        // Line is empty, look up preceding line with words
         for (let i = lineIndex - 1; i >= 0; i--) {
             const $prevLine = $(`#line-${i}`);
-            if ($prevLine.length) {
-                const $prevWord = $prevLine.children('.word').first();
-                if ($prevWord.length) {
-                    const text = $prevWord.find('.word-text').text() || $prevWord.text();
-                    if (text && text.trim()) {
-                        found = model.getFirstCharUnit(text);
-                        break;
-                    }
-                }
+            const $prevWords = $prevLine.children('.word');
+            if ($prevWords.length) {
+                $prevWords.each(function () {
+                    const $w = $(this);
+                    wordsInfo.push({
+                        text: $w.find('.word-text').text() || $w.text(),
+                        raw: $w.attr('data-raw') || '',
+                        offsetLeft: this.offsetLeft,
+                        stretch: parseFloat($w.attr('data-stretch')) || 1.0
+                    });
+                });
+                break;
             }
         }
-        if (!found) {
-            const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            found = rawInputLines.length > 0 ? model.getFirstCharUnit(rawInputLines[0].split(/\s+/)[0]) : 'a';
+        if (wordsInfo.length === 0) {
+            $('#line-0').children('.word').each(function () {
+                const $w = $(this);
+                wordsInfo.push({
+                    text: $w.find('.word-text').text() || $w.text(),
+                    raw: $w.attr('data-raw') || '',
+                    offsetLeft: this.offsetLeft,
+                    stretch: parseFloat($w.attr('data-stretch')) || 1.0
+                });
+            });
         }
-        charUnit = found;
+        if (wordsInfo.length === 0) {
+            const rawInputLines = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            const lineFromInput = rawInputLines[lineIndex] || rawInputLines[0] || 'a';
+            const wordTokensFromInput = lineFromInput.split(/\s+/).filter(w => w.length > 0);
+            wordsInfo = (wordTokensFromInput.length > 0 ? wordTokensFromInput : ['a']).map(w => ({
+                text: w,
+                raw: w,
+                offsetLeft: 0,
+                stretch: 1.0
+            }));
+        }
     }
 
+    // Identify glyph character unit for this line
+    const charUnit = wordsInfo.length > 0 ? model.getFirstCharUnit(wordsInfo[0].raw || wordsInfo[0].text) : 'a';
+
     const activeDotConfig = view.getActiveDotConfig(charUnit, lineIndex, 0);
-    if (!activeDotConfig || !activeDotConfig.dots || activeDotConfig.dots.length === 0) {
+    const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+    const outline = config.outline || 'none';
+
+    if (!hasDotConfigs && outline === 'none') {
         $line.find('.guide-dots-layer').remove();
         return;
     }
-    const dots = activeDotConfig.dots;
 
     // 2. Determine geometry units
     const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $line.closest('.result-text').hasClass('small') || $('#result').hasClass('small');
@@ -490,58 +541,57 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
     }
 
     // 4. Measure base X and stretch
-    let baseWordX = 0;
-    let stretch = 1.0;
-    const $firstWord = $line.children('.word').first();
-    if ($firstWord.length) {
-        stretch = parseFloat($firstWord.attr('data-stretch')) || 1.0;
-        baseWordX = $firstWord[0].offsetLeft;
-    } else {
-        // On empty line, align with preceding line with words if possible
-        let foundWordOffset = null;
-        let foundWordStretch = 1.0;
-        for (let i = lineIndex - 1; i >= 0; i--) {
-            const $prevWord = $(`#line-${i}`).children('.word').first();
-            if ($prevWord.length) {
-                foundWordOffset = $prevWord[0].offsetLeft;
-                foundWordStretch = parseFloat($prevWord.attr('data-stretch')) || 1.0;
-                break;
-            }
-        }
-        if (foundWordOffset !== null) {
-            baseWordX = foundWordOffset;
-            stretch = foundWordStretch;
-        } else {
-            const $line0Word = $('#line-0').children('.word').first();
-            if ($line0Word.length) {
-                baseWordX = $line0Word[0].offsetLeft;
-                stretch = parseFloat($line0Word.attr('data-stretch')) || 1.0;
-            } else {
-                baseWordX = 0;
-                stretch = 1.0;
-            }
-        }
-    }
+    const baseWordX = wordsInfo.length > 0 ? wordsInfo[0].offsetLeft : 0;
+    const stretch = wordsInfo.length > 0 ? (wordsInfo[0].stretch || 1.0) : 1.0;
 
-    // 5. Build guide dots
+    // 5. Build guide dots & outline copies
     const $dotsLayer = $('<div class="guide-dots-layer"></div>');
     for (let j = 0; j < config.repetitions; j++) {
         // Line with text is a model line: ALWAYS draw all dots for that line!
         // Empty line is a practice line: draw all dots if fullDot is true, else only j === 0
         if (hasText || config.fullDot || j === 0) {
-            dots.forEach((dot, dotIdx) => {
-                const dotX = baseWordX + (dot.x * olyUnitPx * stretch) + (j * blockWidth * config.spaces);
-                const dotY = baselineY - (dot.y * olyUnitPx);
-                const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
-                const $dot = $('<span class="guide-dot"></span>').css({
-                    left: dotX + 'px',
-                    top: dotY + 'px',
-                    width: dotSizePx + 'px',
-                    height: dotSizePx + 'px',
-                    backgroundColor: config.color
-                }).attr('title', dotTitle);
-                $dotsLayer.append($dot);
-            });
+            const shiftX = j * blockWidth * config.spaces;
+
+            // A. Faint outline copies for students to trace
+            if (outline !== 'none') {
+                const isCopy = (!hasText || j > 0);
+                if (isCopy) {
+                    if (outline === 'first') {
+                        const word0 = wordsInfo[0];
+                        const x = word0 ? (word0.offsetLeft + shiftX) : (baseWordX + shiftX);
+                        const wStretch = word0 ? (word0.stretch || 1.0) : (stretch || 1.0);
+                        const transformStyle = wStretch !== 1.0 ? `transform: scaleX(${wStretch}); transform-origin: 0 0;` : '';
+                        const $span = $(`<span class="guide-outline-word" style="left: ${x}px; ${transformStyle}">${view.escapeHtml(charUnit)}</span>`);
+                        $dotsLayer.append($span);
+                    } else if (outline === 'all') {
+                        wordsInfo.forEach(w => {
+                            const x = w.offsetLeft + shiftX;
+                            const wStretch = w.stretch || 1.0;
+                            const transformStyle = wStretch !== 1.0 ? `transform: scaleX(${wStretch}); transform-origin: 0 0;` : '';
+                            const $span = $(`<span class="guide-outline-word" style="left: ${x}px; ${transformStyle}">${view.escapeHtml(w.text)}</span>`);
+                            $dotsLayer.append($span);
+                        });
+                    }
+                }
+            }
+
+            // B. Guide dots
+            if (hasDotConfigs) {
+                const dots = activeDotConfig.dots;
+                dots.forEach((dot, dotIdx) => {
+                    const dotX = baseWordX + (dot.x * olyUnitPx * stretch) + shiftX;
+                    const dotY = baselineY - (dot.y * olyUnitPx);
+                    const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
+                    const $dot = $('<span class="guide-dot"></span>').css({
+                        left: dotX + 'px',
+                        top: dotY + 'px',
+                        width: dotSizePx + 'px',
+                        height: dotSizePx + 'px',
+                        backgroundColor: config.color
+                    }).attr('title', dotTitle);
+                    $dotsLayer.append($dot);
+                });
+            }
         }
     }
     $line.append($dotsLayer);
@@ -1457,6 +1507,14 @@ view.setupDragInteractions = function () {
                 </div>
                 ${cfgOptionsHtml}
                 <div class="popover-row">
+                    <label>Nét mờ:</label>
+                    <select class="form-select form-select-sm popover-outline-select" style="max-width: 125px; font-size: 0.75rem; padding: 1px 4px;">
+                        <option value="none" ${cfg.outline === 'none' ? 'selected' : ''}>Không viền</option>
+                        <option value="first" ${cfg.outline === 'first' ? 'selected' : ''}>Chữ đầu</option>
+                        <option value="all" ${cfg.outline === 'all' ? 'selected' : ''}>Cả dòng</option>
+                    </select>
+                </div>
+                <div class="popover-row">
                     <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                         <input type="checkbox" class="popover-fulldot" ${cfg.fullDot ? 'checked' : ''} /> Chấm hết dòng
                     </label>
@@ -1686,6 +1744,32 @@ view.setupDragInteractions = function () {
         }
     });
 
+    $container.on('change', '.line-dot-popover .popover-outline-select', function (e) {
+        e.stopPropagation();
+        const $popover = $(this).closest('.line-dot-popover');
+        const $wrapper = $popover.closest('.line-dot-wrapper');
+        const $badge = $wrapper.children('.btn-line-dot-badge');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].outline = this.value;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        if (!$popover.find('.btn-popover-reset').length) {
+            $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
+        }
+
+        const $line = $(`#line-${lineIdx}`);
+        $line.find('.btn-line-dot-badge').addClass('is-custom');
+        view.renderDotsForLine($line, null, lineIdx);
+        view.updateDottingLineSelect();
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-outline-select').val(this.value);
+            $('#btn-reset-line-dotting').show();
+        }
+    });
+
     $container.on('click', '.line-dot-popover .btn-popover-reset', function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -1717,6 +1801,7 @@ view.setupDragInteractions = function () {
             $('#dotting-spaces-input').val(defaultCfg.spaces);
             $('#dotting-reps-input').val(defaultCfg.repetitions);
             $('#dotting-fulldot-checkbox').prop('checked', defaultCfg.fullDot);
+            $('#dotting-outline-select').val(defaultCfg.outline);
             $('#btn-reset-line-dotting').hide();
         }
 
@@ -1994,42 +2079,102 @@ view.exportBlackboardToPng = async function () {
             const hasText = words.length > 0;
             const hasAnyText = ($('#input').val() || '').trim().length > 0;
             if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || bIdx < lineDotConfig.linesCount)) {
-                let rawLine = words.length > 0 ? (words[0].raw || rawInputLines[bIdx] || words[0].text) : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
+                let wordsToDraw = words;
+                if (wordsToDraw.length === 0) {
+                    const $board0Line = $($boards[0]).find('p.line').first();
+                    $board0Line.children('.word').each(function () {
+                        const wEl = this;
+                        wordsToDraw.push({
+                            text: $(wEl).find('.word-text').text() || $(wEl).text(),
+                            raw: $(wEl).attr('data-raw') || '',
+                            offsetLeft: wEl.offsetLeft,
+                            offsetWidth: wEl.offsetWidth,
+                            stretch: parseFloat($(wEl).attr('data-stretch')) || 1.0
+                        });
+                    });
+                }
+                let rawLine = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || rawInputLines[bIdx] || wordsToDraw[0].text) : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
                 const charUnit = model.getFirstCharUnit(rawLine);
                 const activeDotConfig = view.getActiveDotConfig(charUnit, bIdx, 0);
-                if (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) {
-                    const dots = activeDotConfig.dots;
+                const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+                const outline = lineDotConfig.outline || 'none';
 
                 const olyUnitPx = (isSmall ? 28.932 : 56.3) * S;
                 const blockWidth = 225.2 * S;
                 const dotRadius = (isSmall ? 4 : 7) * S;
 
-                const wordOffset = words.length > 0 ? (words[0].offsetLeft * S) : 0;
-                const firstStretch = words.length > 0 && words[0].stretch ? words[0].stretch : 1.0;
+                const wordOffset = wordsToDraw.length > 0 ? (wordsToDraw[0].offsetLeft * S) : 0;
+                const firstStretch = wordsToDraw.length > 0 && wordsToDraw[0].stretch ? wordsToDraw[0].stretch : 1.0;
                 const baseWordX = startX + wordOffset;
 
-                ctx.save();
-                if (isItalics) {
-                    ctx.translate(0, baselineY);
-                    ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
-                    ctx.translate(0, -baselineY);
-                }
+                if (hasDotConfigs || outline !== 'none') {
+                    ctx.save();
+                    if (isItalics) {
+                        ctx.translate(0, baselineY);
+                        ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
+                        ctx.translate(0, -baselineY);
+                    }
 
-                for (let j = 0; j < lineDotConfig.repetitions; j++) {
-                    if (hasText || lineDotConfig.fullDot || j === 0) {
-                        for (const dot of dots) {
-                            const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + (j * blockWidth * lineDotConfig.spaces);
-                            const dotY = baselineY - (dot.y * olyUnitPx);
-                            ctx.beginPath();
-                            ctx.fillStyle = lineDotConfig.color;
-                            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                            ctx.fill();
-                            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-                            ctx.lineWidth = 1 * S;
-                            ctx.stroke();
+                    for (let j = 0; j < lineDotConfig.repetitions; j++) {
+                        if (hasText || lineDotConfig.fullDot || j === 0) {
+                            const shiftX = j * blockWidth * lineDotConfig.spaces;
+
+                            // A. Faint outline copies for students to trace
+                            if (outline !== 'none') {
+                                const isCopy = (!hasText || j > 0);
+                                if (isCopy) {
+                                    ctx.save();
+                                    ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
+                                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                                    ctx.lineWidth = 1.2 * S;
+                                    ctx.textBaseline = 'alphabetic';
+
+                                    if (outline === 'first') {
+                                        const xPos = baseWordX + shiftX;
+                                        if (firstStretch !== 1.0) {
+                                            ctx.save();
+                                            ctx.translate(xPos, baselineY);
+                                            ctx.scale(firstStretch, 1.0);
+                                            ctx.strokeText(charUnit, 0, 0);
+                                            ctx.restore();
+                                        } else {
+                                            ctx.strokeText(charUnit, xPos, baselineY);
+                                        }
+                                    } else if (outline === 'all') {
+                                        wordsToDraw.forEach(w => {
+                                            const xPos = startX + (w.offsetLeft * S) + shiftX;
+                                            const wStretch = w.stretch || 1.0;
+                                            if (wStretch !== 1.0) {
+                                                ctx.save();
+                                                ctx.translate(xPos, baselineY);
+                                                ctx.scale(wStretch, 1.0);
+                                                ctx.strokeText(w.text, 0, 0);
+                                                ctx.restore();
+                                            } else {
+                                                ctx.strokeText(w.text, xPos, baselineY);
+                                            }
+                                        });
+                                    }
+                                    ctx.restore();
+                                }
+                            }
+
+                            // B. Guide dots
+                            if (hasDotConfigs) {
+                                for (const dot of activeDotConfig.dots) {
+                                    const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
+                                    const dotY = baselineY - (dot.y * olyUnitPx);
+                                    ctx.beginPath();
+                                    ctx.fillStyle = lineDotConfig.color;
+                                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                    ctx.fill();
+                                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                                    ctx.lineWidth = 1 * S;
+                                    ctx.stroke();
+                                }
+                            }
                         }
                     }
-                }
                     ctx.restore();
                 }
             }
@@ -2203,7 +2348,21 @@ view.exportWhite11x14ToPng = async function () {
                 const hasAnyText = ($('#input').val() || '').trim().length > 0;
                 const lineDotConfig = view.getDottingConfig(globalLineIdx);
                 if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || globalLineIdx < lineDotConfig.linesCount)) {
-                    let rawLineText = words.length > 0 ? (words[0].raw || words[0].text) : '';
+                    let wordsToDraw = words;
+                    if (wordsToDraw.length === 0) {
+                        const $firstLineWithWords = $(boardEl).find('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
+                        if ($firstLineWithWords.length) {
+                            $firstLineWithWords.children('.word').each(function () {
+                                wordsToDraw.push({
+                                    text: $(this).find('.word-text').text() || $(this).text(),
+                                    raw: $(this).attr('data-raw') || '',
+                                    offsetLeft: this.offsetLeft,
+                                    stretch: parseFloat($(this).attr('data-stretch')) || 1.0
+                                });
+                            });
+                        }
+                    }
+                    let rawLineText = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || wordsToDraw[0].text) : '';
                     if (!rawLineText) {
                         const rawLines = ($('#input').val() || '').split('\n').map(l => l.trim());
                         const lineFromInput = rawLines[globalLineIdx] || rawLines[0] || 'a';
@@ -2211,26 +2370,72 @@ view.exportWhite11x14ToPng = async function () {
                     }
                     const charUnit = model.getFirstCharUnit(rawLineText);
                     const activeDotConfig = view.getActiveDotConfig(charUnit, globalLineIdx, 0);
-                    if (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) {
-                        const dots = activeDotConfig.dots;
+                    const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+                    const outline = lineDotConfig.outline || 'none';
 
-                        const olyUnitPx = isSmall ? 9.6 : 19.2;
-                        const blockWidth = 76.8;
-                        const dotRadius = isSmall ? 2.5 : 3.5;
+                    const olyUnitPx = isSmall ? 9.6 : 19.2;
+                    const blockWidth = 76.8;
+                    const dotRadius = isSmall ? 2.5 : 3.5;
 
-                        const wordOffset = words.length > 0 ? words[0].offsetLeft : 0;
-                        const firstStretch = words.length > 0 && words[0].stretch ? words[0].stretch : 1.0;
-                        const baseWordX = gridOriginX + wordOffset;
+                    const wordOffset = wordsToDraw.length > 0 ? wordsToDraw[0].offsetLeft : 0;
+                    const firstStretch = wordsToDraw.length > 0 && wordsToDraw[0].stretch ? wordsToDraw[0].stretch : 1.0;
+                    const baseWordX = gridOriginX + wordOffset;
 
+                    if (hasDotConfigs || outline !== 'none') {
                         for (let j = 0; j < lineDotConfig.repetitions; j++) {
                             if (hasText || lineDotConfig.fullDot || j === 0) {
-                                for (const dot of dots) {
-                                    const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + (j * blockWidth * lineDotConfig.spaces);
-                                    const dotY = yPos - (dot.y * olyUnitPx);
-                                    ctx.beginPath();
-                                    ctx.fillStyle = lineDotConfig.color;
-                                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                                    ctx.fill();
+                                const shiftX = j * blockWidth * lineDotConfig.spaces;
+
+                                // A. Outline copies
+                                if (outline !== 'none') {
+                                    const isCopy = (!hasText || j > 0);
+                                    if (isCopy) {
+                                        ctx.save();
+                                        ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
+                                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+                                        ctx.lineWidth = isSmall ? 0.8 : 1.0;
+                                        ctx.textBaseline = 'alphabetic';
+
+                                        if (outline === 'first') {
+                                            const xPos = baseWordX + shiftX;
+                                            if (firstStretch !== 1.0) {
+                                                ctx.save();
+                                                ctx.translate(xPos, yPos);
+                                                ctx.scale(firstStretch, 1.0);
+                                                ctx.strokeText(charUnit, 0, 0);
+                                                ctx.restore();
+                                            } else {
+                                                ctx.strokeText(charUnit, xPos, yPos);
+                                            }
+                                        } else if (outline === 'all') {
+                                            wordsToDraw.forEach(w => {
+                                                const xPos = gridOriginX + w.offsetLeft + shiftX;
+                                                const wStretch = w.stretch || 1.0;
+                                                if (wStretch !== 1.0) {
+                                                    ctx.save();
+                                                    ctx.translate(xPos, yPos);
+                                                    ctx.scale(wStretch, 1.0);
+                                                    ctx.strokeText(w.text, 0, 0);
+                                                    ctx.restore();
+                                                } else {
+                                                    ctx.strokeText(w.text, xPos, yPos);
+                                                }
+                                            });
+                                        }
+                                        ctx.restore();
+                                    }
+                                }
+
+                                // B. Guide dots
+                                if (hasDotConfigs) {
+                                    for (const dot of activeDotConfig.dots) {
+                                        const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
+                                        const dotY = yPos - (dot.y * olyUnitPx);
+                                        ctx.beginPath();
+                                        ctx.fillStyle = lineDotConfig.color;
+                                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                        ctx.fill();
+                                    }
                                 }
                             }
                         }
@@ -2463,31 +2668,85 @@ view.exportToPng = async function () {
             if (!hasText && idx >= lineDotConfig.linesCount) break;
 
             const yPos = firstBaselineY + (idx * lineHeightPx);
-            let rawLineText = hasText ? (lineObj.words[0].raw || lineObj.words[0].text) : '';
+            let wordsToDraw = hasText ? lineObj.words : [];
+            if (wordsToDraw.length === 0) {
+                const firstLineWithWords = lines.find(l => l.words.length > 0);
+                if (firstLineWithWords) {
+                    wordsToDraw = firstLineWithWords.words;
+                }
+            }
+            let rawLineText = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || wordsToDraw[0].text) : '';
             if (!rawLineText) {
                 const lineFromInput = rawInputLines[idx] || rawInputLines.find(l => l.length > 0) || 'a';
                 rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
             }
             const charUnit = model.getFirstCharUnit(rawLineText);
             const activeDotConfig = view.getActiveDotConfig(charUnit, idx, 0);
-            if (!activeDotConfig || !activeDotConfig.dots || activeDotConfig.dots.length === 0) {
+            const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+            const outline = lineDotConfig.outline || 'none';
+
+            if (!hasDotConfigs && outline === 'none') {
                 continue;
             }
-            const dots = activeDotConfig.dots;
 
-            const wordOffset = hasText ? lineObj.words[0].offsetLeft : 0;
-            const firstStretch = hasText && lineObj.words[0].stretch ? lineObj.words[0].stretch : 1.0;
+            const wordOffset = wordsToDraw.length > 0 ? wordsToDraw[0].offsetLeft : 0;
+            const firstStretch = wordsToDraw.length > 0 && wordsToDraw[0].stretch ? wordsToDraw[0].stretch : 1.0;
             const baseWordX = gridOriginX + wordOffset;
 
             for (let j = 0; j < lineDotConfig.repetitions; j++) {
                 if (hasText || lineDotConfig.fullDot || j === 0) {
-                    for (const dot of dots) {
-                        const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + (j * bigGridPx * lineDotConfig.spaces);
-                        const dotY = yPos - (dot.y * olyUnitPx);
-                        ctx.beginPath();
-                        ctx.fillStyle = lineDotConfig.color;
-                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                        ctx.fill();
+                    const shiftX = j * bigGridPx * lineDotConfig.spaces;
+
+                    // A. Faint outline copies
+                    if (outline !== 'none') {
+                        const isCopy = (!hasText || j > 0);
+                        if (isCopy) {
+                            ctx.save();
+                            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
+                            ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+                            ctx.lineWidth = isSmall ? 0.8 : 1.0;
+                            ctx.textBaseline = 'alphabetic';
+
+                            if (outline === 'first') {
+                                const xPos = baseWordX + shiftX;
+                                if (firstStretch !== 1.0) {
+                                    ctx.save();
+                                    ctx.translate(xPos, yPos);
+                                    ctx.scale(firstStretch, 1.0);
+                                    ctx.strokeText(charUnit, 0, 0);
+                                    ctx.restore();
+                                } else {
+                                    ctx.strokeText(charUnit, xPos, yPos);
+                                }
+                            } else if (outline === 'all') {
+                                wordsToDraw.forEach(w => {
+                                    const xPos = gridOriginX + w.offsetLeft + shiftX;
+                                    const wStretch = w.stretch || 1.0;
+                                    if (wStretch !== 1.0) {
+                                        ctx.save();
+                                        ctx.translate(xPos, yPos);
+                                        ctx.scale(wStretch, 1.0);
+                                        ctx.strokeText(w.text, 0, 0);
+                                        ctx.restore();
+                                    } else {
+                                        ctx.strokeText(w.text, xPos, yPos);
+                                    }
+                                });
+                            }
+                            ctx.restore();
+                        }
+                    }
+
+                    // B. Guide dots
+                    if (hasDotConfigs) {
+                        for (const dot of activeDotConfig.dots) {
+                            const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
+                            const dotY = yPos - (dot.y * olyUnitPx);
+                            ctx.beginPath();
+                            ctx.fillStyle = lineDotConfig.color;
+                            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
                     }
                 }
             }
