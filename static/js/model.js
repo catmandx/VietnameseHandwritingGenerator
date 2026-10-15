@@ -218,169 +218,37 @@ model.getFirstCharUnit = function(word) {
     return firstChar;
 };
 
-model.defaultDotConfigs = {
-    // === CHỮ HOA (COMPOSITE & MULTI-STROKE UPPERCASE) ===
-    'B': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Bắt đầu nét móc ngược trái (ĐK 6)', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu các nét', desc: '2 chấm: Bắt đầu Nét 1 & Nét 2 riêng biệt', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }, { x: 0.80, y: 4.50, label: 'Nét 2' }] },
-        { id: 'stages', name: '3. Chi tiết các điểm neo', desc: '4 chấm: Đặt bút, bắt đầu nét 2, thắt lưng, dừng bút', dots: [{ x: 0.40, y: 4.00, label: 'Đặt bút' }, { x: 0.80, y: 4.50, label: 'Bắt đầu nét 2' }, { x: 1.30, y: 2.50, label: 'Thắt lưng' }, { x: 0.80, y: 2.00, label: 'Dừng bút' }] }
-    ],
-    'H': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Bắt đầu Nét 1 cong trái', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu các nét', desc: '3 chấm: Nét 1 cong trái, Nét 2 khuyết xuôi, Nét 3 lượn ngang', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }, { x: 1.80, y: 4.50, label: 'Nét 2' }, { x: 0.80, y: 2.50, label: 'Nét 3' }] },
-        { id: 'stages', name: '3. Chi tiết 5 điểm neo', desc: '5 chấm: Đầy đủ các điểm uốn chuyển hướng của chữ H', dots: [{ x: 0.40, y: 4.00, label: 'Đặt bút nét 1' }, { x: 1.00, y: 1.00, label: 'Dừng nét 1' }, { x: 1.80, y: 4.50, label: 'Bắt đầu nét 2' }, { x: 2.20, y: 1.00, label: 'Dừng nét 2' }, { x: 0.80, y: 2.50, label: 'Nét 3' }] }
-    ],
-    'A': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 2', dots: [{ x: 0.40, y: 1.00, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu các nét', desc: '3 chấm: Nét 1 cong trái, Nét 2 móc ngược, Nét 3 lượn', dots: [{ x: 0.40, y: 1.00, label: 'Nét 1' }, { x: 1.50, y: 4.50, label: 'Nét 2' }, { x: 0.60, y: 2.00, label: 'Nét 3' }] }
-    ],
-    'M': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 6', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu các nét', desc: '3 chấm: Các đỉnh móc của chữ M hoa', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }, { x: 1.40, y: 4.50, label: 'Nét 2' }, { x: 2.20, y: 4.50, label: 'Nét 3' }] }
-    ],
-    'N': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 6', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu các nét', desc: '3 chấm: Bắt đầu 3 nét của chữ N hoa', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }, { x: 1.50, y: 4.50, label: 'Nét 2' }, { x: 1.50, y: 1.00, label: 'Nét 3' }] }
-    ],
-    'P': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Nét móc ngược và Nét cong trên', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }, { x: 0.80, y: 4.50, label: 'Nét 2' }] }
-    ],
-    'R': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Nét móc ngược và Nét cong thắt', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }, { x: 0.80, y: 4.50, label: 'Nét 2' }] }
-    ],
-    'D': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 6', dots: [{ x: 0.80, y: 4.50, label: 'Nét 1' }] },
-        { id: 'stages', name: '2. Đặt bút & thắt chân', desc: '2 chấm: Điểm đặt bút và điểm lượn thắt ở chân', dots: [{ x: 0.80, y: 4.50, label: 'Đặt bút' }, { x: 0.30, y: 0.50, label: 'Thắt chân' }] }
-    ],
-    'Đ': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 6', dots: [{ x: 0.80, y: 4.50, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Thân chữ và nét gạch ngang', dots: [{ x: 0.80, y: 4.50, label: 'Thân chữ' }, { x: 0.60, y: 3.00, label: 'Gạch ngang' }] }
-    ],
-    'K': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Nét 1 cong trái, Nét 2 móc thắt', dots: [{ x: 0.40, y: 4.00, label: 'Nét 1' }, { x: 1.80, y: 4.50, label: 'Nét 2' }] }
-    ],
-    'C': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm', dots: [{ x: 1.20, y: 4.50, label: 'Đặt bút' }] },
-        { id: 'stages', name: '2. Đặt bút & dừng bút', desc: '2 chấm: Đặt bút dưới ĐK 6 và dừng bút trên ĐK 2', dots: [{ x: 1.20, y: 4.50, label: 'Đặt bút' }, { x: 0.80, y: 1.00, label: 'Dừng bút' }] }
-    ],
-    'G': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm', dots: [{ x: 1.20, y: 4.50, label: 'Đặt bút' }] },
-        { id: 'stages', name: '2. Đặt bút & chuyển nét', desc: '2 chấm: Đặt bút và bắt đầu nét khuyết dưới', dots: [{ x: 1.20, y: 4.50, label: 'Đặt bút' }, { x: 1.60, y: 2.00, label: 'Khuyết dưới' }] }
-    ],
-
-    // === CHỮ THƯỜNG (STAGES OF LEARNING LOWERCASE) ===
-    'a': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 3 (chuẩn)', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Bắt đầu nét cong kín & Bắt đầu nét móc ngược', dots: [{ x: 0.65, y: 1.75, label: 'Nét 1' }, { x: 1.00, y: 2.00, label: 'Nét 2' }] },
-        { id: 'stages', name: '3. Đầy đủ các điểm uốn', desc: '3 chấm: Đặt bút, chuyển nét móc và dừng bút', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }, { x: 1.00, y: 2.00, label: 'Nét 2' }, { x: 1.50, y: 1.00, label: 'Dừng bút' }] }
-    ],
-    'b': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }] },
-        { id: 'stages', name: '2. Điểm uốn khuyết & thắt', desc: '3 chấm: Đặt bút, đỉnh khuyết trên (ĐK 6), điểm thắt bụng', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }, { x: 1.00, y: 5.00, label: 'Đỉnh khuyết' }, { x: 1.00, y: 2.00, label: 'Thắt bụng' }] }
-    ],
-    'c': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 3', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }] },
-        { id: 'stages', name: '2. Đặt bút & dừng bút', desc: '2 chấm: Đặt bút và điểm dừng bút trên ĐK 2', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }, { x: 0.75, y: 1.00, label: 'Dừng bút' }] }
-    ],
-    'd': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 3', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Nét cong kín và nét móc ngược (cao 4 li)', dots: [{ x: 0.65, y: 1.75, label: 'Nét 1' }, { x: 1.00, y: 4.00, label: 'Nét 2' }] }
-    ],
-    'đ': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 3', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu các nét', desc: '3 chấm: Nét cong kín, nét móc ngược và nét gạch ngang', dots: [{ x: 0.65, y: 1.75, label: 'Nét 1' }, { x: 1.00, y: 4.00, label: 'Nét 2' }, { x: 0.80, y: 3.00, label: 'Nét 3' }] }
-    ],
-    'm': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Giữa ĐK 2 và ĐK 3', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 3 nét móc', desc: '3 chấm: Bắt đầu Nét móc 1, Nét móc 2, Nét móc 3', dots: [{ x: 0.20, y: 1.00, label: 'Nét 1' }, { x: 0.90, y: 1.00, label: 'Nét 2' }, { x: 1.60, y: 1.00, label: 'Nét 3' }] },
-        { id: 'stages', name: '3. Điểm neo và dừng bút', desc: '4 chấm: Bắt đầu 3 nét và điểm dừng bút trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Nét 1' }, { x: 0.90, y: 1.00, label: 'Nét 2' }, { x: 1.60, y: 1.00, label: 'Nét 3' }, { x: 2.10, y: 1.00, label: 'Dừng bút' }] }
-    ],
-    'n': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Giữa ĐK 2 và ĐK 3', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét móc', desc: '2 chấm: Bắt đầu Nét móc 1 và Nét móc 2', dots: [{ x: 0.20, y: 1.00, label: 'Nét 1' }, { x: 0.90, y: 1.00, label: 'Nét 2' }] },
-        { id: 'stages', name: '3. Điểm neo và dừng bút', desc: '3 chấm: Bắt đầu 2 nét và điểm dừng bút trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Nét 1' }, { x: 0.90, y: 1.00, label: 'Nét 2' }, { x: 1.40, y: 1.00, label: 'Dừng bút' }] }
-    ],
-    'e': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 1 một chút', dots: [{ x: 0.15, y: 0.25, label: 'Đặt bút' }] },
-        { id: 'stages', name: '2. Đặt bút & dừng bút', desc: '2 chấm: Điểm đặt bút và điểm dừng bút trên ĐK 2', dots: [{ x: 0.15, y: 0.25, label: 'Đặt bút' }, { x: 0.75, y: 1.00, label: 'Dừng bút' }] }
-    ],
-    'h': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Nét khuyết trên (5 li) và nét móc 2 đầu', dots: [{ x: 0.20, y: 1.00, label: 'Nét khuyết' }, { x: 0.90, y: 1.00, label: 'Nét móc' }] }
-    ],
-    'k': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Nét khuyết trên (5 li) và nét móc thắt', dots: [{ x: 0.20, y: 1.00, label: 'Nét khuyết' }, { x: 0.90, y: 1.00, label: 'Nét thắt' }] }
-    ],
-    'l': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }] },
-        { id: 'stages', name: '2. Đặt bút & đỉnh khuyết', desc: '2 chấm: Điểm đặt bút và đỉnh nét khuyết (ĐK 6)', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }, { x: 1.00, y: 5.00, label: 'Đỉnh khuyết' }] }
-    ],
-    'i': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }] },
-        { id: 'stages', name: '2. Đặt bút & dừng bút', desc: '2 chấm: Điểm đặt bút và điểm dừng bút trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }, { x: 0.70, y: 1.00, label: 'Dừng bút' }] }
-    ],
-    'u': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Trên ĐK 2', dots: [{ x: 0.20, y: 1.00, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét móc', desc: '2 chấm: Bắt đầu nét hất và nét móc ngược 2', dots: [{ x: 0.20, y: 1.00, label: 'Nét 1' }, { x: 0.90, y: 2.00, label: 'Nét 2' }] }
-    ],
-    'o': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 3', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }] }
-    ],
-    'g': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 3', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Nét cong kín và nét khuyết dưới', dots: [{ x: 0.65, y: 1.75, label: 'Nét 1' }, { x: 1.00, y: 2.00, label: 'Nét 2' }] }
-    ],
-    'q': [
-        { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm: Dưới ĐK 3', dots: [{ x: 0.65, y: 1.75, label: 'Đặt bút' }] },
-        { id: 'strokes', name: '2. Bắt đầu 2 nét', desc: '2 chấm: Nét cong kín và nét thẳng đứng', dots: [{ x: 0.65, y: 1.75, label: 'Nét 1' }, { x: 1.00, y: 2.00, label: 'Nét 2' }] }
-    ]
-};
-
 model.getGlyphDotConfigs = function(charUnit) {
     if (!charUnit) {
-        return [{ id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm chuẩn', dots: [{ x: 0.25, y: 1.00, label: 'Đặt bút' }] }];
+        return [];
     }
     // 1. Check custom dotConfigs in glyph metadata
     if (model.glyphs && model.glyphs[charUnit] && Array.isArray(model.glyphs[charUnit].dotConfigs) && model.glyphs[charUnit].dotConfigs.length > 0) {
         return model.glyphs[charUnit].dotConfigs;
     }
     // 2. Remove accent mark if present
-    const base = utils.removeAccents(charUnit);
-    if (model.glyphs && model.glyphs[base] && Array.isArray(model.glyphs[base].dotConfigs) && model.glyphs[base].dotConfigs.length > 0) {
+    const base = (typeof utils !== 'undefined' && utils.removeAccents) ? utils.removeAccents(charUnit) : charUnit;
+    if (base !== charUnit && model.glyphs && model.glyphs[base] && Array.isArray(model.glyphs[base].dotConfigs) && model.glyphs[base].dotConfigs.length > 0) {
         return model.glyphs[base].dotConfigs;
     }
-    // 3. Check default dot configs presets
-    if (model.defaultDotConfigs && model.defaultDotConfigs[charUnit]) {
-        return model.defaultDotConfigs[charUnit];
-    }
-    if (model.defaultDotConfigs && model.defaultDotConfigs[base]) {
-        return model.defaultDotConfigs[base];
-    }
-    // 4. Fallback to startPoint metadata or default start points
+    // 3. Fallback to startPoint metadata in model.glyphs (saved from editor)
     let sp = null;
     if (model.glyphs && model.glyphs[charUnit] && model.glyphs[charUnit].startPoint) {
         sp = model.glyphs[charUnit].startPoint;
-    } else if (model.glyphs && model.glyphs[base] && model.glyphs[base].startPoint) {
+    } else if (base !== charUnit && model.glyphs && model.glyphs[base] && model.glyphs[base].startPoint) {
         sp = model.glyphs[base].startPoint;
-    } else if (model.defaultStartPoints && model.defaultStartPoints[charUnit]) {
-        sp = model.defaultStartPoints[charUnit];
-    } else if (model.defaultStartPoints && model.defaultStartPoints[base]) {
-        sp = model.defaultStartPoints[base];
-    } else {
-        sp = { x: 0.25, y: 1.00 };
     }
-    return [
-        {
-            id: 'start',
-            name: '1. Điểm đặt bút (Chuẩn)',
-            desc: '1 chấm chuẩn',
-            dots: [{ x: sp.x, y: sp.y, label: 'Đặt bút' }]
-        }
-    ];
+    if (sp && typeof sp.x === 'number' && typeof sp.y === 'number') {
+        return [
+            {
+                id: 'start',
+                name: '1. Điểm đặt bút (Chuẩn)',
+                desc: '1 chấm chuẩn',
+                dots: [{ x: sp.x, y: sp.y, label: 'Đặt bút' }]
+            }
+        ];
+    }
+    return [];
 };
 
 model.getGlyphDotConfig = function(charUnit, configId, dynamicDots) {
@@ -395,7 +263,7 @@ model.getGlyphDotConfig = function(charUnit, configId, dynamicDots) {
     }
     const configs = model.getGlyphDotConfigs(charUnit);
     if (!configs || configs.length === 0) {
-        return { id: 'start', name: '1. Điểm đặt bút (Chuẩn)', desc: '1 chấm chuẩn', dots: [{ x: 0.25, y: 1.00, label: 'Đặt bút' }] };
+        return null;
     }
     if (configId) {
         const found = configs.find(c => c.id === configId);
@@ -409,5 +277,5 @@ model.getGlyphStartPoint = function(charUnit) {
     if (cfg && cfg.dots && cfg.dots.length > 0 && typeof cfg.dots[0].x === 'number') {
         return { x: cfg.dots[0].x, y: cfg.dots[0].y };
     }
-    return { x: 0.25, y: 1.00 };
+    return null;
 };

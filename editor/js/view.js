@@ -317,10 +317,11 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
 
     // 1. Initialize configurations
     let configs = [];
-    let isInitiallyEnabled = true;
+    let isInitiallyEnabled = false;
 
     if (dotConfigs && Array.isArray(dotConfigs) && dotConfigs.length > 0) {
         configs = JSON.parse(JSON.stringify(dotConfigs));
+        isInitiallyEnabled = true;
     } else if (startPoint && typeof startPoint.x === 'number' && typeof startPoint.y === 'number') {
         configs = [{
             id: 'start',
@@ -328,21 +329,15 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
             desc: '1 chấm chuẩn',
             dots: [{ x: startPoint.x, y: startPoint.y, label: 'Nét 1' }]
         }];
-    } else if (window.model && window.model.defaultDotConfigs && window.model.defaultDotConfigs[baseChar]) {
-        configs = JSON.parse(JSON.stringify(window.model.defaultDotConfigs[baseChar]));
+        isInitiallyEnabled = true;
     } else {
-        let defaultX = 0.50;
-        let defaultY = 1.75;
-        if (window.model && window.model.defaultStartPoints && window.model.defaultStartPoints[baseChar]) {
-            defaultX = window.model.defaultStartPoints[baseChar].x;
-            defaultY = window.model.defaultStartPoints[baseChar].y;
-        }
         configs = [{
             id: 'start',
             name: '1. Điểm đặt bút (Chuẩn)',
             desc: '1 chấm chuẩn',
-            dots: [{ x: defaultX, y: defaultY, label: 'Nét 1' }]
+            dots: [{ x: 0.50, y: 1.75, label: 'Nét 1' }]
         }];
+        isInitiallyEnabled = false;
     }
 
     let activeConfigIdx = 0;

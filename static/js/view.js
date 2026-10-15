@@ -453,7 +453,11 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
     }
 
     const activeDotConfig = view.getActiveDotConfig(charUnit, lineIndex, 0);
-    const dots = (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) ? activeDotConfig.dots : [{ x: 0.25, y: 1.00 }];
+    if (!activeDotConfig || !activeDotConfig.dots || activeDotConfig.dots.length === 0) {
+        $line.find('.guide-dots-layer').remove();
+        return;
+    }
+    const dots = activeDotConfig.dots;
 
     // 2. Determine geometry units
     const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $line.closest('.result-text').hasClass('small') || $('#result').hasClass('small');
@@ -934,7 +938,8 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
 
             const charUnit = model.getFirstCharUnit(token.raw || token.text);
             const activeDotConfig = view.getActiveDotConfig(charUnit, lineIndex, wordIndex);
-            const dotsCount = (activeDotConfig && activeDotConfig.dots) ? activeDotConfig.dots.length : 1;
+            const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+            const dotsCount = hasDotConfigs ? activeDotConfig.dots.length : 0;
             const isCustomDotCfg = !!(lineDotConfig.dotConfigId || (view.wordDotConfigs && view.wordDotConfigs[`${lineIndex}_${wordIndex}`]));
 
             const dotBadgeHtml = (isDotActive && wordIndex === 0) ? `
@@ -946,8 +951,8 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
 
             const dotConfigBadgeHtml = isDotActive ? `
                 <span class="word-dot-wrapper">
-                    <button type="button" class="btn-word-dot-badge ${isCustomDotCfg ? 'is-custom' : ''}" data-line-idx="${lineIndex}" data-word-idx="${wordIndex}" data-char="${view.escapeHtml(charUnit)}" title="Cấu hình chấm chữ '${view.escapeHtml(charUnit)}': ${view.escapeHtml(activeDotConfig.name)} (${dotsCount} chấm)">
-                        <i class="fa-solid fa-braille"></i> ${dotsCount} chấm <i class="fa-solid fa-caret-down" style="font-size: 0.65em; margin-left: 2px;"></i>
+                    <button type="button" class="btn-word-dot-badge ${isCustomDotCfg ? 'is-custom' : ''} ${!hasDotConfigs ? 'is-empty' : ''}" data-line-idx="${lineIndex}" data-word-idx="${wordIndex}" data-char="${view.escapeHtml(charUnit)}" title="Cấu hình chấm chữ '${view.escapeHtml(charUnit)}'${hasDotConfigs ? `: ${view.escapeHtml(activeDotConfig.name)} (${dotsCount} chấm)` : ' (Chưa có mẫu chấm)'}">
+                        <i class="fa-solid ${hasDotConfigs ? 'fa-braille' : 'fa-wand-magic-sparkles'}"></i> ${hasDotConfigs ? `${dotsCount} chấm` : 'Chấm tự do'} <i class="fa-solid fa-caret-down" style="font-size: 0.65em; margin-left: 2px;"></i>
                     </button>
                 </span>` : '';
 
@@ -1494,23 +1499,50 @@ view.setupDragInteractions = function () {
         const activeConfig = view.getActiveDotConfig(charUnit, lineIdx, wordIdx);
         const configs = model.getGlyphDotConfigs(charUnit);
 
-        let configsHtml = '';
-        configs.forEach((cfg) => {
-            const isSelected = (cfg.id === activeConfig.id);
-            const dotCount = (cfg.dots && cfg.dots.length) || 1;
-            configsHtml += `
-                <div class="dot-cfg-item ${isSelected ? 'is-selected' : ''}" data-config-id="${view.escapeHtml(cfg.id)}">
-                    <div class="dot-cfg-item-main">
-                        <div class="dot-cfg-item-title">
-                            <strong>${view.escapeHtml(cfg.name)}</strong>
-                            <span class="badge bg-danger rounded-pill">${dotCount} chấm</span>
-                        </div>
-                        ${cfg.desc ? `<div class="dot-cfg-item-desc">${view.escapeHtml(cfg.desc)}</div>` : ''}
+        let popoverBodyHtml = '';
+        if (!configs || configs.length === 0) {
+            popoverBodyHtml = `
+                <div class="popover-dynamic-teaser" style="margin: 8px 0 4px 0; border-top: none;">
+                    <div class="dynamic-badge" style="font-size: 0.95rem;">
+                        <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> <strong>Chấm tự do coming soon</strong>
                     </div>
-                    ${isSelected ? '<i class="fa-solid fa-check text-success dot-cfg-check"></i>' : ''}
+                    <div class="dynamic-hint" style="margin-top: 6px; font-size: 0.8rem; color: #64748b;">
+                        Chữ này chưa có cấu hình chấm trong editor.
+                    </div>
                 </div>
             `;
-        });
+        } else {
+            let configsHtml = '';
+            configs.forEach((cfg) => {
+                const isSelected = activeConfig && (cfg.id === activeConfig.id);
+                const dotCount = (cfg.dots && cfg.dots.length) || 1;
+                configsHtml += `
+                    <div class="dot-cfg-item ${isSelected ? 'is-selected' : ''}" data-config-id="${view.escapeHtml(cfg.id)}">
+                        <div class="dot-cfg-item-main">
+                            <div class="dot-cfg-item-title">
+                                <strong>${view.escapeHtml(cfg.name)}</strong>
+                                <span class="badge bg-danger rounded-pill">${dotCount} chấm</span>
+                            </div>
+                            ${cfg.desc ? `<div class="dot-cfg-item-desc">${view.escapeHtml(cfg.desc)}</div>` : ''}
+                        </div>
+                        ${isSelected ? '<i class="fa-solid fa-check text-success dot-cfg-check"></i>' : ''}
+                    </div>
+                `;
+            });
+            popoverBodyHtml = `
+                <div class="dot-cfg-list">
+                    ${configsHtml}
+                </div>
+                <div class="popover-dynamic-teaser">
+                    <div class="dynamic-badge">
+                        <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> <strong>Chấm tự do coming soon</strong>
+                    </div>
+                    <div class="dynamic-hint">
+                        Sắp xếp và định vị các điểm chấm tự do trực tiếp trên bảng.
+                    </div>
+                </div>
+            `;
+        }
 
         const $popover = $(`
             <div class="word-dot-config-popover no-print" data-line-idx="${lineIdx}" data-word-idx="${wordIdx}" data-char="${view.escapeHtml(charUnit)}">
@@ -1522,17 +1554,7 @@ view.setupDragInteractions = function () {
                     </div>
                     <button type="button" class="popover-close" title="Đóng">&times;</button>
                 </div>
-                <div class="dot-cfg-list">
-                    ${configsHtml}
-                </div>
-                <div class="popover-dynamic-teaser">
-                    <div class="dynamic-badge">
-                        <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> <strong>Chấm tự do (Sắp ra mắt)</strong>
-                    </div>
-                    <div class="dynamic-hint">
-                        Sắp xếp và định vị các điểm chấm tự do trực tiếp trên bảng.
-                    </div>
-                </div>
+                ${popoverBodyHtml}
             </div>
         `);
 
@@ -1975,7 +1997,8 @@ view.exportBlackboardToPng = async function () {
                 let rawLine = words.length > 0 ? (words[0].raw || rawInputLines[bIdx] || words[0].text) : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
                 const charUnit = model.getFirstCharUnit(rawLine);
                 const activeDotConfig = view.getActiveDotConfig(charUnit, bIdx, 0);
-                const dots = (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) ? activeDotConfig.dots : [{ x: 0.25, y: 1.00 }];
+                if (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) {
+                    const dots = activeDotConfig.dots;
 
                 const olyUnitPx = (isSmall ? 28.932 : 56.3) * S;
                 const blockWidth = 225.2 * S;
@@ -2007,7 +2030,8 @@ view.exportBlackboardToPng = async function () {
                         }
                     }
                 }
-                ctx.restore();
+                    ctx.restore();
+                }
             }
 
             const lineSuffix = $boards.length > 1 ? (`_dong${bIdx + 1}`) : '';
@@ -2187,25 +2211,27 @@ view.exportWhite11x14ToPng = async function () {
                     }
                     const charUnit = model.getFirstCharUnit(rawLineText);
                     const activeDotConfig = view.getActiveDotConfig(charUnit, globalLineIdx, 0);
-                    const dots = (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) ? activeDotConfig.dots : [{ x: 0.25, y: 1.00 }];
+                    if (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) {
+                        const dots = activeDotConfig.dots;
 
-                    const olyUnitPx = isSmall ? 9.6 : 19.2;
-                    const blockWidth = 76.8;
-                    const dotRadius = isSmall ? 2.5 : 3.5;
+                        const olyUnitPx = isSmall ? 9.6 : 19.2;
+                        const blockWidth = 76.8;
+                        const dotRadius = isSmall ? 2.5 : 3.5;
 
-                    const wordOffset = words.length > 0 ? words[0].offsetLeft : 0;
-                    const firstStretch = words.length > 0 && words[0].stretch ? words[0].stretch : 1.0;
-                    const baseWordX = gridOriginX + wordOffset;
+                        const wordOffset = words.length > 0 ? words[0].offsetLeft : 0;
+                        const firstStretch = words.length > 0 && words[0].stretch ? words[0].stretch : 1.0;
+                        const baseWordX = gridOriginX + wordOffset;
 
-                    for (let j = 0; j < lineDotConfig.repetitions; j++) {
-                        if (hasText || lineDotConfig.fullDot || j === 0) {
-                            for (const dot of dots) {
-                                const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + (j * blockWidth * lineDotConfig.spaces);
-                                const dotY = yPos - (dot.y * olyUnitPx);
-                                ctx.beginPath();
-                                ctx.fillStyle = lineDotConfig.color;
-                                ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                                ctx.fill();
+                        for (let j = 0; j < lineDotConfig.repetitions; j++) {
+                            if (hasText || lineDotConfig.fullDot || j === 0) {
+                                for (const dot of dots) {
+                                    const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + (j * blockWidth * lineDotConfig.spaces);
+                                    const dotY = yPos - (dot.y * olyUnitPx);
+                                    ctx.beginPath();
+                                    ctx.fillStyle = lineDotConfig.color;
+                                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
                             }
                         }
                     }
@@ -2444,7 +2470,10 @@ view.exportToPng = async function () {
             }
             const charUnit = model.getFirstCharUnit(rawLineText);
             const activeDotConfig = view.getActiveDotConfig(charUnit, idx, 0);
-            const dots = (activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0) ? activeDotConfig.dots : [{ x: 0.25, y: 1.00 }];
+            if (!activeDotConfig || !activeDotConfig.dots || activeDotConfig.dots.length === 0) {
+                continue;
+            }
+            const dots = activeDotConfig.dots;
 
             const wordOffset = hasText ? lineObj.words[0].offsetLeft : 0;
             const firstStretch = hasText && lineObj.words[0].stretch ? lineObj.words[0].stretch : 1.0;
