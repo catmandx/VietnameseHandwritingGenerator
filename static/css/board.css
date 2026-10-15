@@ -73,6 +73,7 @@
 
 .board.blackboard #result,
 .board.blackboard .result-text {
+    display: block;
     position: absolute;
     left: 96.09px;
     top: 192px; /* Calibrated for 281.5px large font size; baseline at y = 408.05px */
@@ -194,6 +195,10 @@
     color: #2b1055;
     box-sizing: border-box;
     white-space: nowrap;
+    display: grid;
+    grid-auto-flow: row;
+    grid-auto-rows: calc(var(--grid-unit) * 8);
+    row-gap: 0;
     /* Large font (72pt): 2 blocks per line (153.6px line height), baseline on major line 1 */
     font-size: 72pt;
     line-height: calc(var(--grid-unit) * 8);
@@ -204,8 +209,10 @@
 .board.white_11x14 .result-text > p.line,
 .board.white_10x14 #result > p.line,
 .board.white_10x14 .result-text > p.line {
-    height: calc(var(--grid-unit) * 8);
+    height: 100%;
+    max-height: 100%;
     line-height: calc(var(--grid-unit) * 8);
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
     white-space: nowrap;
@@ -216,6 +223,7 @@
 .board.white_11x14 .result-text.small,
 .board.white_10x14 #result.small,
 .board.white_10x14 .result-text.small {
+    grid-auto-rows: calc(var(--grid-unit) * 4);
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
     padding-top: calc(var(--grid-unit) * 3.34 + 0.6px);
@@ -225,8 +233,10 @@
 .board.white_11x14 .result-text.small > p.line,
 .board.white_10x14 #result.small > p.line,
 .board.white_10x14 .result-text.small > p.line {
-    height: calc(var(--grid-unit) * 4);
+    height: 100%;
+    max-height: 100%;
     line-height: calc(var(--grid-unit) * 4);
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
     white-space: nowrap;
@@ -307,7 +317,8 @@
     will-change: transform;
 }
 
-#result {
+#result,
+.result-text {
     width: max-content;
     min-width: 100%;
     padding-left: var(--grid-unit);
@@ -323,13 +334,20 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     box-sizing: border-box;
+    display: grid;
+    grid-auto-flow: row;
+    grid-auto-rows: calc(var(--grid-unit) * 8);
+    row-gap: 0;
 }
 
-#result.bold {
+#result.bold,
+.result-text.bold {
     font-weight: bold;
 }
 
-#result.small {
+#result.small,
+.result-text.small {
+    grid-auto-rows: calc(var(--grid-unit) * 4);
     padding-top: calc(var(--grid-unit) * 3.32 + 0.6px);
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
@@ -337,8 +355,10 @@
 
 #result > p.line,
 .result-text > p.line {
-    height: calc(var(--grid-unit) * 8);
+    height: 100%;
+    max-height: 100%;
     line-height: calc(var(--grid-unit) * 8);
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
     white-space: nowrap;
@@ -346,8 +366,10 @@
 
 #result.small > p.line,
 .result-text.small > p.line {
-    height: calc(var(--grid-unit) * 4);
+    height: 100%;
+    max-height: 100%;
     line-height: calc(var(--grid-unit) * 4);
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
     white-space: nowrap;
@@ -366,6 +388,9 @@ p.line {
     padding: 0;
     position: relative;
     white-space: nowrap;
+    box-sizing: border-box;
+    height: 100%;
+    max-height: 100%;
 }
 
 /* 
@@ -378,6 +403,7 @@ p.line {
     display: inline-block;
     position: relative;
     vertical-align: baseline;
+    line-height: inherit;
     user-select: text;
     -webkit-user-select: text;
     padding: 0;
@@ -387,6 +413,7 @@ p.line {
 .word-text {
     display: inline-block;
     vertical-align: baseline;
+    line-height: inherit;
     transform-origin: 0 0;
     user-select: text;
     -webkit-user-select: text;
@@ -604,9 +631,10 @@ body.is-word-stretching {
 }
 
 .word-space {
-    display: inline;
+    display: inline-block;
     white-space: pre;
     vertical-align: baseline;
+    line-height: inherit;
     user-select: text;
     -webkit-user-select: text;
 }
