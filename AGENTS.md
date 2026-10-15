@@ -4,11 +4,19 @@
 - **Immutable Line Heights**: The text lines (`#result, .result-text`) use a rigid CSS Grid architecture with fixed row tracks:
   - 72pt (large / 2 ô ly): `grid-auto-rows: calc(var(--grid-unit) * 8);` (153.6px)
   - 37pt (small / 1 ô ly): `grid-auto-rows: calc(var(--grid-unit) * 4);` (76.8px)
+- **Rigid Line Capping**: `<p class="line">` inside `#result` and `.result-text` must have explicit capped height and `min-height: 0 !important;`:
+  - 72pt: `height: calc(var(--grid-unit) * 8) !important; max-height: calc(var(--grid-unit) * 8) !important; min-height: 0 !important;`
+  - 37pt: `height: calc(var(--grid-unit) * 4) !important; max-height: calc(var(--grid-unit) * 4) !important; min-height: 0 !important;`
+  - This prevents CSS Grid items from defaulting to `min-height: auto`, which otherwise expands row tracks when tall font ascenders or Vietnamese accents exceed the track height in certain browser rendering engines.
+- **Integer-Period Background Tiling (384px Invariant)**:
+  - Canvas background tile vertical period MUST be set to `calc(var(--grid-unit) * 20)` (384px = 5 blocks = 20 ô ly), NEVER `var(--grid-size)` (76.8px).
+  - $19.2\text{px} \times 4 = 76.8\text{px}$ is a non-integer pixel value that causes GPU rasterizers (Chrome Skia, Firefox WebRender, Safari CoreGraphics) to round tile heights to 77px, accumulating $+0.4\text{px}$ downward drift per line ($+8\text{px}$ over 20 lines).
+  - In contrast, $19.2\text{px} \times 20 = 384.0\text{px}$ is an exact integer across all DPR displays (1x: 384px, 1.25x: 480px, 1.5x: 576px, 2x: 768px), permanently eliminating vertical drift across unlimited lines.
 - **Child Conformance**: Any new inline child element added inside a line (e.g. `.word`, `.word-space`, handles, toolbars, badges, outlines) MUST conform to the line box and NEVER expand its height:
   - All direct text and spacing elements (`.word`, `.word-text`, `.word-space`) must use `line-height: inherit; vertical-align: baseline;`.
   - `.word-space` must be `display: inline-block;` (never unconstrained `display: inline`, which causes font-leading inflation with tall Vietnamese diacritics).
   - Floating controls, popovers, and outline/dot layers must be positioned absolutely (`position: absolute`) with `pointer-events` properly scoped.
-  - `<p class="line">` must have `height: 100%; max-height: 100%; box-sizing: border-box; margin: 0; padding: 0;`.
+  - `<p class="line">` must have `box-sizing: border-box; margin: 0; padding: 0;`.
 - **Baseline Calibrations**: Never arbitrarily adjust container `padding-top` calibrations unless specifically requested by the user.
 
 ## Browser Testing Priority

@@ -166,7 +166,7 @@
     position: relative;
     overflow: hidden;
     transform: none;
-    background-size: var(--grid-size) var(--grid-size);
+    background-size: var(--grid-size) calc(var(--grid-unit) * 20);
     /* 1 cell buffer left (19.2px), 2 cells buffer top (38.4px) */
     background-position: var(--grid-unit) calc(var(--grid-unit) * 2);
     background-repeat: repeat;
@@ -209,13 +209,15 @@
 .board.white_11x14 .result-text > p.line,
 .board.white_10x14 #result > p.line,
 .board.white_10x14 .result-text > p.line {
-    height: 100%;
-    max-height: 100%;
-    line-height: calc(var(--grid-unit) * 8);
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    white-space: nowrap;
+    height: calc(var(--grid-unit) * 8) !important;
+    max-height: calc(var(--grid-unit) * 8) !important;
+    min-height: 0 !important;
+    line-height: calc(var(--grid-unit) * 8) !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
 }
 
 /* Small font (37pt): 1 block per line (76.8px line height), baseline on major line 1 */
@@ -233,13 +235,15 @@
 .board.white_11x14 .result-text.small > p.line,
 .board.white_10x14 #result.small > p.line,
 .board.white_10x14 .result-text.small > p.line {
-    height: 100%;
-    max-height: 100%;
-    line-height: calc(var(--grid-unit) * 4);
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    white-space: nowrap;
+    height: calc(var(--grid-unit) * 4) !important;
+    max-height: calc(var(--grid-unit) * 4) !important;
+    min-height: 0 !important;
+    line-height: calc(var(--grid-unit) * 4) !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
 }
 
 .board.white_11x14 p.line::after,
@@ -266,7 +270,7 @@
     vertical-align: top;
     position: relative;
 
-    background-size: var(--grid-size) var(--grid-size);
+    background-size: var(--grid-size) calc(var(--grid-unit) * 20);
     background-position: var(--grid-unit) calc(var(--grid-unit) * 2.5);
     background-repeat: repeat;
     transition: transform 0.2s ease;
@@ -285,16 +289,29 @@
         var(--grid-minor-color) calc(var(--grid-unit) * 3 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 3 + 0.5px), transparent calc(var(--grid-unit) * 3 + 0.5px),
         transparent var(--grid-size)
       ),
-      /* Horizontal lines: Major line at 0, Minor lines at 14.4pt, 28.8pt, 43.2pt */
+      /* Horizontal lines: Integer-locked 384px period (5 blocks / 20 sub-cells) eliminating fractional accumulation */
       linear-gradient(to bottom,
         var(--grid-major-color) 0, var(--grid-major-color) 1.5px, transparent 1.5px,
-        transparent calc(var(--grid-unit) - 0.5px),
-        var(--grid-minor-color) calc(var(--grid-unit) - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) + 0.5px), transparent calc(var(--grid-unit) + 0.5px),
-        transparent calc(var(--grid-unit) * 2 - 0.5px),
-        var(--grid-minor-color) calc(var(--grid-unit) * 2 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 2 + 0.5px), transparent calc(var(--grid-unit) * 2 + 0.5px),
-        transparent calc(var(--grid-unit) * 3 - 0.5px),
-        var(--grid-minor-color) calc(var(--grid-unit) * 3 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 3 + 0.5px), transparent calc(var(--grid-unit) * 3 + 0.5px),
-        transparent var(--grid-size)
+        transparent calc(var(--grid-unit) * 1 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 1 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 1 + 0.5px), transparent calc(var(--grid-unit) * 1 + 0.5px),
+        transparent calc(var(--grid-unit) * 2 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 2 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 2 + 0.5px), transparent calc(var(--grid-unit) * 2 + 0.5px),
+        transparent calc(var(--grid-unit) * 3 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 3 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 3 + 0.5px), transparent calc(var(--grid-unit) * 3 + 0.5px),
+        transparent calc(var(--grid-unit) * 4 - 0.75px), var(--grid-major-color) calc(var(--grid-unit) * 4 - 0.75px), var(--grid-major-color) calc(var(--grid-unit) * 4 + 0.75px), transparent calc(var(--grid-unit) * 4 + 0.75px),
+        transparent calc(var(--grid-unit) * 5 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 5 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 5 + 0.5px), transparent calc(var(--grid-unit) * 5 + 0.5px),
+        transparent calc(var(--grid-unit) * 6 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 6 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 6 + 0.5px), transparent calc(var(--grid-unit) * 6 + 0.5px),
+        transparent calc(var(--grid-unit) * 7 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 7 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 7 + 0.5px), transparent calc(var(--grid-unit) * 7 + 0.5px),
+        transparent calc(var(--grid-unit) * 8 - 0.75px), var(--grid-major-color) calc(var(--grid-unit) * 8 - 0.75px), var(--grid-major-color) calc(var(--grid-unit) * 8 + 0.75px), transparent calc(var(--grid-unit) * 8 + 0.75px),
+        transparent calc(var(--grid-unit) * 9 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 9 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 9 + 0.5px), transparent calc(var(--grid-unit) * 9 + 0.5px),
+        transparent calc(var(--grid-unit) * 10 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 10 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 10 + 0.5px), transparent calc(var(--grid-unit) * 10 + 0.5px),
+        transparent calc(var(--grid-unit) * 11 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 11 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 11 + 0.5px), transparent calc(var(--grid-unit) * 11 + 0.5px),
+        transparent calc(var(--grid-unit) * 12 - 0.75px), var(--grid-major-color) calc(var(--grid-unit) * 12 - 0.75px), var(--grid-major-color) calc(var(--grid-unit) * 12 + 0.75px), transparent calc(var(--grid-unit) * 12 + 0.75px),
+        transparent calc(var(--grid-unit) * 13 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 13 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 13 + 0.5px), transparent calc(var(--grid-unit) * 13 + 0.5px),
+        transparent calc(var(--grid-unit) * 14 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 14 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 14 + 0.5px), transparent calc(var(--grid-unit) * 14 + 0.5px),
+        transparent calc(var(--grid-unit) * 15 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 15 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 15 + 0.5px), transparent calc(var(--grid-unit) * 15 + 0.5px),
+        transparent calc(var(--grid-unit) * 16 - 0.75px), var(--grid-major-color) calc(var(--grid-unit) * 16 - 0.75px), var(--grid-major-color) calc(var(--grid-unit) * 16 + 0.75px), transparent calc(var(--grid-unit) * 16 + 0.75px),
+        transparent calc(var(--grid-unit) * 17 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 17 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 17 + 0.5px), transparent calc(var(--grid-unit) * 17 + 0.5px),
+        transparent calc(var(--grid-unit) * 18 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 18 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 18 + 0.5px), transparent calc(var(--grid-unit) * 18 + 0.5px),
+        transparent calc(var(--grid-unit) * 19 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 19 - 0.5px), var(--grid-minor-color) calc(var(--grid-unit) * 19 + 0.5px), transparent calc(var(--grid-unit) * 19 + 0.5px),
+        transparent calc(var(--grid-unit) * 20)
       );
 } 
 
@@ -355,24 +372,28 @@
 
 #result > p.line,
 .result-text > p.line {
-    height: 100%;
-    max-height: 100%;
-    line-height: calc(var(--grid-unit) * 8);
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    white-space: nowrap;
+    height: calc(var(--grid-unit) * 8) !important;
+    max-height: calc(var(--grid-unit) * 8) !important;
+    min-height: 0 !important;
+    line-height: calc(var(--grid-unit) * 8) !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
 }
 
 #result.small > p.line,
 .result-text.small > p.line {
-    height: 100%;
-    max-height: 100%;
-    line-height: calc(var(--grid-unit) * 4);
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    white-space: nowrap;
+    height: calc(var(--grid-unit) * 4) !important;
+    max-height: calc(var(--grid-unit) * 4) !important;
+    min-height: 0 !important;
+    line-height: calc(var(--grid-unit) * 4) !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
 }
 
 #result > p.line:last-child::after,
@@ -391,6 +412,7 @@ p.line {
     box-sizing: border-box;
     height: 100%;
     max-height: 100%;
+    min-height: 0 !important;
 }
 
 /* 
