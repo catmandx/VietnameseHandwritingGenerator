@@ -166,6 +166,7 @@ view.init = function () {
             const globalCfg = view.getDottingConfig();
             $('#dotting-spaces-input').val(globalCfg.spaces);
             $('#dotting-reps-input').val(globalCfg.repetitions);
+            $('#dotting-lines-input').val(globalCfg.linesCount);
             $('#dotting-fulldot-checkbox').prop('checked', globalCfg.fullDot);
             $('#dotting-outline-select').val(globalCfg.outline);
             $('#btn-reset-line-dotting').hide();
@@ -174,6 +175,7 @@ view.init = function () {
             const cfg = view.getDottingConfig(lineIdx);
             $('#dotting-spaces-input').val(cfg.spaces);
             $('#dotting-reps-input').val(cfg.repetitions);
+            $('#dotting-lines-input').val(cfg.linesCount);
             $('#dotting-fulldot-checkbox').prop('checked', cfg.fullDot);
             $('#dotting-outline-select').val(cfg.outline);
             if (view.lineDotConfigs[lineIdx] && view.lineDotConfigs[lineIdx].isCustom) {
@@ -195,6 +197,7 @@ view.init = function () {
             view.render();
         } else {
             view.userCustomGlobalSpaces = null;
+            view.userCustomGlobalLinesCount = null;
             view.lineDotConfigs = {};
             view.updateDottingLineSelect();
             view.render();
@@ -245,6 +248,18 @@ view.init = function () {
         if (isNaN(val) || val < 1) val = 1;
         if (val > 30) val = 30;
         this.value = val;
+
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].linesCount = val;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        } else {
+            view.userCustomGlobalLinesCount = val;
+            $('#btn-reset-line-dotting').show();
+        }
         view.render();
         view.updateDottingLineSelect();
     });
@@ -374,23 +389,53 @@ view.calculateAutoSpaces = function (lineIndex, $lineEl) {
     return Math.max(1, Math.ceil(blocks - 0.001) + 1);
 };
 
+view.parseOutlineOption = function (outlineVal) {
+    if (!outlineVal || outlineVal === 'none') {
+        return { isEnabled: false, style: 'none', scope: 'none', raw: 'none' };
+    }
+    let val = outlineVal;
+    if (val === 'all') val = 'faint_all';
+    if (val === 'first') val = 'faint_first';
+
+    const parts = val.split('_');
+    const style = parts[0]; // 'faint', 'dotted', 'curve'
+    const scope = parts[1] || 'all'; // 'all', 'first'
+    return {
+        isEnabled: true,
+        style: style,
+        scope: scope,
+        raw: val
+    };
+};
+
 view.getDottingConfig = function (lineIndex, $lineEl) {
     const enabled = view.isDottingActive();
     const layout = $('#board-color-select').val();
     const isBlackboard = (layout === 'blackboard');
     const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
 
+    const isAllSelected = ($('#dotting-line-select').val() === 'all' || !$('#dotting-line-select').val());
+
     const autoSpacesLine0 = view.calculateAutoSpaces(0, $lineEl);
     let globalSpaces;
     if (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) {
         globalSpaces = view.userCustomGlobalSpaces;
+    } else if (isAllSelected) {
+        globalSpaces = parseInt($('#dotting-spaces-input').val(), 10) || autoSpacesLine0;
     } else {
         globalSpaces = autoSpacesLine0;
     }
 
-    const globalLinesCount = Math.max(1, parseInt($('#dotting-lines-input').val(), 10) || 1);
-    const globalFullDot = $('#dotting-fulldot-checkbox').is(':checked');
-    const globalOutline = $('#dotting-outline-select').val() || 'none';
+    let globalLinesCount = 1;
+    if (view.userCustomGlobalLinesCount !== undefined && view.userCustomGlobalLinesCount !== null) {
+        globalLinesCount = view.userCustomGlobalLinesCount;
+    } else if (isAllSelected) {
+        globalLinesCount = Math.max(1, parseInt($('#dotting-lines-input').val(), 10) || 1);
+    } else {
+        globalLinesCount = 1;
+    }
+    const globalFullDot = isAllSelected ? $('#dotting-fulldot-checkbox').is(':checked') : false;
+    const globalOutline = isAllSelected ? ($('#dotting-outline-select').val() || 'none') : 'none';
     const color = $('#dotting-color-input').val() || '#e53935';
 
     let globalReps;
@@ -398,8 +443,10 @@ view.getDottingConfig = function (lineIndex, $lineEl) {
         globalReps = Math.min(11, Math.max(1, Math.floor(12 / globalSpaces)));
     } else if (isBlackboard) {
         globalReps = Math.min(3, Math.max(1, Math.floor(4 / globalSpaces)));
-    } else {
+    } else if (isAllSelected) {
         globalReps = Math.max(1, parseInt($('#dotting-reps-input').val(), 10) || 5);
+    } else {
+        globalReps = 5;
     }
 
     if (lineIndex !== undefined && lineIndex !== null) {
@@ -421,6 +468,7 @@ view.getDottingConfig = function (lineIndex, $lineEl) {
         } else {
             reps = lineCfg.repetitions !== undefined ? lineCfg.repetitions : globalReps;
         }
+        const linesCount = lineCfg.linesCount !== undefined ? lineCfg.linesCount : globalLinesCount;
         const fullDot = lineCfg.fullDot !== undefined ? lineCfg.fullDot : globalFullDot;
         const outline = lineCfg.outline !== undefined ? lineCfg.outline : globalOutline;
 
@@ -428,7 +476,7 @@ view.getDottingConfig = function (lineIndex, $lineEl) {
             enabled: enabled,
             spaces: spaces,
             repetitions: reps,
-            linesCount: globalLinesCount,
+            linesCount: linesCount,
             fullDot: fullDot,
             outline: outline,
             color: color,
@@ -448,7 +496,7 @@ view.getDottingConfig = function (lineIndex, $lineEl) {
         color: color,
         isBlackboard: isBlackboard,
         isWhite11x14: isWhite11x14,
-        isCustom: (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null)
+        isCustom: (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) || (view.userCustomGlobalLinesCount !== undefined && view.userCustomGlobalLinesCount !== null)
     };
 };
 
@@ -535,7 +583,8 @@ view.updateDottingLineSelect = function () {
 };
 
 view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
-    if (!config) config = view.getDottingConfig(lineIndex, $line);
+    const srcLineIdx = (lineTokens && lineTokens.sourceLineIndex !== undefined) ? lineTokens.sourceLineIndex : lineIndex;
+    if (!config) config = view.getDottingConfig(srcLineIdx, $line);
     const hasAnyText = ($('#input').val() || '').trim().length > 0;
     if (!config.enabled || !hasAnyText) {
         $line.find('.guide-dots-layer').remove();
@@ -543,7 +592,7 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
     }
 
     $line.find('.btn-line-dot-badge')
-        .attr('title', `Dòng ${lineIndex + 1}: Cách ${config.spaces} ô (Nhấp để chỉnh riêng)`)
+        .attr('title', `Dòng ${srcLineIdx + 1}: Cách ${config.spaces} ô (Nhấp để chỉnh riêng)`)
         .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${config.spaces} ô`);
 
     $line.find('.guide-dots-layer').remove();
@@ -558,11 +607,6 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
     }
     const hasText = wordTokens.length > 0;
 
-    // If this line does not have text, it is an empty practice line: only draw if lineIndex < config.linesCount
-    if (!hasText && lineIndex >= config.linesCount) {
-        return;
-    }
-
     // Collect wordsInfo with their text, raw, offsetLeft, and stretch
     let wordsInfo = [];
     if (hasText) {
@@ -576,25 +620,23 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
             });
         });
     } else {
-        // Line is empty, look up preceding line with words
-        for (let i = lineIndex - 1; i >= 0; i--) {
-            const $prevLine = $(`#line-${i}`);
-            const $prevWords = $prevLine.children('.word');
-            if ($prevWords.length) {
-                $prevWords.each(function () {
-                    const $w = $(this);
-                    wordsInfo.push({
-                        text: $w.find('.word-text').text() || $w.text(),
-                        raw: $w.attr('data-raw') || '',
-                        offsetLeft: this.offsetLeft,
-                        stretch: parseFloat($w.attr('data-stretch')) || 1.0
-                    });
-                });
-                break;
+        // Line is empty practice line, look up preceding line with words
+        let $sourceLine = $line.prevAll('p.line').filter(function () {
+            return $(this).children('.word').length > 0;
+        }).first();
+
+        if (!$sourceLine.length && config.isBlackboard) {
+            const $board = $line.closest('.board.blackboard');
+            const $prevBoard = $board.prevAll('.board.blackboard').filter(function () {
+                return $(this).find('p.line .word').length > 0;
+            }).first();
+            if ($prevBoard.length) {
+                $sourceLine = $prevBoard.find('p.line');
             }
         }
-        if (wordsInfo.length === 0) {
-            $('#line-0').children('.word').each(function () {
+
+        if ($sourceLine && $sourceLine.length) {
+            $sourceLine.children('.word').each(function () {
                 const $w = $(this);
                 wordsInfo.push({
                     text: $w.find('.word-text').text() || $w.text(),
@@ -604,12 +646,13 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
                 });
             });
         }
+
         if (wordsInfo.length === 0) {
             const rawInputLines = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            const lineFromInput = rawInputLines[lineIndex] || rawInputLines[0] || 'a';
+            const lineFromInput = rawInputLines[srcLineIdx] || rawInputLines[0] || 'a';
             const wordTokensFromInput = lineFromInput.split(/\s+/).filter(w => w.length > 0);
             wordsInfo = (wordTokensFromInput.length > 0 ? wordTokensFromInput : ['a']).map(w => ({
-                text: w,
+                text: model.getUnicodeStr(w),
                 raw: w,
                 offsetLeft: 0,
                 stretch: 1.0
@@ -618,13 +661,14 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
     }
 
     // Identify glyph character unit for this line
-    const charUnit = wordsInfo.length > 0 ? model.getFirstCharUnit(wordsInfo[0].raw || wordsInfo[0].text) : 'a';
+    const rawChar = wordsInfo.length > 0 ? (wordsInfo[0].raw || wordsInfo[0].text) : 'a';
+    const charUnit = model.getFirstCharUnit(rawChar);
 
-    const activeDotConfig = view.getActiveDotConfig(charUnit, lineIndex, 0);
+    const activeDotConfig = view.getActiveDotConfig(charUnit, srcLineIdx, 0);
     const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
-    const outline = config.outline || 'none';
+    const outlineInfo = view.parseOutlineOption(config.outline);
 
-    if (!hasDotConfigs && outline === 'none') {
+    if (!hasDotConfigs && !outlineInfo.isEnabled) {
         $line.find('.guide-dots-layer').remove();
         return;
     }
@@ -671,23 +715,36 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         if (hasText || config.fullDot || j === 0) {
             const shiftX = j * blockWidth * config.spaces;
 
-            // A. Faint outline copies for students to trace
-            if (outline !== 'none') {
+            // A. Faint / Dotted / Curve outline copies for students to trace
+            if (outlineInfo.isEnabled) {
                 const isCopy = (!hasText || j > 0);
                 if (isCopy) {
-                    if (outline === 'first') {
+                    const outlineClass = `guide-outline-word guide-outline-${outlineInfo.style}`;
+                    if (outlineInfo.scope === 'first') {
                         const word0 = wordsInfo[0];
                         const x = word0 ? (word0.offsetLeft + shiftX) : (baseWordX + shiftX);
                         const wStretch = word0 ? (word0.stretch || 1.0) : (stretch || 1.0);
                         const transformStyle = wStretch !== 1.0 ? `transform: scaleX(${wStretch}); transform-origin: 0 0;` : '';
-                        const $span = $(`<span class="guide-outline-word" style="left: ${x}px; ${transformStyle}">${view.escapeHtml(charUnit)}</span>`);
+                        let displayText = '';
+                        if (outlineInfo.style === 'dotted') {
+                            displayText = charUnit;
+                        } else {
+                            displayText = model.getUnicodeStr(charUnit);
+                        }
+                        const $span = $(`<span class="${outlineClass}" style="left: ${x}px; ${transformStyle}">${view.escapeHtml(displayText)}</span>`);
                         $dotsLayer.append($span);
-                    } else if (outline === 'all') {
+                    } else if (outlineInfo.scope === 'all') {
                         wordsInfo.forEach(w => {
                             const x = w.offsetLeft + shiftX;
                             const wStretch = w.stretch || 1.0;
                             const transformStyle = wStretch !== 1.0 ? `transform: scaleX(${wStretch}); transform-origin: 0 0;` : '';
-                            const $span = $(`<span class="guide-outline-word" style="left: ${x}px; ${transformStyle}">${view.escapeHtml(w.text)}</span>`);
+                            let displayText = '';
+                            if (outlineInfo.style === 'dotted') {
+                                displayText = w.raw || w.text;
+                            } else {
+                                displayText = w.text || model.getUnicodeStr(w.raw);
+                            }
+                            const $span = $(`<span class="${outlineClass}" style="left: ${x}px; ${transformStyle}">${view.escapeHtml(displayText)}</span>`);
                             $dotsLayer.append($span);
                         });
                     }
@@ -726,99 +783,87 @@ view.render = function () {
 
     const hasAnyText = $input.val().trim().length > 0;
     const dotConfig = view.getDottingConfig();
-    if (dotConfig && dotConfig.enabled && hasAnyText && dotConfig.linesCount > rawLines.length) {
-        while (rawLines.length < dotConfig.linesCount) {
-            rawLines.push('');
+
+    // Build linesData array: each non-empty text line generates 1 model line + (linesCount - 1) practice lines directly below it
+    let linesData = [];
+    if (!dotConfig.enabled || !hasAnyText) {
+        let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
+        while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
+            lines.pop();
+        }
+        if (lines.length === 0) lines = [''];
+
+        linesData = lines.map((line, idx) => {
+            const tokens = line.split(/(\s+)/);
+            const lineTokens = [];
+            for (const token of tokens) {
+                if (!token) continue;
+                if (/^\s+$/.test(token)) {
+                    lineTokens.push({ type: 'space', text: token });
+                } else {
+                    const converted = model.getUnicodeStr(token);
+                    lineTokens.push({ type: 'word', text: converted, raw: token });
+                }
+            }
+            lineTokens.sourceLineIndex = idx;
+            lineTokens.isPractice = false;
+            return lineTokens;
+        });
+    } else {
+        for (let i = 0; i < rawLines.length; i++) {
+            const rawLine = rawLines[i].replace(/[\t]/g, "    ");
+            const isBlank = rawLine.trim().length === 0;
+            if (isBlank) {
+                const blankTokens = [];
+                blankTokens.sourceLineIndex = i;
+                blankTokens.isPractice = false;
+                linesData.push(blankTokens);
+                continue;
+            }
+
+            const tokens = rawLine.split(/(\s+)/);
+            const modelTokens = [];
+            for (const token of tokens) {
+                if (!token) continue;
+                if (/^\s+$/.test(token)) {
+                    modelTokens.push({ type: 'space', text: token });
+                } else {
+                    const converted = model.getUnicodeStr(token);
+                    modelTokens.push({ type: 'word', text: converted, raw: token });
+                }
+            }
+            modelTokens.sourceLineIndex = i;
+            modelTokens.isPractice = false;
+            linesData.push(modelTokens);
+
+            // Practice lines for this line
+            const lineCfg = view.getDottingConfig(i);
+            const count = Math.max(1, lineCfg.linesCount || 1);
+            for (let p = 1; p < count; p++) {
+                const practiceTokens = [];
+                practiceTokens.sourceLineIndex = i;
+                practiceTokens.isPractice = true;
+                practiceTokens.practiceIndex = p;
+                linesData.push(practiceTokens);
+            }
+        }
+        if (linesData.length === 0) {
+            const emptyTokens = [];
+            emptyTokens.sourceLineIndex = 0;
+            emptyTokens.isPractice = false;
+            linesData = [emptyTokens];
         }
     }
 
     if (isBlackboard) {
-        // In blackboard mode, each input line gets its own blackboard slate!
-        let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
-        // Remove trailing empty lines if more than 1 (unless dotting is active)
-        if (!dotConfig.enabled) {
-            while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
-                lines.pop();
-            }
-        }
-        if (lines.length === 0) {
-            lines = [''];
-        }
-
-        const linesData = lines.map(line => {
-            const tokens = line.split(/(\s+)/);
-            const lineTokens = [];
-            for (const token of tokens) {
-                if (!token) continue;
-                if (/^\s+$/.test(token)) {
-                    lineTokens.push({ type: 'space', text: token });
-                } else {
-                    const converted = model.getUnicodeStr(token);
-                    lineTokens.push({ type: 'word', text: converted, raw: token });
-                }
-            }
-            return lineTokens;
-        });
-
         view.syncBlackboards(linesData);
         view.adjustBlackboardFontSize();
     } else if (isWhite11x14) {
-        let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
-        if (!dotConfig.enabled) {
-            while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
-                lines.pop();
-            }
-        }
-        if (lines.length === 0) {
-            lines = [''];
-        }
-
-        const linesData = lines.map(line => {
-            const tokens = line.split(/(\s+)/);
-            const lineTokens = [];
-            for (const token of tokens) {
-                if (!token) continue;
-                if (/^\s+$/.test(token)) {
-                    lineTokens.push({ type: 'space', text: token });
-                } else {
-                    const converted = model.getUnicodeStr(token);
-                    lineTokens.push({ type: 'word', text: converted, raw: token });
-                }
-            }
-            return lineTokens;
-        });
-
         view.syncWhite11x14(linesData);
     } else {
         view.syncNormalBoard();
         const $result = $('#result');
         $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'max-width': '', 'min-width': '', 'white-space': '' });
-
-        let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
-        if (!dotConfig.enabled) {
-            while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
-                lines.pop();
-            }
-        }
-        if (lines.length === 0) {
-            lines = [''];
-        }
-
-        const linesData = lines.map(line => {
-            const tokens = line.split(/(\s+)/);
-            const lineTokens = [];
-            for (const token of tokens) {
-                if (!token) continue;
-                if (/^\s+$/.test(token)) {
-                    lineTokens.push({ type: 'space', text: token });
-                } else {
-                    const converted = model.getUnicodeStr(token);
-                    lineTokens.push({ type: 'word', text: converted, raw: token });
-                }
-            }
-            return lineTokens;
-        });
-
         view.updateLines(linesData);
         $result.css({ 'font-size': '', 'top': '' });
     }
@@ -1045,7 +1090,11 @@ view.adjustBlackboardFontSize = function () {
 };
 
 view.renderLineElement = function ($line, lineTokens, lineIndex) {
+    const srcLineIdx = (lineTokens && lineTokens.sourceLineIndex !== undefined) ? lineTokens.sourceLineIndex : lineIndex;
+    const isPractice = !!(lineTokens && lineTokens.isPractice);
     $line.attr('id', 'line-' + lineIndex);
+    $line.attr('data-source-line-idx', srcLineIdx);
+    $line.attr('data-is-practice', isPractice ? 'true' : 'false');
 
     // Collect existing word margins & stretch to preserve user adjustments across re-renders
     const existingMargins = [];
@@ -1066,7 +1115,8 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
         // Non-breaking space keeps the empty line height intact on the grid
         $line.empty().html('&nbsp;');
         if (view.isDottingActive()) {
-            view.renderDotsForLine($line, lineTokens, lineIndex);
+            const lineDotConfig = view.getDottingConfig(srcLineIdx, $line);
+            view.renderDotsForLine($line, lineTokens, srcLineIdx, lineDotConfig);
         } else {
             $line.find('.guide-dots-layer').remove();
         }
@@ -1076,7 +1126,7 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
 
     let wordIndex = 0;
     let html = '';
-    let lineDotConfig = view.getDottingConfig(lineIndex);
+    let lineDotConfig = view.getDottingConfig(srcLineIdx, $line);
     const isDotActive = view.isDottingActive();
 
     for (const token of lineTokens) {
@@ -1107,21 +1157,21 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
             const textStyleAttr = textStyles.length ? ` style="${textStyles.join('; ')};"` : '';
 
             const charUnit = model.getFirstCharUnit(token.raw || token.text);
-            const activeDotConfig = view.getActiveDotConfig(charUnit, lineIndex, wordIndex);
+            const activeDotConfig = view.getActiveDotConfig(charUnit, srcLineIdx, wordIndex);
             const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
             const dotsCount = hasDotConfigs ? activeDotConfig.dots.length : 0;
-            const isCustomDotCfg = !!(lineDotConfig.dotConfigId || (view.wordDotConfigs && view.wordDotConfigs[`${lineIndex}_${wordIndex}`]));
+            const isCustomDotCfg = !!(lineDotConfig.dotConfigId || (view.wordDotConfigs && view.wordDotConfigs[`${srcLineIdx}_${wordIndex}`]));
 
             const dotBadgeHtml = (isDotActive && wordIndex === 0) ? `
                 <span class="line-dot-wrapper">
-                    <button type="button" class="btn-line-dot-badge ${lineDotConfig.isCustom ? 'is-custom' : ''}" data-line-idx="${lineIndex}" title="Dòng ${lineIndex + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)">
+                    <button type="button" class="btn-line-dot-badge ${lineDotConfig.isCustom ? 'is-custom' : ''}" data-line-idx="${srcLineIdx}" title="Dòng ${srcLineIdx + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)">
                         <i class="fa-solid fa-circle-dot"></i> Cách ${lineDotConfig.spaces} ô
                     </button>
                 </span>` : '';
 
             const dotConfigBadgeHtml = isDotActive ? `
                 <span class="word-dot-wrapper">
-                    <button type="button" class="btn-word-dot-badge ${isCustomDotCfg ? 'is-custom' : ''} ${!hasDotConfigs ? 'is-empty' : ''}" data-line-idx="${lineIndex}" data-word-idx="${wordIndex}" data-char="${view.escapeHtml(charUnit)}" title="Cấu hình chấm chữ '${view.escapeHtml(charUnit)}'${hasDotConfigs ? `: ${view.escapeHtml(activeDotConfig.name)} (${dotsCount} chấm)` : ' (Chưa có mẫu chấm)'}">
+                    <button type="button" class="btn-word-dot-badge ${isCustomDotCfg ? 'is-custom' : ''} ${!hasDotConfigs ? 'is-empty' : ''}" data-line-idx="${srcLineIdx}" data-word-idx="${wordIndex}" data-char="${view.escapeHtml(charUnit)}" title="Cấu hình chấm chữ '${view.escapeHtml(charUnit)}'${hasDotConfigs ? `: ${view.escapeHtml(activeDotConfig.name)} (${dotsCount} chấm)` : ' (Chưa có mẫu chấm)'}">
                         <i class="fa-solid ${hasDotConfigs ? 'fa-braille' : 'fa-wand-magic-sparkles'}"></i> ${hasDotConfigs ? `${dotsCount} chấm` : 'Chấm tự do'} <i class="fa-solid fa-caret-down" style="font-size: 0.65em; margin-left: 2px;"></i>
                     </button>
                 </span>` : '';
@@ -1142,16 +1192,16 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
     }
     $line.empty().html(html);
 
-    const lineCustomSpaces = view.lineDotConfigs && view.lineDotConfigs[lineIndex] && view.lineDotConfigs[lineIndex].spaces !== undefined;
+    const lineCustomSpaces = view.lineDotConfigs && view.lineDotConfigs[srcLineIdx] && view.lineDotConfigs[srcLineIdx].spaces !== undefined;
     if (!lineCustomSpaces && (view.userCustomGlobalSpaces === null || view.userCustomGlobalSpaces === undefined)) {
-        lineDotConfig = view.getDottingConfig(lineIndex, $line);
+        lineDotConfig = view.getDottingConfig(srcLineIdx, $line);
         $line.find('.btn-line-dot-badge')
-            .attr('title', `Dòng ${lineIndex + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)`)
+            .attr('title', `Dòng ${srcLineIdx + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)`)
             .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${lineDotConfig.spaces} ô`);
     }
 
     if (view.isDottingActive()) {
-        view.renderDotsForLine($line, lineTokens, lineIndex, lineDotConfig);
+        view.renderDotsForLine($line, lineTokens, srcLineIdx, lineDotConfig);
     } else {
         $line.find('.guide-dots-layer').remove();
     }
@@ -1617,7 +1667,7 @@ view.setupDragInteractions = function () {
         }
 
         const $popover = $(`
-            <div class="line-dot-popover no-print">
+            <div class="line-dot-popover no-print" data-line-idx="${lineIdx}">
                 <div class="popover-header">
                     <strong>Dòng ${lineIdx + 1}</strong>
                     <button type="button" class="popover-close" title="Đóng">&times;</button>
@@ -1634,13 +1684,31 @@ view.setupDragInteractions = function () {
                     <label>Số chấm:</label>
                     <span class="step-val step-reps-val">${cfg.repetitions}</span>
                 </div>
+                <div class="popover-row">
+                    <label>Số dòng:</label>
+                    <div class="step-control">
+                        <button type="button" class="btn-step-lines" data-action="dec" title="Giảm số dòng">-</button>
+                        <span class="step-val step-lines-val">${cfg.linesCount}</span>
+                        <button type="button" class="btn-step-lines" data-action="inc" title="Tăng số dòng">+</button>
+                    </div>
+                </div>
                 ${cfgOptionsHtml}
                 <div class="popover-row">
                     <label>Nét mờ:</label>
                     <select class="form-select form-select-sm popover-outline-select" style="max-width: 125px; font-size: 0.75rem; padding: 1px 4px;">
-                        <option value="none" ${cfg.outline === 'none' ? 'selected' : ''}>Không viền</option>
-                        <option value="first" ${cfg.outline === 'first' ? 'selected' : ''}>Chữ đầu</option>
-                        <option value="all" ${cfg.outline === 'all' ? 'selected' : ''}>Cả dòng</option>
+                        <option value="none" ${cfg.outline === 'none' ? 'selected' : ''}>Không nét mờ</option>
+                        <optgroup label="Nét mờ (Độ mờ)">
+                            <option value="faint_all" ${cfg.outline === 'faint_all' || cfg.outline === 'all' ? 'selected' : ''}>Cả dòng (Mờ)</option>
+                            <option value="faint_first" ${cfg.outline === 'faint_first' || cfg.outline === 'first' ? 'selected' : ''}>Chữ đầu (Mờ)</option>
+                        </optgroup>
+                        <optgroup label="Chữ chấm đồ (HP001TD)">
+                            <option value="dotted_all" ${cfg.outline === 'dotted_all' ? 'selected' : ''}>Cả dòng (Chấm đồ)</option>
+                            <option value="dotted_first" ${cfg.outline === 'dotted_first' ? 'selected' : ''}>Chữ đầu (Chấm đồ)</option>
+                        </optgroup>
+                        <optgroup label="Viền nét (Rỗng lòng)">
+                            <option value="curve_all" ${cfg.outline === 'curve_all' ? 'selected' : ''}>Cả dòng (Viền nét)</option>
+                            <option value="curve_first" ${cfg.outline === 'curve_first' ? 'selected' : ''}>Chữ đầu (Viền nét)</option>
+                        </optgroup>
                     </select>
                 </div>
                 <div class="popover-row">
@@ -1847,12 +1915,37 @@ view.setupDragInteractions = function () {
         }
     });
 
+    $container.on('click', '.line-dot-popover .btn-step-lines', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const action = $(this).attr('data-action');
+        const $popover = $(this).closest('.line-dot-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+        const cfg = view.getDottingConfig(lineIdx);
+        let newLines = cfg.linesCount + (action === 'inc' ? 1 : -1);
+        newLines = Math.max(1, Math.min(30, newLines));
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].linesCount = newLines;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-lines-input').val(newLines);
+            $('#btn-reset-line-dotting').show();
+        }
+        view.render();
+
+        // Re-open popover on the line badge after re-render so user can keep clicking +/-
+        const $targetBadge = $(`[data-line-idx="${lineIdx}"]`).first();
+        if ($targetBadge.length) {
+            $targetBadge.trigger('click');
+        }
+    });
+
     $container.on('change', '.line-dot-popover .popover-fulldot', function (e) {
         e.stopPropagation();
         const $popover = $(this).closest('.line-dot-popover');
-        const $wrapper = $popover.closest('.line-dot-wrapper');
-        const $badge = $wrapper.children('.btn-line-dot-badge');
-        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
 
         if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
         view.lineDotConfigs[lineIdx].fullDot = this.checked;
@@ -1876,9 +1969,7 @@ view.setupDragInteractions = function () {
     $container.on('change', '.line-dot-popover .popover-outline-select', function (e) {
         e.stopPropagation();
         const $popover = $(this).closest('.line-dot-popover');
-        const $wrapper = $popover.closest('.line-dot-wrapper');
-        const $badge = $wrapper.children('.btn-line-dot-badge');
-        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
 
         if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
         view.lineDotConfigs[lineIdx].outline = this.value;
@@ -1903,9 +1994,7 @@ view.setupDragInteractions = function () {
         e.stopPropagation();
         e.preventDefault();
         const $popover = $(this).closest('.line-dot-popover');
-        const $wrapper = $popover.closest('.line-dot-wrapper');
-        const $badge = $wrapper.children('.btn-line-dot-badge');
-        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
 
         delete view.lineDotConfigs[lineIdx];
         if (view.wordDotConfigs) {
@@ -1915,20 +2004,10 @@ view.setupDragInteractions = function () {
         }
         const defaultCfg = view.getDottingConfig(lineIdx);
 
-        const $line = $(`#line-${lineIdx}`);
-        $line.find('.btn-line-dot-badge').each(function () {
-            $(this).removeClass('is-custom')
-                   .attr('title', `Dòng ${lineIdx + 1}: Cách ${defaultCfg.spaces} ô (Nhấp để chỉnh riêng)`)
-                   .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${defaultCfg.spaces} ô`);
-        });
-        $line.find('.btn-word-dot-badge').removeClass('is-custom');
-
-        view.renderDotsForLine($line, null, lineIdx);
-        view.updateDottingLineSelect();
-
         if ($('#dotting-line-select').val() == lineIdx) {
             $('#dotting-spaces-input').val(defaultCfg.spaces);
             $('#dotting-reps-input').val(defaultCfg.repetitions);
+            $('#dotting-lines-input').val(defaultCfg.linesCount);
             $('#dotting-fulldot-checkbox').prop('checked', defaultCfg.fullDot);
             $('#dotting-outline-select').val(defaultCfg.outline);
             $('#btn-reset-line-dotting').hide();
@@ -1937,6 +2016,7 @@ view.setupDragInteractions = function () {
         $('.line-dot-popover').remove();
         $('.word').removeClass('is-dotting-open');
         $('p.line').removeClass('has-dot-popover');
+        view.render();
     });
 };
 
@@ -2132,9 +2212,15 @@ view.exportBlackboardToPng = async function () {
     const baselineY = 408.05 * S; // 816.1px (Line 2 baseline)
     const startX = 96.092 * S;    // 192.18px
 
-    // Ensure custom font is ready before drawing
+    // Ensure custom fonts are ready before drawing
     if (document.fonts) {
-        await document.fonts.ready;
+        try {
+            await Promise.all([
+                document.fonts.load('16px HP001'),
+                document.fonts.load('16px HP001TD'),
+                document.fonts.ready
+            ]);
+        } catch (_) {}
     }
 
     const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('.result-text, #result').hasClass('small');
@@ -2204,14 +2290,20 @@ view.exportBlackboardToPng = async function () {
                 ctx.restore();
             }
 
-            const lineDotConfig = view.getDottingConfig(bIdx);
+            const $lineEl = $(boardEl).find('p.line').first();
+            const srcLineIdx = parseInt($lineEl.attr('data-source-line-idx'), 10);
+            const validSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : bIdx;
+            const lineDotConfig = view.getDottingConfig(validSrcIdx);
             const hasText = words.length > 0;
             const hasAnyText = ($('#input').val() || '').trim().length > 0;
-            if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || bIdx < lineDotConfig.linesCount)) {
+            if (lineDotConfig && lineDotConfig.enabled && hasAnyText) {
                 let wordsToDraw = words;
                 if (wordsToDraw.length === 0) {
-                    const $board0Line = $($boards[0]).find('p.line').first();
-                    $board0Line.children('.word').each(function () {
+                    let $srcBoard = $(boardEl).prevAll('.board.blackboard').filter(function () {
+                        return $(this).find('p.line .word').length > 0;
+                    }).first();
+                    if (!$srcBoard.length) $srcBoard = $($boards[0]);
+                    $srcBoard.find('p.line').first().children('.word').each(function () {
                         const wEl = this;
                         wordsToDraw.push({
                             text: $(wEl).find('.word-text').text() || $(wEl).text(),
@@ -2222,11 +2314,11 @@ view.exportBlackboardToPng = async function () {
                         });
                     });
                 }
-                let rawLine = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || rawInputLines[bIdx] || wordsToDraw[0].text) : (rawInputLines[bIdx] || rawInputLines[0] || 'a');
+                let rawLine = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || rawInputLines[validSrcIdx] || wordsToDraw[0].text) : (rawInputLines[validSrcIdx] || rawInputLines[0] || 'a');
                 const charUnit = model.getFirstCharUnit(rawLine);
-                const activeDotConfig = view.getActiveDotConfig(charUnit, bIdx, 0);
+                const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
                 const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
-                const outline = lineDotConfig.outline || 'none';
+                const outlineInfo = view.parseOutlineOption(lineDotConfig.outline);
 
                 const olyUnitPx = (isSmall ? 28.932 : 56.3) * S;
                 const blockWidth = 225.2 * S;
@@ -2236,7 +2328,7 @@ view.exportBlackboardToPng = async function () {
                 const firstStretch = wordsToDraw.length > 0 && wordsToDraw[0].stretch ? wordsToDraw[0].stretch : 1.0;
                 const baseWordX = startX + wordOffset;
 
-                if (hasDotConfigs || outline !== 'none') {
+                if (hasDotConfigs || outlineInfo.isEnabled) {
                     ctx.save();
                     if (isItalics) {
                         ctx.translate(0, baselineY);
@@ -2248,40 +2340,57 @@ view.exportBlackboardToPng = async function () {
                         if (hasText || lineDotConfig.fullDot || j === 0) {
                             const shiftX = j * blockWidth * lineDotConfig.spaces;
 
-                            // A. Faint outline copies for students to trace
-                            if (outline !== 'none') {
+                            // A. Faint / Dotted / Curve outline copies for students to trace
+                            if (outlineInfo.isEnabled) {
                                 const isCopy = (!hasText || j > 0);
                                 if (isCopy) {
                                     ctx.save();
-                                    ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
-                                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-                                    ctx.lineWidth = 1.2 * S;
                                     ctx.textBaseline = 'alphabetic';
+                                    const isDotted = (outlineInfo.style === 'dotted');
+                                    const isFaint = (outlineInfo.style === 'faint');
+                                    const isCurve = (outlineInfo.style === 'curve');
 
-                                    if (outline === 'first') {
-                                        const xPos = baseWordX + shiftX;
-                                        if (firstStretch !== 1.0) {
+                                    if (isDotted) {
+                                        ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001TD, serif`;
+                                        ctx.fillStyle = 'rgba(255, 215, 0, 0.75)';
+                                    } else if (isFaint) {
+                                        ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
+                                        ctx.fillStyle = 'rgba(255, 215, 0, 0.38)';
+                                    } else {
+                                        ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
+                                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                                        ctx.lineWidth = 1.2 * S;
+                                    }
+
+                                    const drawText = (str, x, y, strStretch) => {
+                                        if (strStretch && strStretch !== 1.0) {
                                             ctx.save();
-                                            ctx.translate(xPos, baselineY);
-                                            ctx.scale(firstStretch, 1.0);
-                                            ctx.strokeText(charUnit, 0, 0);
+                                            ctx.translate(x, y);
+                                            ctx.scale(strStretch, 1.0);
+                                            if (isCurve) {
+                                                ctx.strokeText(str, 0, 0);
+                                            } else {
+                                                ctx.fillText(str, 0, 0);
+                                            }
                                             ctx.restore();
                                         } else {
-                                            ctx.strokeText(charUnit, xPos, baselineY);
+                                            if (isCurve) {
+                                                ctx.strokeText(str, x, y);
+                                            } else {
+                                                ctx.fillText(str, x, y);
+                                            }
                                         }
-                                    } else if (outline === 'all') {
+                                    };
+
+                                    if (outlineInfo.scope === 'first') {
+                                        const xPos = baseWordX + shiftX;
+                                        const textToDraw = isDotted ? charUnit : model.getUnicodeStr(charUnit);
+                                        drawText(textToDraw, xPos, baselineY, firstStretch);
+                                    } else if (outlineInfo.scope === 'all') {
                                         wordsToDraw.forEach(w => {
                                             const xPos = startX + (w.offsetLeft * S) + shiftX;
-                                            const wStretch = w.stretch || 1.0;
-                                            if (wStretch !== 1.0) {
-                                                ctx.save();
-                                                ctx.translate(xPos, baselineY);
-                                                ctx.scale(wStretch, 1.0);
-                                                ctx.strokeText(w.text, 0, 0);
-                                                ctx.restore();
-                                            } else {
-                                                ctx.strokeText(w.text, xPos, baselineY);
-                                            }
+                                            const textToDraw = isDotted ? (w.raw || w.text) : (w.text || model.getUnicodeStr(w.raw));
+                                            drawText(textToDraw, xPos, baselineY, w.stretch || 1.0);
                                         });
                                     }
                                     ctx.restore();
@@ -2345,9 +2454,15 @@ view.exportWhite11x14ToPng = async function () {
     const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
     const textColor = $('#font-color-input').val() || '#2b1055';
 
-    // Ensure custom font is ready before drawing
+    // Ensure custom fonts are ready before drawing
     if (document.fonts) {
-        await document.fonts.ready;
+        try {
+            await Promise.all([
+                document.fonts.load('16px HP001'),
+                document.fonts.load('16px HP001TD'),
+                document.fonts.ready
+            ]);
+        } catch (_) {}
     }
 
     let scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
@@ -2473,15 +2588,20 @@ view.exportWhite11x14ToPng = async function () {
                     }
                 });
 
+                const srcLineIdx = parseInt($line.attr('data-source-line-idx'), 10);
+                const validSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : globalLineIdx;
                 const hasText = words.length > 0;
                 const hasAnyText = ($('#input').val() || '').trim().length > 0;
-                const lineDotConfig = view.getDottingConfig(globalLineIdx);
-                if (lineDotConfig && lineDotConfig.enabled && hasAnyText && (hasText || globalLineIdx < lineDotConfig.linesCount)) {
+                const lineDotConfig = view.getDottingConfig(validSrcIdx);
+                if (lineDotConfig && lineDotConfig.enabled && hasAnyText) {
                     let wordsToDraw = words;
                     if (wordsToDraw.length === 0) {
-                        const $firstLineWithWords = $(boardEl).find('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
-                        if ($firstLineWithWords.length) {
-                            $firstLineWithWords.children('.word').each(function () {
+                        let $lineWithWords = $line.prevAll('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
+                        if (!$lineWithWords.length) {
+                            $lineWithWords = $('.board.white_11x14, .board.white_10x14').find('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
+                        }
+                        if ($lineWithWords.length) {
+                            $lineWithWords.children('.word').each(function () {
                                 wordsToDraw.push({
                                     text: $(this).find('.word-text').text() || $(this).text(),
                                     raw: $(this).attr('data-raw') || '',
@@ -2494,13 +2614,13 @@ view.exportWhite11x14ToPng = async function () {
                     let rawLineText = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || wordsToDraw[0].text) : '';
                     if (!rawLineText) {
                         const rawLines = ($('#input').val() || '').split('\n').map(l => l.trim());
-                        const lineFromInput = rawLines[globalLineIdx] || rawLines[0] || 'a';
+                        const lineFromInput = rawLines[validSrcIdx] || rawLines[0] || 'a';
                         rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
                     }
                     const charUnit = model.getFirstCharUnit(rawLineText);
-                    const activeDotConfig = view.getActiveDotConfig(charUnit, globalLineIdx, 0);
+                    const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
                     const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
-                    const outline = lineDotConfig.outline || 'none';
+                    const outlineInfo = view.parseOutlineOption(lineDotConfig.outline);
 
                     const olyUnitPx = isSmall ? 9.6 : 19.2;
                     const blockWidth = 76.8;
@@ -2510,45 +2630,62 @@ view.exportWhite11x14ToPng = async function () {
                     const firstStretch = wordsToDraw.length > 0 && wordsToDraw[0].stretch ? wordsToDraw[0].stretch : 1.0;
                     const baseWordX = gridOriginX + wordOffset;
 
-                    if (hasDotConfigs || outline !== 'none') {
+                    if (hasDotConfigs || outlineInfo.isEnabled) {
                         for (let j = 0; j < lineDotConfig.repetitions; j++) {
                             if (hasText || lineDotConfig.fullDot || j === 0) {
                                 const shiftX = j * blockWidth * lineDotConfig.spaces;
 
-                                // A. Outline copies
-                                if (outline !== 'none') {
+                                // A. Outline copies (faint, dotted, curve)
+                                if (outlineInfo.isEnabled) {
                                     const isCopy = (!hasText || j > 0);
                                     if (isCopy) {
                                         ctx.save();
-                                        ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
-                                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-                                        ctx.lineWidth = isSmall ? 0.8 : 1.0;
                                         ctx.textBaseline = 'alphabetic';
+                                        const isDotted = (outlineInfo.style === 'dotted');
+                                        const isFaint = (outlineInfo.style === 'faint');
+                                        const isCurve = (outlineInfo.style === 'curve');
 
-                                        if (outline === 'first') {
-                                            const xPos = baseWordX + shiftX;
-                                            if (firstStretch !== 1.0) {
+                                        if (isDotted) {
+                                            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001TD, serif`;
+                                            ctx.fillStyle = 'rgba(43, 16, 85, 0.65)';
+                                        } else if (isFaint) {
+                                            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
+                                            ctx.fillStyle = 'rgba(43, 16, 85, 0.32)';
+                                        } else {
+                                            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
+                                            ctx.strokeStyle = 'rgba(43, 16, 85, 0.42)';
+                                            ctx.lineWidth = isSmall ? 0.8 : 1.0;
+                                        }
+
+                                        const drawText = (str, x, y, strStretch) => {
+                                            if (strStretch && strStretch !== 1.0) {
                                                 ctx.save();
-                                                ctx.translate(xPos, yPos);
-                                                ctx.scale(firstStretch, 1.0);
-                                                ctx.strokeText(charUnit, 0, 0);
+                                                ctx.translate(x, y);
+                                                ctx.scale(strStretch, 1.0);
+                                                if (isCurve) {
+                                                    ctx.strokeText(str, 0, 0);
+                                                } else {
+                                                    ctx.fillText(str, 0, 0);
+                                                }
                                                 ctx.restore();
                                             } else {
-                                                ctx.strokeText(charUnit, xPos, yPos);
+                                                if (isCurve) {
+                                                    ctx.strokeText(str, x, y);
+                                                } else {
+                                                    ctx.fillText(str, x, y);
+                                                }
                                             }
-                                        } else if (outline === 'all') {
+                                        };
+
+                                        if (outlineInfo.scope === 'first') {
+                                            const xPos = baseWordX + shiftX;
+                                            const textToDraw = isDotted ? charUnit : model.getUnicodeStr(charUnit);
+                                            drawText(textToDraw, xPos, yPos, firstStretch);
+                                        } else if (outlineInfo.scope === 'all') {
                                             wordsToDraw.forEach(w => {
                                                 const xPos = gridOriginX + w.offsetLeft + shiftX;
-                                                const wStretch = w.stretch || 1.0;
-                                                if (wStretch !== 1.0) {
-                                                    ctx.save();
-                                                    ctx.translate(xPos, yPos);
-                                                    ctx.scale(wStretch, 1.0);
-                                                    ctx.strokeText(w.text, 0, 0);
-                                                    ctx.restore();
-                                                } else {
-                                                    ctx.strokeText(w.text, xPos, yPos);
-                                                }
+                                                const textToDraw = isDotted ? (w.raw || w.text) : (w.text || model.getUnicodeStr(w.raw));
+                                                drawText(textToDraw, xPos, yPos, w.stretch || 1.0);
                                             });
                                         }
                                         ctx.restore();
@@ -2641,9 +2778,15 @@ view.exportToPng = async function () {
         return;
     }
 
-    // Ensure custom font is ready before drawing
+    // Ensure custom fonts are ready before drawing
     if (document.fonts) {
-        await document.fonts.ready;
+        try {
+            await Promise.all([
+                document.fonts.load('16px HP001'),
+                document.fonts.load('16px HP001TD'),
+                document.fonts.ready
+            ]);
+        } catch (_) {}
     }
 
     let scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
@@ -2792,29 +2935,39 @@ view.exportToPng = async function () {
 
         for (let idx = 0; idx < totalLinesCount; idx++) {
             const lineObj = lines[idx];
+            const $line = $($result.children('p.line')[idx]);
+            const srcLineIdx = parseInt($line.attr('data-source-line-idx'), 10);
+            const validSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : idx;
             const hasText = lineObj && lineObj.words.length > 0;
-            const lineDotConfig = view.getDottingConfig(idx);
-            if (!hasText && idx >= lineDotConfig.linesCount) break;
+            const lineDotConfig = view.getDottingConfig(validSrcIdx);
 
             const yPos = firstBaselineY + (idx * lineHeightPx);
             let wordsToDraw = hasText ? lineObj.words : [];
             if (wordsToDraw.length === 0) {
-                const firstLineWithWords = lines.find(l => l.words.length > 0);
-                if (firstLineWithWords) {
-                    wordsToDraw = firstLineWithWords.words;
+                for (let prev = idx - 1; prev >= 0; prev--) {
+                    if (lines[prev] && lines[prev].words.length > 0) {
+                        wordsToDraw = lines[prev].words;
+                        break;
+                    }
+                }
+                if (wordsToDraw.length === 0) {
+                    const firstLineWithWords = lines.find(l => l.words.length > 0);
+                    if (firstLineWithWords) {
+                        wordsToDraw = firstLineWithWords.words;
+                    }
                 }
             }
             let rawLineText = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || wordsToDraw[0].text) : '';
             if (!rawLineText) {
-                const lineFromInput = rawInputLines[idx] || rawInputLines.find(l => l.length > 0) || 'a';
+                const lineFromInput = rawInputLines[validSrcIdx] || rawInputLines.find(l => l.length > 0) || 'a';
                 rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
             }
             const charUnit = model.getFirstCharUnit(rawLineText);
-            const activeDotConfig = view.getActiveDotConfig(charUnit, idx, 0);
+            const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
             const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
-            const outline = lineDotConfig.outline || 'none';
+            const outlineInfo = view.parseOutlineOption(lineDotConfig.outline);
 
-            if (!hasDotConfigs && outline === 'none') {
+            if (!hasDotConfigs && !outlineInfo.isEnabled) {
                 continue;
             }
 
@@ -2826,40 +2979,57 @@ view.exportToPng = async function () {
                 if (hasText || lineDotConfig.fullDot || j === 0) {
                     const shiftX = j * bigGridPx * lineDotConfig.spaces;
 
-                    // A. Faint outline copies
-                    if (outline !== 'none') {
+                    // A. Faint / Dotted / Curve outline copies
+                    if (outlineInfo.isEnabled) {
                         const isCopy = (!hasText || j > 0);
                         if (isCopy) {
                             ctx.save();
-                            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
-                            ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-                            ctx.lineWidth = isSmall ? 0.8 : 1.0;
                             ctx.textBaseline = 'alphabetic';
+                            const isDotted = (outlineInfo.style === 'dotted');
+                            const isFaint = (outlineInfo.style === 'faint');
+                            const isCurve = (outlineInfo.style === 'curve');
 
-                            if (outline === 'first') {
-                                const xPos = baseWordX + shiftX;
-                                if (firstStretch !== 1.0) {
+                            if (isDotted) {
+                                ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001TD, serif`;
+                                ctx.fillStyle = isWhiteBoard ? 'rgba(43, 16, 85, 0.65)' : 'rgba(255, 255, 255, 0.75)';
+                            } else if (isFaint) {
+                                ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
+                                ctx.fillStyle = isWhiteBoard ? 'rgba(43, 16, 85, 0.32)' : 'rgba(255, 255, 255, 0.38)';
+                            } else {
+                                ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
+                                ctx.strokeStyle = isWhiteBoard ? 'rgba(43, 16, 85, 0.42)' : 'rgba(255, 255, 255, 0.45)';
+                                ctx.lineWidth = isSmall ? 0.8 : 1.0;
+                            }
+
+                            const drawText = (str, x, y, strStretch) => {
+                                if (strStretch && strStretch !== 1.0) {
                                     ctx.save();
-                                    ctx.translate(xPos, yPos);
-                                    ctx.scale(firstStretch, 1.0);
-                                    ctx.strokeText(charUnit, 0, 0);
+                                    ctx.translate(x, y);
+                                    ctx.scale(strStretch, 1.0);
+                                    if (isCurve) {
+                                        ctx.strokeText(str, 0, 0);
+                                    } else {
+                                        ctx.fillText(str, 0, 0);
+                                    }
                                     ctx.restore();
                                 } else {
-                                    ctx.strokeText(charUnit, xPos, yPos);
+                                    if (isCurve) {
+                                        ctx.strokeText(str, x, y);
+                                    } else {
+                                        ctx.fillText(str, x, y);
+                                    }
                                 }
-                            } else if (outline === 'all') {
+                            };
+
+                            if (outlineInfo.scope === 'first') {
+                                const xPos = baseWordX + shiftX;
+                                const textToDraw = isDotted ? charUnit : model.getUnicodeStr(charUnit);
+                                drawText(textToDraw, xPos, yPos, firstStretch);
+                            } else if (outlineInfo.scope === 'all') {
                                 wordsToDraw.forEach(w => {
                                     const xPos = gridOriginX + w.offsetLeft + shiftX;
-                                    const wStretch = w.stretch || 1.0;
-                                    if (wStretch !== 1.0) {
-                                        ctx.save();
-                                        ctx.translate(xPos, yPos);
-                                        ctx.scale(wStretch, 1.0);
-                                        ctx.strokeText(w.text, 0, 0);
-                                        ctx.restore();
-                                    } else {
-                                        ctx.strokeText(w.text, xPos, yPos);
-                                    }
+                                    const textToDraw = isDotted ? (w.raw || w.text) : (w.text || model.getUnicodeStr(w.raw));
+                                    drawText(textToDraw, xPos, yPos, w.stretch || 1.0);
                                 });
                             }
                             ctx.restore();

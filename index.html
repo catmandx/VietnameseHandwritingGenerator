@@ -142,11 +142,21 @@
                 </div>
 
                 <div class="tool-item">
-                  <label for="dotting-outline-select" title="Chữ viền mờ đi kèm chấm để học sinh tập tô nét"><i class="fa-solid fa-pen-nib"></i> Nét mờ:</label>
+                  <label for="dotting-outline-select" title="Chữ mờ đi kèm chấm để học sinh tập tô nét"><i class="fa-solid fa-pen-nib"></i> Nét mờ:</label>
                   <select id="dotting-outline-select" style="padding: 2px 6px; font-size: 0.82rem; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                    <option value="none">Không viền</option>
-                    <option value="first">Chữ đầu</option>
-                    <option value="all">Cả dòng</option>
+                    <option value="none">Không nét mờ</option>
+                    <optgroup label="Nét mờ (Độ mờ)">
+                      <option value="faint_all">Cả dòng (Mờ)</option>
+                      <option value="faint_first">Chữ đầu (Mờ)</option>
+                    </optgroup>
+                    <optgroup label="Chữ chấm đồ (HP001TD)">
+                      <option value="dotted_all">Cả dòng (Chấm đồ)</option>
+                      <option value="dotted_first">Chữ đầu (Chấm đồ)</option>
+                    </optgroup>
+                    <optgroup label="Viền nét (Rỗng lòng)">
+                      <option value="curve_all">Cả dòng (Viền nét)</option>
+                      <option value="curve_first">Chữ đầu (Viền nét)</option>
+                    </optgroup>
                   </select>
                 </div>
 
