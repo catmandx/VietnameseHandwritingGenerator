@@ -19,6 +19,14 @@
   - `<p class="line">` must have `box-sizing: border-box; margin: 0; padding: 0;`.
 - **Baseline Calibrations**: Never arbitrarily adjust container `padding-top` calibrations unless specifically requested by the user.
 
+## Blackboard Layout & Isolation Invariant
+- **Single-Line Absolute Architecture**: The mini blackboard (`.board.blackboard`) does NOT use CSS Grid row tracks. It renders 1 line of text per board anchored on Line 1 ($y = 408.05\text{px}$) inside an 842px x 595px SVG vector frame.
+- **Uncapped Single-Line Metrics**:
+  - `#result, .result-text` inside `.board.blackboard` must have `display: block !important; position: absolute !important; left: 96.09px !important; line-height: 1 !important; height: auto !important; min-width: 0 !important;`.
+  - `<p class="line">` inside `.board.blackboard` must have `height: auto !important; max-height: none !important; min-height: 0 !important; line-height: 1 !important;`.
+  - `.word, .word-text, .word-space` inside `.board.blackboard` must have `line-height: 1 !important; vertical-align: baseline !important;`.
+  - **Never apply CSS Grid multiline line-height capping (`76.8px` or `153.6px`) to `.board.blackboard`**, as this applies negative half-leading to the large font ($144.66\text{px}$ / $281.5\text{px}$), shifting the text $34\text{px}$–$68\text{px}$ above the guideline and displacing italicized text horizontally.
+
 ## Browser Testing Priority
 When testing layout, rendering, or features, prioritize browser compatibility in this order:
 1. **Google Chrome** (Primary target)
