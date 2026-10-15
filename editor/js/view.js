@@ -306,14 +306,14 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
         </div>
     `);
 
-    const CELL_PX = 36;
+    const CELL_PX = 56;
     const COLS = 8;
     const ROWS = 9;
-    const WIDTH = COLS * CELL_PX; // 288px
-    const HEIGHT = ROWS * CELL_PX; // 324px
-    const ORIGIN_X = 36; // 1 ô ly margin on left (X = 0)
-    const BASELINE_Y = 216; // 6 ô ly from top, leaving 3 ô ly for descenders (Y = 0)
-    const FONT_SIZE = CELL_PX * (2048 / 412); // ~178.95px
+    const WIDTH = COLS * CELL_PX; // 448px
+    const HEIGHT = ROWS * CELL_PX; // 504px
+    const ORIGIN_X = CELL_PX; // 1 ô ly margin on left (X = 0 = 56px)
+    const BASELINE_Y = 6 * CELL_PX; // 6 ô ly from top, leaving 3 ô ly for descenders (Y = 0 = 336px)
+    const FONT_SIZE = CELL_PX * (2048 / 412); // ~278.37px
 
     // 1. Initialize configurations
     let configs = [];
@@ -348,8 +348,8 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
     let svgHtml = `
     <svg id="startPointSvg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" style="display: block; width: 100%; height: 100%; cursor: crosshair;">
         <defs>
-            <pattern id="subgrid" width="9" height="9" patternUnits="userSpaceOnUse">
-                <path d="M 9 0 L 0 0 0 9" fill="none" stroke="#f1f5f9" stroke-width="0.75" />
+            <pattern id="subgrid" width="14" height="14" patternUnits="userSpaceOnUse">
+                <path d="M 14 0 L 0 0 0 14" fill="none" stroke="#f1f5f9" stroke-width="0.75" />
             </pattern>
             <pattern id="grid" width="${CELL_PX}" height="${CELL_PX}" patternUnits="userSpaceOnUse">
                 <rect width="${CELL_PX}" height="${CELL_PX}" fill="url(#subgrid)" />
@@ -364,23 +364,23 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
         <!-- Reference Lines & Labels -->
         <!-- Baseline (ĐK 1, y = 0) -->
         <line x1="0" y1="${BASELINE_Y}" x2="${WIDTH}" y2="${BASELINE_Y}" stroke="#2563eb" stroke-width="2.5" />
-        <text x="${WIDTH - 4}" y="${BASELINE_Y - 4}" font-size="9" font-weight="bold" fill="#2563eb" text-anchor="end">ĐK 1 (0)</text>
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 5}" font-size="10.5" font-weight="bold" fill="#2563eb" text-anchor="end">ĐK 1 (0)</text>
 
-        <!-- ĐK 3 (y = +2 ô ly = 144px) -->
+        <!-- ĐK 3 (y = +2 ô ly = 224px) -->
         <line x1="0" y1="${BASELINE_Y - 2 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y - 2 * CELL_PX}" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="4,2" />
-        <text x="${WIDTH - 4}" y="${BASELINE_Y - 2 * CELL_PX - 4}" font-size="9" fill="#3b82f6" text-anchor="end">ĐK 3 (+2)</text>
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 2 * CELL_PX - 5}" font-size="10.5" fill="#3b82f6" text-anchor="end">ĐK 3 (+2)</text>
 
-        <!-- ĐK 5 (y = +5 ô ly = 36px) -->
+        <!-- ĐK 5 (y = +5 ô ly = 56px) -->
         <line x1="0" y1="${BASELINE_Y - 5 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y - 5 * CELL_PX}" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4,2" />
-        <text x="${WIDTH - 4}" y="${BASELINE_Y - 5 * CELL_PX - 4}" font-size="9" fill="#60a5fa" text-anchor="end">ĐK 5 (+5)</text>
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 5 * CELL_PX - 5}" font-size="10.5" fill="#60a5fa" text-anchor="end">ĐK 5 (+5)</text>
 
-        <!-- ĐK Dưới (y = -2 ô ly = 288px) -->
+        <!-- ĐK Dưới (y = -2 ô ly = 448px) -->
         <line x1="0" y1="${BASELINE_Y + 2 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y + 2 * CELL_PX}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2" />
-        <text x="${WIDTH - 4}" y="${BASELINE_Y + 2 * CELL_PX - 4}" font-size="9" fill="#94a3b8" text-anchor="end">ĐK Dưới (-2)</text>
+        <text x="${WIDTH - 6}" y="${BASELINE_Y + 2 * CELL_PX - 5}" font-size="10.5" fill="#94a3b8" text-anchor="end">ĐK Dưới (-2)</text>
 
-        <!-- Origin X = 0 (Left bearing line, x = 36px) -->
+        <!-- Origin X = 0 (Left bearing line, x = 56px) -->
         <line x1="${ORIGIN_X}" y1="0" x2="${ORIGIN_X}" y2="${HEIGHT}" stroke="#2563eb" stroke-width="1.5" />
-        <text x="${ORIGIN_X + 4}" y="${HEIGHT - 6}" font-size="9" font-weight="bold" fill="#2563eb">X=0</text>
+        <text x="${ORIGIN_X + 6}" y="${HEIGHT - 8}" font-size="10.5" font-weight="bold" fill="#2563eb">X=0</text>
 
         <!-- Render Glyph -->
         <text id="previewGlyphText" x="${ORIGIN_X}" y="${BASELINE_Y}" font-family="HP001, serif" font-size="${FONT_SIZE}" fill="#1e293b" font-weight="bold" pointer-events="none" style="user-select: none;">${view.escapeXml(displayGlyph)}</text>
@@ -522,25 +522,25 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
             if (isActive) {
                 // Active Halo (pointer-events: none)
                 let $halo = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
-                    .attr('cx', 0).attr('cy', 0).attr('r', 15)
+                    .attr('cx', 0).attr('cy', 0).attr('r', 18)
                     .attr('fill', 'rgba(239, 68, 68, 0.25)')
                     .attr('pointer-events', 'none');
                 // Active Center
                 let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
-                    .attr('cx', 0).attr('cy', 0).attr('r', 7)
+                    .attr('cx', 0).attr('cy', 0).attr('r', 8)
                     .attr('fill', '#ef4444')
                     .attr('stroke', '#ffffff').attr('stroke-width', 2);
                 // Active Tooltip Badge (pointer-events: none)
                 let tooltipText = `${dot.label || ('Chấm ' + (idx + 1))}: (${dot.x.toFixed(2)}, ${dot.y.toFixed(2)})`;
-                let badgeWidth = Math.max(64, tooltipText.length * 6.5);
+                let badgeWidth = Math.max(70, tooltipText.length * 7);
                 let $badgeBg = $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
-                    .attr('x', -badgeWidth / 2).attr('y', -26)
-                    .attr('width', badgeWidth).attr('height', 16)
+                    .attr('x', -badgeWidth / 2).attr('y', -28)
+                    .attr('width', badgeWidth).attr('height', 18)
                     .attr('rx', 4).attr('fill', 'rgba(15, 23, 42, 0.88)')
                     .attr('pointer-events', 'none');
                 let $badgeText = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
-                    .attr('x', 0).attr('y', -14)
-                    .attr('font-size', '10').attr('font-weight', 'bold')
+                    .attr('x', 0).attr('y', -15)
+                    .attr('font-size', '10.5').attr('font-weight', 'bold')
                     .attr('fill', '#ffffff').attr('text-anchor', 'middle')
                     .attr('pointer-events', 'none')
                     .text(tooltipText);
@@ -549,12 +549,12 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
             } else {
                 // Secondary Dot
                 let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
-                    .attr('cx', 0).attr('cy', 0).attr('r', 6)
+                    .attr('cx', 0).attr('cy', 0).attr('r', 7)
                     .attr('fill', '#3b82f6')
                     .attr('stroke', '#ffffff').attr('stroke-width', 1.5);
                 let $numBadge = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
-                    .attr('x', 8).attr('y', -6)
-                    .attr('font-size', '9').attr('font-weight', 'bold')
+                    .attr('x', 9).attr('y', -7)
+                    .attr('font-size', '10').attr('font-weight', 'bold')
                     .attr('fill', '#1e40af')
                     .attr('pointer-events', 'none')
                     .text(`${idx + 1}`);
@@ -584,7 +584,7 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
             $activeG[0].setAttribute('transform', `translate(${px}, ${py})`);
             const dot = getCurrentDot();
             const tooltipText = `${dot.label || ('Chấm ' + (activeDotIdx + 1))}: (${x.toFixed(2)}, ${y.toFixed(2)})`;
-            const badgeWidth = Math.max(64, tooltipText.length * 6.5);
+            const badgeWidth = Math.max(70, tooltipText.length * 7);
             const rect = $activeG.find('rect')[0];
             const text = $activeG.find('text')[0];
             if (rect) {

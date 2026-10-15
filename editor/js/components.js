@@ -123,18 +123,18 @@ components.baseEditForm = `
     <div class="card-body">
         <div class="row">
             <!-- Left Column: Interactive SVG Grid & Glyph Preview -->
-            <div class="col-lg-5 col-md-6 d-flex flex-column align-items-center mb-3 mb-md-0">
-                <div id="startPointPreviewContainer" class="position-relative border rounded bg-white shadow-sm user-select-none" style="width: 288px; height: 324px; cursor: crosshair; touch-action: none; overflow: hidden;">
+            <div class="col-lg-6 col-md-12 d-flex flex-column align-items-center mb-3 mb-lg-0">
+                <div id="startPointPreviewContainer" class="position-relative border rounded bg-white shadow-sm user-select-none" style="width: 448px; max-width: 100%; height: 504px; cursor: crosshair; touch-action: none; overflow: hidden;">
                     <!-- SVG Grid & Glyph preview rendered dynamically -->
                 </div>
                 <div id="startPointGlyphBadge" class="mt-2 text-center small text-muted"></div>
                 <div class="mt-1 text-center small text-muted">
-                    <span>Click chấm để chọn / kéo để định vị</span>
+                    <i class="fa-solid fa-arrows-up-down-left-right text-primary me-1"></i><span>Click chấm để chọn / kéo để định vị</span>
                 </div>
             </div>
 
             <!-- Right Column: Configurations & Dots Manager -->
-            <div class="col-lg-7 col-md-6">
+            <div class="col-lg-6 col-md-12">
                 <div class="p-3 bg-light rounded border h-100 d-flex flex-column justify-content-between">
                     <div>
                         <!-- Hidden field storing the full dotConfigs JSON for form submission -->
