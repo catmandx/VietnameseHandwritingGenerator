@@ -17,7 +17,7 @@
   - `.word-space` must be `display: inline-block;` (never unconstrained `display: inline`, which causes font-leading inflation with tall Vietnamese diacritics).
   - Floating controls, popovers, and outline/dot layers must be positioned absolutely (`position: absolute`) with `pointer-events` properly scoped.
   - `<p class="line">` must have `box-sizing: border-box; margin: 0; padding: 0;`.
-- **Baseline Calibrations**: Never arbitrarily adjust container `padding-top` calibrations unless specifically requested by the user.
+- **Guideline Centering Invariant**: The bottom edge/curve of glyphs (baseline) MUST sit directly in the middle (vertical midpoint) of the 1.5px major horizontal guideline across all layouts (72pt and 37pt), never on its top or bottom edge. Container `padding-top` calibrations (`calc(var(--grid-unit) * 0.7 + 0.5px)` for 72pt, `calc(var(--grid-unit) * 3.32 + 1.35px)` for 37pt on normal infinite boards; and `calc(var(--grid-unit) * 0.2 + 10.5px)` / `calc(var(--grid-unit) * 3.34 + 1.35px)` on 11x14) are calibrated to center the stroke through the guideline stroke thickness. Do not arbitrarily alter these calibrations.
 
 ## Blackboard Layout & Isolation Invariant
 - **Single-Line Absolute Architecture**: The mini blackboard (`.board.blackboard`) does NOT use CSS Grid row tracks. It renders 1 line of text per board anchored on Line 1 ($y = 408.05\text{px}$) inside an 842px x 595px SVG vector frame.

@@ -771,6 +771,7 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         }
     }
     $line.append($dotsLayer);
+    view.syncInfiniteCanvasWidth();
 };
 
 view.render = function () {
@@ -866,9 +867,66 @@ view.render = function () {
         $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'max-width': '', 'min-width': '', 'white-space': '' });
         view.updateLines(linesData);
         $result.css({ 'font-size': '', 'top': '' });
+        view.syncInfiniteCanvasWidth();
     }
     view.updateDottingLineSelect();
     view.updateDottingControlsState();
+};
+
+view.syncInfiniteCanvasWidth = function () {
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout ? (layout === 'blackboard') : $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout ? (layout === 'white_11x14' || layout === 'white_10x14') : ($('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14'));
+
+    if (isBlackboard || isWhite11x14) return;
+
+    const $result = $('#result');
+    if (!$result.length) return;
+
+    const dotConfig = view.getDottingConfig();
+    const hasAnyText = ($('#input').val() || '').trim().length > 0;
+    const isDotActive = view.isDottingActive() && dotConfig && dotConfig.enabled && hasAnyText;
+
+    if (!isDotActive) {
+        $result.css('min-width', '');
+        return;
+    }
+
+    const subGridPx = 19.2;
+    const bigGridPx = 76.8;
+    let maxDotsRight = 0;
+
+    const $lines = $result.children('p.line');
+    const totalLinesCount = Math.max($lines.length, dotConfig.linesCount || 0);
+
+    for (let idx = 0; idx < totalLinesCount; idx++) {
+        const lineCfg = view.getDottingConfig(idx);
+        const outlineInfo = view.parseOutlineOption(lineCfg.outline);
+        const reps = Math.max(1, lineCfg.repetitions || 1);
+        const spaces = Math.max(1, lineCfg.spaces || 1);
+
+        let lineMax = subGridPx + (reps * bigGridPx * spaces);
+
+        const $line = $lines.eq(idx);
+        if ($line.length) {
+            const $words = $line.children('.word');
+            const $lastWord = $words.last();
+            if ($lastWord.length) {
+                if (outlineInfo.isEnabled && outlineInfo.scope === 'all') {
+                    const shiftMax = (reps - 1) * bigGridPx * spaces;
+                    const lastWordRight = $lastWord[0].offsetLeft + ($lastWord[0].offsetWidth * (parseFloat($lastWord.attr('data-stretch')) || 1.0)) + shiftMax + subGridPx;
+                    if (lastWordRight > lineMax) lineMax = lastWordRight;
+                }
+            }
+        }
+        if (lineMax > maxDotsRight) maxDotsRight = lineMax;
+    }
+
+    if (maxDotsRight > 0) {
+        $result.css('min-width', `${Math.ceil(maxDotsRight)}px`);
+    } else {
+        $result.css('min-width', '');
+    }
 };
 
 view.syncBlackboards = function (linesData) {
@@ -2351,7 +2409,7 @@ view.exportBlackboardToPng = async function () {
                                     const isCurve = (outlineInfo.style === 'curve');
 
                                     if (isDotted) {
-                                        ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001TD, serif`;
+                                        ctx.font = `normal ${exportFontSize}px HP001TD, serif`;
                                         ctx.fillStyle = 'rgba(255, 215, 0, 0.75)';
                                     } else if (isFaint) {
                                         ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
@@ -2646,7 +2704,7 @@ view.exportWhite11x14ToPng = async function () {
                                         const isCurve = (outlineInfo.style === 'curve');
 
                                         if (isDotted) {
-                                            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001TD, serif`;
+                                            ctx.font = `normal ${fontSizePx}px HP001TD, serif`;
                                             ctx.fillStyle = 'rgba(43, 16, 85, 0.65)';
                                         } else if (isFaint) {
                                             ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
@@ -2990,7 +3048,7 @@ view.exportToPng = async function () {
                             const isCurve = (outlineInfo.style === 'curve');
 
                             if (isDotted) {
-                                ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001TD, serif`;
+                                ctx.font = `normal ${fontSizePx}px HP001TD, serif`;
                                 ctx.fillStyle = isWhiteBoard ? 'rgba(43, 16, 85, 0.65)' : 'rgba(255, 255, 255, 0.75)';
                             } else if (isFaint) {
                                 ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
