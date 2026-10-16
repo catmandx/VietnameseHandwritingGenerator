@@ -17,17 +17,17 @@
     <link rel="preload" href="/static/font/HP001B30.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="preload" href="/static/img/blackboard.png" as="image" />
 
-    <link rel="stylesheet" href="/static/css/main.css?v=20261016_4" />
-    <link rel="stylesheet" href="/static/css/board.css?v=20261016_4" />
+    <link rel="stylesheet" href="/static/css/main.css?v=20261016_5" />
+    <link rel="stylesheet" href="/static/css/board.css?v=20261016_5" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.2/css/all.min.css" />
 
     <script src="/static/js/jquery-3.6.0.min.js"></script>
-    <script src="/static/js/config.js?v=20261016_4"></script>
-    <script src="/static/js/utils.js?v=20261016_4"></script>
-    <script src="/static/js/model.js?v=20261016_4"></script>
-    <script src="/static/js/view.js?v=20261016_4"></script>
-    <script src="/static/js/controller.js?v=20261016_4"></script>
-    <script src="/static/js/index.js?v=20261016_4"></script>
+    <script src="/static/js/config.js?v=20261016_5"></script>
+    <script src="/static/js/utils.js?v=20261016_5"></script>
+    <script src="/static/js/model.js?v=20261016_5"></script>
+    <script src="/static/js/view.js?v=20261016_5"></script>
+    <script src="/static/js/controller.js?v=20261016_5"></script>
+    <script src="/static/js/index.js?v=20261016_5"></script>
   </head>
   <body>
     <header class="app-header no-print">
@@ -240,6 +240,110 @@
         <div class="board black">
           <div class="grid">
             <div id="result" class="result-text bold"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Tùy chỉnh chấm tự do (Freestyle Dotting Editor) -->
+      <div id="freestyleDottingModal" class="freestyle-modal-backdrop no-print" style="display: none;">
+        <div class="freestyle-modal-dialog">
+          <div class="freestyle-modal-header">
+            <h3 class="freestyle-modal-title">
+              <i class="fa-solid fa-wand-magic-sparkles text-primary"></i>
+              <span>Tùy chỉnh điểm chấm tự do:</span>
+              <span id="freestyleCharBadge" class="badge-char">a</span>
+            </h3>
+            <button type="button" class="freestyle-modal-close" id="btn-close-freestyle-modal" title="Đóng">&times;</button>
+          </div>
+          <div class="freestyle-modal-body">
+            <!-- Left Column: SVG Grid Editor -->
+            <div class="freestyle-grid-col">
+              <div id="freestylePreviewContainer">
+                <!-- SVG Grid and glyph preview rendered by JS -->
+              </div>
+              <div class="freestyle-grid-hint">
+                <i class="fa-solid fa-arrows-up-down-left-right text-primary"></i>
+                <span>Click trên ô ly để đặt/chuyển chấm; kéo thả để định vị.</span>
+              </div>
+            </div>
+
+            <!-- Right Column: Dot Inspector & Controls -->
+            <div class="freestyle-controls-col">
+              <div class="freestyle-section">
+                <div class="freestyle-section-header">
+                  <label class="freestyle-label">DANH SÁCH ĐIỂM CHẤM:</label>
+                  <div class="freestyle-btn-group">
+                    <button type="button" class="btn btn-xs btn-outline" id="btn-freestyle-add-dot" title="Thêm điểm chấm mới">
+                      <i class="fa-solid fa-plus"></i> Thêm chấm
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline text-danger" id="btn-freestyle-del-dot" title="Xóa điểm chấm đang chọn">
+                      <i class="fa-solid fa-trash"></i> Xóa chấm
+                    </button>
+                  </div>
+                </div>
+                <div id="freestyleDotsList" class="freestyle-dots-list">
+                  <!-- Dynamic dot badges -->
+                </div>
+              </div>
+
+              <!-- Active Dot Coordinates Form -->
+              <div class="freestyle-card">
+                <div class="freestyle-card-title" id="freestyleActiveDotHeading">
+                  <i class="fa-solid fa-circle-dot text-danger"></i> Đang chỉnh: <strong>Chấm 1</strong>
+                </div>
+                <div class="freestyle-form-row">
+                  <div class="freestyle-form-group">
+                    <label for="freestyleInputX">X (ngang):</label>
+                    <div class="freestyle-input-unit">
+                      <input type="number" step="0.05" id="freestyleInputX" class="form-input">
+                      <span>ô</span>
+                    </div>
+                  </div>
+                  <div class="freestyle-form-group">
+                    <label for="freestyleInputY">Y (cao):</label>
+                    <div class="freestyle-input-unit">
+                      <input type="number" step="0.05" id="freestyleInputY" class="form-input">
+                      <span>ô</span>
+                    </div>
+                  </div>
+                  <div class="freestyle-form-group flex-2">
+                    <label for="freestyleInputLabel">Nhãn/Nét:</label>
+                    <input type="text" id="freestyleInputLabel" class="form-input" placeholder="Nét 1">
+                  </div>
+                </div>
+                <div class="freestyle-actions-row">
+                  <button type="button" class="btn btn-xs btn-outline" id="btn-freestyle-snap" title="Căn tọa độ vào bội số 0.25 ô ly">
+                    <i class="fa-solid fa-magnet"></i> Căn 0.25 ô ly
+                  </button>
+                  <button type="button" class="btn btn-xs btn-outline" id="btn-freestyle-load-preset" title="Tải lại từ mẫu chấm chuẩn của chữ">
+                    <i class="fa-solid fa-rotate-left"></i> Lấy mẫu chuẩn
+                  </button>
+                </div>
+              </div>
+
+              <!-- Application Scope -->
+              <div class="freestyle-scope-box">
+                <label class="freestyle-checkbox-label">
+                  <input type="checkbox" id="freestyleApplyAll">
+                  <span id="freestyleApplyAllText">Áp dụng cho tất cả chữ này trong bài viết</span>
+                </label>
+                <div class="freestyle-scope-hint">
+                  Nếu không chọn, chỉ chữ này được áp dụng và lưu trong bài viết.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="freestyle-modal-footer">
+            <button type="button" class="btn btn-outline text-danger" id="btn-freestyle-reset-default">
+              <i class="fa-solid fa-rotate-left"></i> Đặt lại mặc định
+            </button>
+            <div class="modal-footer-right">
+              <button type="button" class="btn btn-outline" id="btn-freestyle-cancel">Hủy</button>
+              <button type="button" class="btn btn-primary" id="btn-freestyle-apply">
+                <i class="fa-solid fa-check"></i> Áp dụng & Lưu
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,214 @@
 {
+  "0": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 2,
+            "y": 3.75,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 2,
+      "y": 3.75
+    }
+  },
+  "1": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 0.25,
+            "y": 3,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 0.25,
+      "y": 3
+    }
+  },
+  "2": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 0.5,
+            "y": 3,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 0.5,
+      "y": 3
+    }
+  },
+  "3": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 0.5,
+            "y": 4,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 0.5,
+      "y": 4
+    }
+  },
+  "4": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 2.25,
+            "y": 4,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 2.25,
+      "y": 4
+    }
+  },
+  "5": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 2.5,
+            "y": 4,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 2.5,
+      "y": 4
+    }
+  },
+  "6": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 2.5,
+            "y": 3,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 2.5,
+      "y": 3
+    }
+  },
+  "7": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 0.5,
+            "y": 4,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 0.5,
+      "y": 4
+    }
+  },
+  "8": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 2.25,
+            "y": 3.25,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 2.25,
+      "y": 3.25
+    }
+  },
+  "9": {
+    "types": [],
+    "dotConfigs": [
+      {
+        "id": "start",
+        "name": "1. Điểm đặt bút (Chuẩn)",
+        "desc": "1 chấm chuẩn",
+        "dots": [
+          {
+            "x": 2.5,
+            "y": 2.5,
+            "label": "Nét 1"
+          }
+        ]
+      }
+    ],
+    "startPoint": {
+      "x": 2.5,
+      "y": 2.5
+    }
+  },
   "a": {
     "baseGlyph": 97,
     "types": [
@@ -4432,5 +4642,44 @@
         }
       }
     ]
+  },
+  "Ḁ": {
+    "types": []
+  },
+  "ḁ": {
+    "types": []
+  },
+  "ḃ": {
+    "types": []
+  },
+  "Ḅ": {
+    "types": []
+  },
+  "ḅ": {
+    "types": []
+  },
+  "Ḇ": {
+    "types": []
+  },
+  "ḇ": {
+    "types": []
+  },
+  "Ḉ": {
+    "types": []
+  },
+  "ḉ": {
+    "types": []
+  },
+  "Ḋ": {
+    "types": []
+  },
+  "ḋ": {
+    "types": []
+  },
+  "Ḍ": {
+    "types": []
+  },
+  "Ḑ": {
+    "types": []
   }
 }

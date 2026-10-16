@@ -65,6 +65,13 @@ This document tracks planned features, workflow enhancements, bug fixes, and imp
     - Allow users to export `.chudep` / `.json` project files and import them later to resume editing or re-export at different resolutions.
   - **Future Backend Integration**: User accounts with cloud-saved documents and presets.
 
+- [x] **Freestyle Runtime Dotting (Chấm Tự Do & Interactive SVG Mini-Editor)**
+  - **Problem**: Previously, users could only choose fixed preset dotting configurations defined statically in the glyph editor. There was no way to add or reposition dots dynamically for specific words or custom practice exercises.
+  - **Solution**:
+    - Interactive SVG ô ly grid modal dialog (`#freestyleDottingModal`) with 56px cells, guidelines (ĐK1, ĐK3, ĐK5, ĐK Dưới, X=0), pointer-capture dragging, coordinate inputs, and snap-to-0.25-ô-ly.
+    - Application scope options: customize a specific word instance or apply to all identical characters across the document.
+    - Full persistence in localStorage auto-save, project file export/import (`.chudep` / `.json`), and Ultra HD PNG export across all layouts (Standard, Blackboard, White 11x14).
+
 ---
 
 ## 5. Glyph Library & Content Expansion
