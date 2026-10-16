@@ -11,18 +11,62 @@ components.loading = `
 components.baseListPage = `
 <div class="row">
     <div class="col">
-        <nav class="navbar navbar-expand-sm navbar-light bg-light fixed-top">
+        <nav class="navbar navbar-expand-md navbar-light bg-light fixed-top border-bottom shadow-sm">
             <div class="container-fluid">
-                <a class="navbar-brand" href="javascript:void(0)">Glyph Editor</a>
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/getcode.html">Char to point</a>
-                    </li>
-                </ul>
-                <button id="downloadJson" class="btn btn-success">Download JSON</button>
+                <a class="navbar-brand fw-bold text-primary" href="javascript:void(0)">
+                    <i class="fa-solid fa-sliders me-1"></i> Glyph Editor
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#editorNavbar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="editorNavbar">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/"><i class="fa-solid fa-house me-1"></i> Trang chủ</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/getcode.html"><i class="fa-solid fa-code me-1"></i> Char to code</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://github.com/catmandx-llm-playground/VietnameseHandwritingGenerator" target="_blank" rel="noopener noreferrer">
+                                <i class="fa-brands fa-github me-1"></i> GitHub
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <input type="file" id="importJsonFileInput" accept=".json,application/json" style="display:none;">
+                        <button id="btnImportJson" class="btn btn-outline-primary" type="button" title="Nạp trực tiếp file all.json từ máy tính vào trình biên tập">
+                            <i class="fa-solid fa-file-import me-1"></i> Nạp JSON
+                        </button>
+                        
+                        <div class="btn-group">
+                            <button id="downloadJsonTimestamped" type="button" class="btn btn-success" title="Tải JSON có kèm mốc thời gian để tránh trùng tên file">
+                                <i class="fa-solid fa-download me-1"></i> Tải JSON
+                            </button>
+                            <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="visually-hidden">Tùy chọn tải JSON</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow">
+                                <li>
+                                    <button class="dropdown-item" id="downloadJsonTimestampedOption" type="button">
+                                        <i class="fa-regular fa-clock me-2 text-primary"></i>Tải có mốc thời gian (all-YYYYMMDD-HHmmss.json)
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item" id="downloadJsonRawOption" type="button">
+                                        <i class="fa-solid fa-file-code me-2 text-success"></i>Tải file gốc (all.json - để ghi đè)
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button class="dropdown-item" id="copyJsonToClipboardOption" type="button">
+                                        <i class="fa-regular fa-copy me-2 text-secondary"></i>Sao chép JSON vào Clipboard
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </nav>
     </div>
@@ -33,6 +77,12 @@ components.baseListPage = `
         <div class="card m-3 pt-2 baseCard" data-bs-toggle="modal" data-bs-target="#addNewBaseCardModal">
             <div class="card-header bg-white text-center" style="font-size:72pt;">+</div>
         </div>
+    </div>
+</div>
+
+<div class="row mt-4 mb-3">
+    <div class="col-12 text-center text-muted small border-top pt-3">
+        Dự án nguồn mở phát triển bởi <strong><a href="https://github.com/catmandx" target="_blank" rel="noopener noreferrer" class="text-decoration-none">catmandx</a></strong> (<a href="https://github.com/catmandx-llm-playground/VietnameseHandwritingGenerator" target="_blank" rel="noopener noreferrer" class="text-decoration-none"><i class="fa-brands fa-github"></i> VietnameseHandwritingGenerator</a>) &bull; Phông chữ tập viết <strong>HP001</strong> thuộc bản quyền của <a href="http://nhainhp.com/?page=taive" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Nhà in HP (nhainhp.com)</a>
     </div>
 </div>
 

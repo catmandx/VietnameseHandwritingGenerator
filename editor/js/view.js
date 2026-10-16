@@ -2,6 +2,25 @@ const view = {
 
 }
 
+view.renderDotBadge = function(data) {
+    if (!data) return '';
+    const hasConfigs = data.dotConfigs && Array.isArray(data.dotConfigs) && data.dotConfigs.length > 0;
+    const hasLegacyStart = data.startPoint && typeof data.startPoint.x === 'number';
+    if (!hasConfigs && !hasLegacyStart) return '';
+
+    const numConfigs = hasConfigs ? data.dotConfigs.length : 1;
+    let tooltip = '';
+    if (hasConfigs) {
+        const configNames = data.dotConfigs.map((c, i) => c.name || `Cấu hình ${i + 1}`).join('; ');
+        tooltip = `${numConfigs} cấu hình chấm: ${configNames}`;
+    } else {
+        tooltip = '1 cấu hình chấm (Điểm đặt bút chuẩn)';
+    }
+
+    const dotsText = '●'.repeat(numConfigs);
+    return `<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="${view.escapeXml(tooltip)}">${dotsText}</span>`;
+};
+
 view.showComponents = function(name){
     let app = $('#app');
     switch(name){
@@ -11,9 +30,7 @@ view.showComponents = function(name){
             let baseListHtml = baseList.html();
             let sortedData = Object.fromEntries(Object.entries(model.glyphData).sort())
             for (const [base, data] of Object.entries(sortedData)) {
-                let hasDot = data && ((data.dotConfigs && data.dotConfigs.length) || (data.startPoint && typeof data.startPoint.x === 'number'));
-                let dotCount = (data && data.dotConfigs && data.dotConfigs.length) ? `${data.dotConfigs.length} cấu hình` : (hasDot ? '1 điểm' : '');
-                let dotBadge = hasDot ? `<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="Cấu hình chấm: ${dotCount}">●</span>` : '';
+                let dotBadge = view.renderDotBadge(data);
                 baseListHtml += `
                     ${components.baseCard.replaceAll("{{name}}", view.escapeXml(base)).replace("{{dotBadge}}", dotBadge)}
                 `
@@ -29,10 +46,50 @@ view.showComponents = function(name){
                 controller.addNewBase(newBaseCardForm.children('input').val())
             })
 
-            //Download json button
-            $('#downloadJson').off('click').on('click', function(e){
-                model.download('all.json', JSON.stringify(model.glyphData, null, 2))
-            })
+            // Download json timestamped (primary button & option)
+            $('#downloadJsonTimestamped, #downloadJsonTimestampedOption').off('click').on('click', function(e){
+                e.preventDefault();
+                const filename = view.getTimestampedFilename();
+                model.download(filename, JSON.stringify(model.glyphData, null, 2));
+                toastr.info(`Đang tải file: ${filename}`);
+            });
+
+            // Download raw all.json option (for backend overwrite)
+            $('#downloadJsonRawOption').off('click').on('click', function(e){
+                e.preventDefault();
+                model.download('all.json', JSON.stringify(model.glyphData, null, 2));
+                toastr.info('Đang tải file: all.json');
+            });
+
+            // Copy JSON to clipboard
+            $('#copyJsonToClipboardOption').off('click').on('click', function(e){
+                e.preventDefault();
+                const jsonStr = JSON.stringify(model.glyphData, null, 2);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(jsonStr)
+                        .then(() => toastr.success('Đã sao chép toàn bộ JSON vào clipboard!'))
+                        .catch(() => view.fallbackCopyText(jsonStr));
+                } else {
+                    view.fallbackCopyText(jsonStr);
+                }
+            });
+
+            // Import JSON button & file picker
+            $('#btnImportJson').off('click').on('click', function(e){
+                e.preventDefault();
+                $('#importJsonFileInput').trigger('click');
+            });
+
+            $('#importJsonFileInput').off('change').on('change', function(e){
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    view.importJsonFile(file);
+                }
+                $(this).val('');
+            });
+
+            // Set up drag and drop import
+            view.setupDragAndDrop();
 
             //edit base
             baseList.children('.baseCard:not(:first-child)')
@@ -203,11 +260,10 @@ view.updateBaseCardBadge = function(baseChar) {
     const $card = $('.baseCard').filter((_, el) => $(el).attr('data-base-name') === baseChar);
     if (!$card.length) return;
     $card.find('.dot-badge').remove();
-    const data = model.glyphData[baseChar];
-    let hasDot = data && ((data.dotConfigs && data.dotConfigs.length) || (data.startPoint && typeof data.startPoint.x === 'number'));
-    if (hasDot) {
-        let count = (data.dotConfigs && data.dotConfigs.length) ? `${data.dotConfigs.length} cấu hình` : '1 điểm';
-        $card.prepend(`<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="Cấu hình chấm: ${count}">●</span>`);
+    const data = model.glyphData && model.glyphData[baseChar];
+    const badgeHtml = view.renderDotBadge(data);
+    if (badgeHtml) {
+        $card.prepend(badgeHtml);
     }
 };
 
@@ -849,5 +905,94 @@ view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs
         $(window).off('.startPoint');
     });
 };
+
+view.getTimestampedFilename = function() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const mm = pad(now.getMonth() + 1);
+    const dd = pad(now.getDate());
+    const hh = pad(now.getHours());
+    const min = pad(now.getMinutes());
+    const ss = pad(now.getSeconds());
+    return `all-${yyyy}${mm}${dd}-${hh}${min}${ss}.json`;
+};
+
+view.fallbackCopyText = function(text) {
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        toastr.success('Đã sao chép toàn bộ JSON vào clipboard!');
+    } catch(e) {
+        toastr.error('Không thể tự động sao chép: ' + e);
+    }
+};
+
+view.importJsonFile = function(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
+        toastr.error('Vui lòng chọn file có định dạng .json');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                throw new Error('Dữ liệu JSON không đúng cấu trúc (phải là đối tượng dictionary glyphs)');
+            }
+            const keys = Object.keys(data);
+            if (keys.length === 0) {
+                toastr.warning('File JSON không chứa ký tự nào.');
+                return;
+            }
+            model.glyphData = data;
+            view.showComponents('baseList');
+            toastr.success(`Đã nạp thành công ${keys.length} ký tự từ "${file.name}"!`);
+        } catch(err) {
+            console.error('Lỗi nạp file JSON:', err);
+            toastr.error('Không thể đọc file JSON: ' + (err.message || 'Cấu trúc không hợp lệ'));
+        }
+    };
+    reader.onerror = function() {
+        toastr.error('Không thể đọc file từ thiết bị.');
+    };
+    reader.readAsText(file, 'utf-8');
+};
+
+view.setupDragAndDrop = function() {
+    $(window).off('dragover.editorDrop dragleave.editorDrop drop.editorDrop');
+    
+    $(window).on('dragover.editorDrop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('#app').addClass('drop-zone-active');
+    });
+
+    $(window).on('dragleave.editorDrop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.originalEvent.pageX === 0 && e.originalEvent.pageY === 0) {
+            $('#app').removeClass('drop-zone-active');
+        }
+    });
+
+    $(window).on('drop.editorDrop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('#app').removeClass('drop-zone-active');
+        const dt = e.originalEvent.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+            view.importJsonFile(dt.files[0]);
+        }
+    });
+};
+
 
 

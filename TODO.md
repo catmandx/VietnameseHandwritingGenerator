@@ -6,7 +6,7 @@ This document tracks planned features, workflow enhancements, bug fixes, and imp
 
 ## 1. Editor & Data Workflow Improvements
 
-- [ ] **Direct `all.json` Import for Editor Continuity**
+- [x] **Direct `all.json` Import for Editor Continuity**
   - **Problem**: Continuing work on the glyph editor currently requires an excessively cumbersome roundtrip: editing glyphs -> downloading `all.json` -> manually placing it into the repository backend -> restarting/reloading the server -> resuming work the next day.
   - **Solution**:
     - Add an **"Import JSON"** button / drag-and-drop zone directly on the Editor page (`editor/index.html`).
@@ -21,7 +21,7 @@ This document tracks planned features, workflow enhancements, bug fixes, and imp
       - Browser File System Access API (`showOpenFilePicker` / `showSaveFilePicker`) for direct local disk reading and writing where supported.
       - Session staging in `localStorage` with prompt to persist or download when changes are detected.
 
-- [ ] **Timestamped `all.json` Export Filename**
+- [x] **Timestamped `all.json` Export Filename**
   - **Problem**: Repeatedly downloading `all.json` produces confusing browser duplicate filenames (e.g., `all (1).json`, `all (2).json`), making it difficult to identify the newest configuration.
   - **Solution**:
     - Include a readable ISO or compact timestamp in the exported filename (e.g., `all-20261016-143000.json` or `glyphs-YYYY-MM-DD_HH-mm.json`).
@@ -31,7 +31,7 @@ This document tracks planned features, workflow enhancements, bug fixes, and imp
 
 ## 2. Editor UI & Visual Indicators
 
-- [ ] **Dynamic Multi-Dot Configuration Indicator on Overview Cards**
+- [x] **Dynamic Multi-Dot Configuration Indicator on Overview Cards**
   - **Problem**: On the Editor overview grid (`components.baseCard` in `editor/js/components.js`), any glyph with dotting configuration only displays a single generic red dot badge (`●`), obscuring characters that possess multiple dot configurations.
   - **Solution**:
     - Update `view.js` and `components.js` in `editor/` to inspect `data.dotConfigs.length`.
@@ -85,7 +85,7 @@ This document tracks planned features, workflow enhancements, bug fixes, and imp
 
 ## 6. Credits & Attribution
 
-- [ ] **Update Project Credits & Source Links**
+- [x] **Update Project Credits & Source Links**
   - **Creator**: Credit project creator **catmandx** with an explicit link to the GitHub repository:
     - [VietnameseHandwritingGenerator on GitHub](https://github.com/catmandx-llm-playground/VietnameseHandwritingGenerator)
   - **Font Creator**: Credit font creator **Nhà in HP** / **Nha in HP** with a link to their download portal:

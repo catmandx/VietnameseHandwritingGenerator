@@ -40,8 +40,41 @@ input[type=number] {
 
 .dot-badge {
     box-shadow: 0 0 0 2px #ffffff;
-    font-size: 0.75rem;
-    padding: 0.35em 0.55em;
+    font-size: 0.72rem;
+    padding: 0.25em 0.55em;
+    letter-spacing: 2px;
+    user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dot-badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px #ffffff, 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Drag and drop active dropzone styling */
+#app.drop-zone-active {
+    outline: 3px dashed #0d6efd !important;
+    outline-offset: -10px;
+    background-color: rgba(13, 110, 253, 0.04) !important;
+    position: relative;
+}
+
+#app.drop-zone-active::after {
+    content: "Thả file all.json vào đây để nạp dữ liệu";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(13, 110, 253, 0.92);
+    color: #ffffff;
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .card-header{
