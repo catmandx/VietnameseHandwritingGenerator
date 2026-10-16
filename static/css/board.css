@@ -218,7 +218,7 @@
     /* Large font (72pt): 2 blocks per line (153.6px line height), baseline on major line 1 */
     font-size: 72pt;
     line-height: calc(var(--grid-unit) * 8);
-    padding-top: calc(var(--grid-unit) * 0.2 + 9px);
+    padding-top: calc(var(--grid-unit) * 0.2 + 8.75px);
 }
 
 .board.white_11x14 #result > p.line,
@@ -244,7 +244,7 @@
     grid-auto-rows: calc(var(--grid-unit) * 4);
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
-    padding-top: calc(var(--grid-unit) * 3.34 - 0.15px);
+    padding-top: calc(var(--grid-unit) * 3.34 - 0.4px);
 }
 
 .board.white_11x14 #result.small > p.line,
@@ -355,7 +355,7 @@
     width: max-content;
     min-width: 100%;
     padding-left: var(--grid-unit);
-    padding-top: calc(var(--grid-unit) * 0.7 - 1px);
+    padding-top: calc(var(--grid-unit) * 0.7 - 1.25px);
     padding-bottom: calc(var(--grid-unit) * 4);
     font-size: 72pt;
     font-family: HP001, serif;
@@ -381,7 +381,7 @@
 #result.small,
 .result-text.small {
     grid-auto-rows: calc(var(--grid-unit) * 4);
-    padding-top: calc(var(--grid-unit) * 3.32 - 0.15px);
+    padding-top: calc(var(--grid-unit) * 3.32 - 0.4px);
     font-size: 37pt;
     line-height: calc(var(--grid-unit) * 4);
 }
