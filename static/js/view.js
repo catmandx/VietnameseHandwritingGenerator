@@ -13,6 +13,9 @@ view.escapeHtml = function (str) {
 view.lineDotConfigs = {};
 view.prevLineFirstChars = [];
 view.userCustomGlobalSpaces = null;
+view.userCustomGlobalLinesCount = null;
+view.userCustomGlobalFullDot = null;
+view.userCustomGlobalOutline = null;
 
 view.wordDotConfigs = {};
 
@@ -41,6 +44,9 @@ view.resetLineDotConfigs = function () {
     view.lineDotConfigs = {};
     view.wordDotConfigs = {};
     view.userCustomGlobalSpaces = null;
+    view.userCustomGlobalLinesCount = null;
+    view.userCustomGlobalFullDot = null;
+    view.userCustomGlobalOutline = null;
     if (window.model && typeof model.getFirstCharUnit === 'function') {
         view.prevLineFirstChars = ($('#input').val() || '').split('\n').map(l => model.getFirstCharUnit(l));
     }
@@ -218,6 +224,8 @@ view.init = function () {
         } else {
             view.userCustomGlobalSpaces = null;
             view.userCustomGlobalLinesCount = null;
+            view.userCustomGlobalFullDot = null;
+            view.userCustomGlobalOutline = null;
             view.lineDotConfigs = {};
             view.updateDottingLineSelect();
             view.render();
@@ -296,6 +304,9 @@ view.init = function () {
             view.lineDotConfigs[lineIdx].fullDot = this.checked;
             view.lineDotConfigs[lineIdx].isCustom = true;
             $('#btn-reset-line-dotting').show();
+        } else {
+            view.userCustomGlobalFullDot = this.checked;
+            $('#btn-reset-line-dotting').show();
         }
         view.render();
         view.triggerAutoSave(true);
@@ -309,6 +320,9 @@ view.init = function () {
             if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
             view.lineDotConfigs[lineIdx].outline = val;
             view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        } else {
+            view.userCustomGlobalOutline = val;
             $('#btn-reset-line-dotting').show();
         }
         view.render();
@@ -339,7 +353,10 @@ view.isDottingActive = function () {
 view.calculateAutoSpaces = function (lineIndex, $lineEl) {
     let $line = $lineEl;
     if ((!$line || !$line.length) && lineIndex !== undefined && lineIndex !== null) {
-        $line = $(`#line-${lineIndex}`);
+        $line = $(`p.line[data-source-line-idx="${lineIndex}"][data-is-practice="false"]`).first();
+        if (!$line.length) {
+            $line = $(`#line-${lineIndex}`);
+        }
     }
 
     const layout = $('#board-color-select').val();
@@ -466,8 +483,19 @@ view.getDottingConfig = function (lineIndex, $lineEl) {
             view.globalDefaultLinesCount = globalLinesCount;
         }
     }
-    const globalFullDot = isAllSelected ? $('#dotting-fulldot-checkbox').is(':checked') : false;
-    const globalOutline = isAllSelected ? ($('#dotting-outline-select').val() || 'none') : 'none';
+    let globalFullDot = true;
+    if (view.userCustomGlobalFullDot !== undefined && view.userCustomGlobalFullDot !== null) {
+        globalFullDot = view.userCustomGlobalFullDot;
+    } else {
+        globalFullDot = $('#dotting-fulldot-checkbox').is(':checked');
+    }
+
+    let globalOutline = 'none';
+    if (view.userCustomGlobalOutline !== undefined && view.userCustomGlobalOutline !== null) {
+        globalOutline = view.userCustomGlobalOutline;
+    } else {
+        globalOutline = $('#dotting-outline-select').val() || 'none';
+    }
     const color = $('#dotting-color-input').val() || '#e53935';
 
     let globalReps;
@@ -624,7 +652,15 @@ view.updateDottingLineSelect = function () {
 };
 
 view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
-    const srcLineIdx = (lineTokens && lineTokens.sourceLineIndex !== undefined) ? lineTokens.sourceLineIndex : lineIndex;
+    let srcLineIdx = lineIndex;
+    if (lineTokens && lineTokens.sourceLineIndex !== undefined) {
+        srcLineIdx = lineTokens.sourceLineIndex;
+    } else if ($line && $line.length) {
+        const attrSrc = parseInt($line.attr('data-source-line-idx'), 10);
+        if (!isNaN(attrSrc)) {
+            srcLineIdx = attrSrc;
+        }
+    }
     if (!config) config = view.getDottingConfig(srcLineIdx, $line);
     const hasAnyText = ($('#input').val() || '').trim().length > 0;
     if (!config.enabled || !hasAnyText) {
@@ -692,8 +728,8 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
         }
 
         if (wordsInfo.length === 0) {
-            const rawInputLines = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            const lineFromInput = rawInputLines[srcLineIdx] || rawInputLines[0] || 'a';
+            const rawInputLines = ($('#input').val() || '').split('\n');
+            const lineFromInput = (rawInputLines[srcLineIdx] !== undefined ? rawInputLines[srcLineIdx].trim() : '') || rawInputLines.find(l => l.trim().length > 0) || 'a';
             const wordTokensFromInput = lineFromInput.split(/\s+/).filter(w => w.length > 0);
             wordsInfo = (wordTokensFromInput.length > 0 ? wordTokensFromInput : ['a']).map(w => ({
                 text: model.getUnicodeStr(w),
@@ -825,14 +861,13 @@ view.renderDotsForLineAndPracticeLines = function ($line) {
     const targetSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : lineIdx;
 
     // 1. Re-render dots on the model line
-    view.renderDotsForLine($line, null, lineIdx);
+    view.renderDotsForLine($line, null, targetSrcIdx);
 
     // 2. Re-render dots on all practice lines belonging to this source line
     $('p.line[data-is-practice="true"]').each(function () {
         const pSrcIdx = parseInt($(this).attr('data-source-line-idx'), 10);
         if (pSrcIdx === targetSrcIdx) {
-            const pLineIdx = parseInt($(this).attr('id').replace('line-', ''), 10) || 0;
-            view.renderDotsForLine($(this), null, pLineIdx);
+            view.renderDotsForLine($(this), null, targetSrcIdx);
         }
     });
 };
@@ -2037,7 +2072,8 @@ view.setupDragInteractions = function () {
             $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
         }
 
-        const $line = $(`#line-${lineIdx}`);
+        let $line = $(`p.line[data-source-line-idx="${lineIdx}"][data-is-practice="false"]`).first();
+        if (!$line.length) $line = $(`#line-${lineIdx}`);
         $line.find('.btn-line-dot-badge').each(function () {
             $(this).addClass('is-custom')
                    .attr('title', `Dòng ${lineIdx + 1}: Cách ${newSpaces} ô (Nhấp để chỉnh riêng)`)
@@ -2094,7 +2130,8 @@ view.setupDragInteractions = function () {
             $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
         }
 
-        const $line = $(`#line-${lineIdx}`);
+        let $line = $(`p.line[data-source-line-idx="${lineIdx}"][data-is-practice="false"]`).first();
+        if (!$line.length) $line = $(`#line-${lineIdx}`);
         $line.find('.btn-line-dot-badge').addClass('is-custom');
         view.renderDotsForLineAndPracticeLines($line);
         view.updateDottingLineSelect();
@@ -2118,7 +2155,8 @@ view.setupDragInteractions = function () {
             $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
         }
 
-        const $line = $(`#line-${lineIdx}`);
+        let $line = $(`p.line[data-source-line-idx="${lineIdx}"][data-is-practice="false"]`).first();
+        if (!$line.length) $line = $(`#line-${lineIdx}`);
         $line.find('.btn-line-dot-badge').addClass('is-custom');
         view.renderDotsForLineAndPracticeLines($line);
         view.updateDottingLineSelect();
@@ -2370,6 +2408,8 @@ view.captureWorkspaceState = function () {
             color: $('#dotting-color-input').val() || '#e53935',
             userCustomGlobalSpaces: view.userCustomGlobalSpaces !== undefined ? view.userCustomGlobalSpaces : null,
             userCustomGlobalLinesCount: view.userCustomGlobalLinesCount !== undefined ? view.userCustomGlobalLinesCount : null,
+            userCustomGlobalFullDot: view.userCustomGlobalFullDot !== undefined ? view.userCustomGlobalFullDot : null,
+            userCustomGlobalOutline: view.userCustomGlobalOutline !== undefined ? view.userCustomGlobalOutline : null,
             lineDotConfigs: JSON.parse(JSON.stringify(view.lineDotConfigs || {})),
             wordDotConfigs: JSON.parse(JSON.stringify(view.wordDotConfigs || {}))
         },
@@ -2458,6 +2498,8 @@ view.applyWorkspaceState = function (state) {
 
             view.userCustomGlobalSpaces = d.userCustomGlobalSpaces !== undefined ? d.userCustomGlobalSpaces : null;
             view.userCustomGlobalLinesCount = d.userCustomGlobalLinesCount !== undefined ? d.userCustomGlobalLinesCount : null;
+            view.userCustomGlobalFullDot = d.userCustomGlobalFullDot !== undefined ? d.userCustomGlobalFullDot : null;
+            view.userCustomGlobalOutline = d.userCustomGlobalOutline !== undefined ? d.userCustomGlobalOutline : null;
             view.lineDotConfigs = d.lineDotConfigs ? JSON.parse(JSON.stringify(d.lineDotConfigs)) : {};
             view.wordDotConfigs = d.wordDotConfigs ? JSON.parse(JSON.stringify(d.wordDotConfigs)) : {};
         }
@@ -2496,7 +2538,7 @@ view.applyWorkspaceState = function (state) {
                         }
                     }
                     if (view.isDottingActive()) {
-                        view.renderDotsForLine($line, null, lineIdx);
+                        view.renderDotsForLineAndPracticeLines($line);
                     }
                 }
             }
@@ -2854,9 +2896,12 @@ view.exportBlackboardToPng = async function () {
             if (lineDotConfig && lineDotConfig.enabled && hasAnyText) {
                 let wordsToDraw = words;
                 if (wordsToDraw.length === 0) {
-                    let $srcBoard = $(boardEl).prevAll('.board.blackboard').filter(function () {
-                        return $(this).find('p.line .word').length > 0;
-                    }).first();
+                    let $srcBoard = $(`p.line[data-source-line-idx="${validSrcIdx}"][data-is-practice="false"]`).closest('.board.blackboard');
+                    if (!$srcBoard.length) {
+                        $srcBoard = $(boardEl).prevAll('.board.blackboard').filter(function () {
+                            return $(this).find('p.line .word').length > 0;
+                        }).first();
+                    }
                     if (!$srcBoard.length) $srcBoard = $($boards[0]);
                     $srcBoard.find('p.line').first().children('.word').each(function () {
                         const wEl = this;
@@ -3151,7 +3196,10 @@ view.exportWhite11x14ToPng = async function () {
                 if (lineDotConfig && lineDotConfig.enabled && hasAnyText) {
                     let wordsToDraw = words;
                     if (wordsToDraw.length === 0) {
-                        let $lineWithWords = $line.prevAll('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
+                        let $lineWithWords = $(`p.line[data-source-line-idx="${validSrcIdx}"][data-is-practice="false"]`).first();
+                        if (!$lineWithWords.length) {
+                            $lineWithWords = $line.prevAll('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
+                        }
                         if (!$lineWithWords.length) {
                             $lineWithWords = $('.board.white_11x14, .board.white_10x14').find('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
                         }
@@ -3499,16 +3547,25 @@ view.exportToPng = async function () {
             const yPos = firstBaselineY + (idx * lineHeightPx);
             let wordsToDraw = hasText ? lineObj.words : [];
             if (wordsToDraw.length === 0) {
-                for (let prev = idx - 1; prev >= 0; prev--) {
-                    if (lines[prev] && lines[prev].words.length > 0) {
-                        wordsToDraw = lines[prev].words;
-                        break;
+                const $modelLine = $(`p.line[data-source-line-idx="${validSrcIdx}"][data-is-practice="false"]`).first();
+                if ($modelLine.length) {
+                    const modelDomIdx = $result.children('p.line').index($modelLine);
+                    if (modelDomIdx !== -1 && lines[modelDomIdx] && lines[modelDomIdx].words.length > 0) {
+                        wordsToDraw = lines[modelDomIdx].words;
                     }
                 }
                 if (wordsToDraw.length === 0) {
-                    const firstLineWithWords = lines.find(l => l.words.length > 0);
-                    if (firstLineWithWords) {
-                        wordsToDraw = firstLineWithWords.words;
+                    for (let prev = idx - 1; prev >= 0; prev--) {
+                        if (lines[prev] && lines[prev].words.length > 0) {
+                            wordsToDraw = lines[prev].words;
+                            break;
+                        }
+                    }
+                    if (wordsToDraw.length === 0) {
+                        const firstLineWithWords = lines.find(l => l.words.length > 0);
+                        if (firstLineWithWords) {
+                            wordsToDraw = firstLineWithWords.words;
+                        }
                     }
                 }
             }
