@@ -17,8 +17,11 @@ view.renderDotBadge = function(data) {
         tooltip = '1 cấu hình chấm (Điểm đặt bút chuẩn)';
     }
 
-    const dotsText = '●'.repeat(numConfigs);
-    return `<span class="badge bg-danger rounded-pill position-absolute top-0 end-0 m-2 dot-badge" title="${view.escapeXml(tooltip)}">${dotsText}</span>`;
+    let dotsHtml = '';
+    for (let i = 0; i < numConfigs; i++) {
+        dotsHtml += '<span class="dot-indicator"></span>';
+    }
+    return `<div class="position-absolute top-0 end-0 m-2 dot-badge d-inline-flex align-items-center" title="${view.escapeXml(tooltip)}">${dotsHtml}</div>`;
 };
 
 view.showComponents = function(name){
