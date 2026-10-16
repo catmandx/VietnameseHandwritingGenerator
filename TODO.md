@@ -53,7 +53,7 @@ This document tracks planned features, workflow enhancements, bug fixes, and imp
 
 ## 4. State Persistence & Project File (.psd-like format)
 
-- [ ] **Workspace State Persistence (LocalStorage & Project Export/Import)**
+- [x] **Workspace State Persistence (LocalStorage & Project Export/Import)**
   - **Problem**: Reloading the page or closing the browser loses current draft work (text content, per-line dotting, per-word horizontal stretching, custom spacing, font size, and layout settings).
   - **Solution**:
     - **Auto-save**: Store the active session state in browser `localStorage` to preserve work across accidental refreshes or browser restarts.

@@ -46,6 +46,21 @@
     </header>
 
     <main class="app-main">
+      <div id="draft-banner" class="draft-banner no-print" style="display: none;">
+        <div class="draft-banner-content">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span id="draft-banner-text">Phát hiện bản nháp chưa lưu.</span>
+        </div>
+        <div class="draft-banner-actions">
+          <button type="button" class="btn btn-sm btn-primary" id="btn-banner-restore" onclick="view.restoreSavedDraft()">
+            <i class="fa-solid fa-rotate-left"></i> Khôi phục
+          </button>
+          <button type="button" class="btn-subtle" id="btn-banner-dismiss" onclick="view.dismissDraftNotification()">
+            Bỏ qua
+          </button>
+        </div>
+      </div>
+
       <div class="panel-container no-print">
         <div class="panel">
           <div class="input-section">
@@ -168,6 +183,29 @@
             </div>
 
             <div class="action-group">
+              <!-- Project / File Management Dropdown -->
+              <div class="dropdown dropdown-left">
+                <button type="button" class="btn btn-outline" id="btn-project-dropdown" title="Quản lý tệp dự án và khôi phục bản nháp">
+                  <i class="fa-solid fa-folder-open"></i> Tệp <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem;"></i>
+                </button>
+                <div class="dropdown-content">
+                  <button type="button" class="dropdown-item" id="btn-save-project" onclick="view.exportProjectFile()">
+                    <i class="fa-solid fa-file-arrow-down"></i> Lưu dự án (.json)
+                  </button>
+                  <button type="button" class="dropdown-item" id="btn-open-project" onclick="$('#project-file-input').trigger('click')">
+                    <i class="fa-solid fa-file-arrow-up"></i> Mở dự án (.json)
+                  </button>
+                  <button type="button" class="dropdown-item" id="btn-menu-restore-draft" onclick="view.restoreSavedDraft()" style="display: none;">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Khôi phục bản nháp
+                  </button>
+                  <hr class="dropdown-divider" style="margin: 4px 0; border: none; border-top: 1px solid #e2e8f0;">
+                  <button type="button" class="dropdown-item text-danger" id="btn-reset-workspace" onclick="view.resetToDefault()">
+                    <i class="fa-solid fa-rotate-left"></i> Đặt lại mặc định
+                  </button>
+                </div>
+              </div>
+              <input type="file" id="project-file-input" accept=".json,application/json" style="display: none;" />
+
               <button type="button" class="btn btn-outline" onclick="window.print()" title="In ra giấy A4 hoặc lưu PDF">
                 <i class="fa-solid fa-print"></i> In bài viết
               </button>

@@ -385,6 +385,11 @@ input[type="color"]::-webkit-color-swatch {
     overflow: hidden;
 }
 
+.dropdown.dropdown-left .dropdown-content {
+    left: 0;
+    right: auto;
+}
+
 .dropdown:hover .dropdown-content {
     display: block;
 }
@@ -793,4 +798,95 @@ p.line.has-dot-popover .word.is-dotting-open .word-handle {
     color: #64748b;
     line-height: 1.3;
     margin-top: 2px;
+}
+
+/* Draft notification banner */
+.draft-banner {
+    max-width: 1240px;
+    margin: 12px auto 0 auto;
+    padding: 10px 18px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    animation: slideDownFade 0.25s ease-out;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.draft-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #1e3a8a;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.draft-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-subtle {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #64748b;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-subtle:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.text-danger {
+    color: #dc2626 !important;
+}
+
+.text-danger:hover {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+}
+
+/* Drag-and-drop active project dropzone */
+body.project-drag-active::after {
+    content: "Thả tệp dự án (.json) vào đây để mở bài tập";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(37, 99, 235, 0.92);
+    color: #ffffff;
+    padding: 18px 36px;
+    border-radius: 12px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 10000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+body.project-drag-active .panel {
+    outline: 3px dashed #2563eb !important;
+    outline-offset: -4px;
 }

@@ -118,31 +118,37 @@ view.init = function () {
     $input.on('input propertychange', function () {
         view.syncLineDotConfigs();
         view.render();
+        view.triggerAutoSave();
     });
 
     // Font size selector
     $('#font-size-select').on('change', function () {
         view.changeFontSize(this.value);
+        view.triggerAutoSave(true);
     });
 
     // Font color picker
     $('#font-color-input').on('input change', function () {
         view.changeColorText(this.value);
+        view.triggerAutoSave(true);
     });
 
     // Board color selector
     $('#board-color-select').on('change', function () {
         view.changeBoardColor(this.value);
+        view.triggerAutoSave(true);
     });
 
     // Bold weight checkbox
     $('#weight-checkbox').on('change', function () {
         view.changeWeight(this.checked);
+        view.triggerAutoSave(true);
     });
 
     // Italic / Slant checkbox
     $('#style-checkbox').on('change', function () {
         view.changeStyle(this.checked);
+        view.triggerAutoSave(true);
     });
 
     // Setup word drag interactions (drag handle at top left of word)
@@ -158,6 +164,7 @@ view.init = function () {
             $('#dotting-options').hide();
         }
         view.render();
+        view.triggerAutoSave(true);
     });
 
     $('#dotting-line-select').on('change', function () {
@@ -202,6 +209,7 @@ view.init = function () {
             view.updateDottingLineSelect();
             view.render();
         }
+        view.triggerAutoSave(true);
     });
 
     $('#dotting-spaces-input').on('input change', function () {
@@ -224,6 +232,7 @@ view.init = function () {
         view.updateDottingControlsState();
         view.render();
         view.updateDottingLineSelect();
+        view.triggerAutoSave(true);
     });
 
     $('#dotting-reps-input').on('input change', function () {
@@ -241,6 +250,7 @@ view.init = function () {
             $('#btn-reset-line-dotting').show();
         }
         view.render();
+        view.triggerAutoSave(true);
     });
 
     $('#dotting-lines-input').on('input change', function () {
@@ -262,6 +272,7 @@ view.init = function () {
         }
         view.render();
         view.updateDottingLineSelect();
+        view.triggerAutoSave(true);
     });
 
     $('#dotting-fulldot-checkbox').on('change', function () {
@@ -274,6 +285,7 @@ view.init = function () {
             $('#btn-reset-line-dotting').show();
         }
         view.render();
+        view.triggerAutoSave(true);
     });
 
     $('#dotting-outline-select').on('change', function () {
@@ -288,10 +300,12 @@ view.init = function () {
         }
         view.render();
         view.updateDottingLineSelect();
+        view.triggerAutoSave(true);
     });
 
     $('#dotting-color-input').on('input change', function () {
         view.render();
+        view.triggerAutoSave(true);
     });
 
     view.updateDottingControlsState();
@@ -299,6 +313,7 @@ view.init = function () {
 
     // Trigger initial render
     view.render();
+    view.setupProjectDragAndDrop();
 };
 
 view.isDottingActive = function () {
@@ -1415,6 +1430,7 @@ view.setupDragInteractions = function () {
         }
         $('body').removeClass('is-word-dragging');
         dragState = null;
+        view.triggerAutoSave(true);
     }
 
     $container.on('lostpointercapture', '.btn-word-drag', endDrag);
@@ -1610,6 +1626,7 @@ view.setupDragInteractions = function () {
             view.renderDotsForLine(stretchState.$line, null, lineIdx);
         }
         stretchState = null;
+        view.triggerAutoSave(true);
     }
 
     $container.on('lostpointercapture', '.btn-word-stretch', endStretch);
@@ -1629,6 +1646,7 @@ view.setupDragInteractions = function () {
             const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
             view.renderDotsForLine($line, null, lineIdx);
         }
+        view.triggerAutoSave(true);
     });
 
     // Reset button .btn-word-reset: resets BOTH margin-left and stretch
@@ -1656,6 +1674,7 @@ view.setupDragInteractions = function () {
             const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
             view.renderDotsForLine($line, null, lineIdx);
         }
+        view.triggerAutoSave(true);
     });
 
     // Double-click empty line background: reset all words on that line
@@ -1674,6 +1693,7 @@ view.setupDragInteractions = function () {
             const lineIdx = parseInt($(this).attr('id').replace('line-', ''), 10) || 0;
             view.renderDotsForLine($(this), null, lineIdx);
         }
+        view.triggerAutoSave(true);
     });
 
     // Line dotting badge popover click handlers
@@ -2166,6 +2186,7 @@ view.loadSample = function (sampleKey) {
             view.prevLineFirstChars = view.sampleTexts[sampleKey].split('\n').map(l => model.getFirstCharUnit(l));
         }
         view.render();
+        view.triggerAutoSave(true);
     }
 };
 
@@ -2252,6 +2273,421 @@ view.downloadCanvasAsPng = function (canvas, fileName) {
                 resolve();
             }
         }
+    });
+};
+
+/* ==========================================================================
+   Workspace State Persistence & Project File Management (.json)
+   ========================================================================== */
+
+view._autoSaveTimer = null;
+view._isApplyingState = false;
+view._draftBannerTimer = null;
+
+view.captureWorkspaceState = function () {
+    const $input = $('#input');
+    const state = {
+        app: "VietnameseHandwritingGenerator",
+        version: 1,
+        savedAt: new Date().toISOString(),
+        text: $input.val() || '',
+        sampleSelect: $('#sample-select').val() || '',
+        settings: {
+            fontSize: $('#font-size-select').val() || '72',
+            boardColor: $('#board-color-select').val() || 'black',
+            fontColor: $('#font-color-input').val() || '#ffffff',
+            weight: $('#weight-checkbox').is(':checked'),
+            style: $('#style-checkbox').is(':checked')
+        },
+        dotting: {
+            enabled: $('#dotting-checkbox').is(':checked'),
+            spaces: parseInt($('#dotting-spaces-input').val(), 10) || 2,
+            repetitions: parseInt($('#dotting-reps-input').val(), 10) || 5,
+            linesCount: parseInt($('#dotting-lines-input').val(), 10) || 1,
+            fullDot: $('#dotting-fulldot-checkbox').is(':checked'),
+            outline: $('#dotting-outline-select').val() || 'none',
+            color: $('#dotting-color-input').val() || '#e53935',
+            userCustomGlobalSpaces: view.userCustomGlobalSpaces !== undefined ? view.userCustomGlobalSpaces : null,
+            userCustomGlobalLinesCount: view.userCustomGlobalLinesCount !== undefined ? view.userCustomGlobalLinesCount : null,
+            lineDotConfigs: JSON.parse(JSON.stringify(view.lineDotConfigs || {})),
+            wordDotConfigs: JSON.parse(JSON.stringify(view.wordDotConfigs || {}))
+        },
+        wordLayout: {}
+    };
+
+    // Capture word layout overrides (margins and stretch factors)
+    $('#result').children('p.line').each(function (lineIdx) {
+        const lineOverrides = {};
+        let hasOverrides = false;
+        $(this).children('.word').each(function () {
+            const wIdx = $(this).attr('data-word-idx');
+            const ml = this.style.marginLeft;
+            const stretch = $(this).attr('data-stretch');
+            const natW = $(this).attr('data-natural-width');
+            if (ml || (stretch && stretch !== '1')) {
+                lineOverrides[wIdx] = {
+                    marginLeft: ml || null,
+                    stretch: stretch ? parseFloat(stretch) : null,
+                    naturalWidth: natW ? parseFloat(natW) : null
+                };
+                hasOverrides = true;
+            }
+        });
+        if (hasOverrides) {
+            state.wordLayout[lineIdx] = lineOverrides;
+        }
+    });
+
+    return state;
+};
+
+view.applyWorkspaceState = function (state) {
+    if (!state || typeof state !== 'object') return;
+
+    view._isApplyingState = true;
+
+    try {
+        // 1. Text input & sample selector
+        if (typeof state.text === 'string') {
+            $('#input').val(state.text);
+        }
+        if (state.sampleSelect !== undefined) {
+            $('#sample-select').val(state.sampleSelect);
+        }
+
+        // 2. Settings (font size, board, color, bold, italic)
+        if (state.settings) {
+            if (state.settings.fontSize) {
+                $('#font-size-select').val(state.settings.fontSize);
+                view.changeFontSize(state.settings.fontSize);
+            }
+            if (state.settings.boardColor) {
+                $('#board-color-select').val(state.settings.boardColor);
+                view.changeBoardColor(state.settings.boardColor);
+            }
+            if (state.settings.fontColor) {
+                $('#font-color-input').val(state.settings.fontColor);
+                view.changeColorText(state.settings.fontColor);
+            }
+            if (state.settings.weight !== undefined) {
+                $('#weight-checkbox').prop('checked', !!state.settings.weight);
+                view.changeWeight(!!state.settings.weight);
+            }
+            if (state.settings.style !== undefined) {
+                $('#style-checkbox').prop('checked', !!state.settings.style);
+                view.changeStyle(!!state.settings.style);
+            }
+        }
+
+        // 3. Dotting Configurations
+        if (state.dotting) {
+            const d = state.dotting;
+            $('#dotting-checkbox').prop('checked', !!d.enabled);
+            if (d.enabled) {
+                $('#dotting-options').show();
+            } else {
+                $('#dotting-options').hide();
+            }
+            if (d.spaces !== undefined) $('#dotting-spaces-input').val(d.spaces);
+            if (d.repetitions !== undefined) $('#dotting-reps-input').val(d.repetitions);
+            if (d.linesCount !== undefined) $('#dotting-lines-input').val(d.linesCount);
+            if (d.fullDot !== undefined) $('#dotting-fulldot-checkbox').prop('checked', !!d.fullDot);
+            if (d.outline !== undefined) $('#dotting-outline-select').val(d.outline);
+            if (d.color !== undefined) $('#dotting-color-input').val(d.color);
+
+            view.userCustomGlobalSpaces = d.userCustomGlobalSpaces !== undefined ? d.userCustomGlobalSpaces : null;
+            view.userCustomGlobalLinesCount = d.userCustomGlobalLinesCount !== undefined ? d.userCustomGlobalLinesCount : null;
+            view.lineDotConfigs = d.lineDotConfigs ? JSON.parse(JSON.stringify(d.lineDotConfigs)) : {};
+            view.wordDotConfigs = d.wordDotConfigs ? JSON.parse(JSON.stringify(d.wordDotConfigs)) : {};
+        }
+
+        // 4. Synchronize line dot configs and render board
+        view.syncLineDotConfigs();
+        view.render();
+
+        // 5. Apply Word Layout overrides (margins and stretch factors)
+        if (state.wordLayout && typeof state.wordLayout === 'object') {
+            const $lines = $('#result').children('p.line');
+            for (const [lineIdxStr, wordMap] of Object.entries(state.wordLayout)) {
+                const lineIdx = parseInt(lineIdxStr, 10);
+                const $line = $lines.eq(lineIdx);
+                if ($line.length && wordMap) {
+                    for (const [wIdxStr, override] of Object.entries(wordMap)) {
+                        const $word = $line.find(`.word[data-word-idx="${wIdxStr}"]`);
+                        if ($word.length && override) {
+                            if (override.marginLeft) {
+                                $word.css('margin-left', override.marginLeft);
+                            }
+                            if (override.stretch && override.stretch !== 1) {
+                                $word.attr('data-stretch', override.stretch);
+                                if (override.naturalWidth) {
+                                    $word.attr('data-natural-width', override.naturalWidth);
+                                    $word.css('width', (override.naturalWidth * override.stretch).toFixed(2) + 'px');
+                                    $word.children('.word-text').css({
+                                        'width': override.naturalWidth + 'px',
+                                        'transform': `scaleX(${override.stretch})`,
+                                        'transform-origin': '0 0',
+                                        'display': 'inline-block',
+                                        'vertical-align': 'baseline'
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    if (view.isDottingActive()) {
+                        view.renderDotsForLine($line, null, lineIdx);
+                    }
+                }
+            }
+        }
+
+        view.updateDottingLineSelect();
+        view.updateDottingControlsState();
+    } finally {
+        view._isApplyingState = false;
+    }
+};
+
+view.triggerAutoSave = function (immediate) {
+    if (view._isApplyingState) return;
+    if (view._autoSaveTimer) {
+        clearTimeout(view._autoSaveTimer);
+        view._autoSaveTimer = null;
+    }
+
+    const doSave = function () {
+        try {
+            const state = view.captureWorkspaceState();
+            localStorage.setItem('chudep_workspace_draft', JSON.stringify(state));
+            $('#btn-menu-restore-draft').show();
+        } catch (e) {
+            console.warn('Auto-save error:', e);
+        }
+    };
+
+    if (immediate) {
+        doSave();
+    } else {
+        view._autoSaveTimer = setTimeout(doSave, 500);
+    }
+};
+
+view.formatDraftTime = function (isoString) {
+    if (!isoString) return '';
+    try {
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        const now = new Date();
+        const isToday = d.toDateString() === now.toDateString();
+        const pad = (n) => String(n).padStart(2, '0');
+        const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        if (isToday) {
+            return `hôm nay lúc ${timeStr}`;
+        }
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} lúc ${timeStr}`;
+    } catch (_) {
+        return '';
+    }
+};
+
+view.checkDraftOnLoad = function () {
+    try {
+        const raw = localStorage.getItem('chudep_workspace_draft');
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (!draft || !draft.text) return;
+
+        $('#btn-menu-restore-draft').show();
+
+        const currentText = ($('#input').val() || '').trim();
+        const draftText = (draft.text || '').trim();
+        const hasCustomSettings = draft.settings && (draft.settings.fontSize !== '72' || draft.settings.boardColor !== 'black');
+        const hasDotting = draft.dotting && draft.dotting.enabled;
+        const hasWordOverrides = draft.wordLayout && Object.keys(draft.wordLayout).length > 0;
+        const hasCustomText = draftText.length > 0 && draftText !== currentText;
+
+        if (hasCustomText || hasCustomSettings || hasDotting || hasWordOverrides) {
+            const timeDesc = view.formatDraftTime(draft.savedAt);
+            const msg = timeDesc ? `Phát hiện bản nháp chưa lưu (${timeDesc}).` : 'Phát hiện bản nháp chưa lưu.';
+            $('#draft-banner-text').text(msg);
+            $('#draft-banner').slideDown(200);
+
+            if (view._draftBannerTimer) clearTimeout(view._draftBannerTimer);
+            view._draftBannerTimer = setTimeout(function () {
+                view.dismissDraftNotification();
+            }, 10000);
+        }
+    } catch (e) {
+        console.warn('Draft check error:', e);
+    }
+};
+
+view.dismissDraftNotification = function () {
+    if (view._draftBannerTimer) {
+        clearTimeout(view._draftBannerTimer);
+        view._draftBannerTimer = null;
+    }
+    $('#draft-banner').slideUp(180);
+};
+
+view.restoreSavedDraft = function () {
+    try {
+        const raw = localStorage.getItem('chudep_workspace_draft');
+        if (!raw) {
+            alert('Không tìm thấy bản nháp đã lưu.');
+            return;
+        }
+        const state = JSON.parse(raw);
+        view.applyWorkspaceState(state);
+        view.dismissDraftNotification();
+    } catch (e) {
+        console.error('Lỗi khi khôi phục bản nháp:', e);
+        alert('Không thể khôi phục bản nháp: ' + e.message);
+    }
+};
+
+view.resetToDefault = function () {
+    if (confirm('Bạn có chắc chắn muốn đặt lại bài viết về mặc định? Mọi thay đổi hiện tại trên bảng sẽ bị xóa.')) {
+        try {
+            localStorage.removeItem('chudep_workspace_draft');
+        } catch (_) {}
+        view.applyWorkspaceState({
+            text: "Nét chữ nết người",
+            sampleSelect: "",
+            settings: {
+                fontSize: '72',
+                boardColor: 'black',
+                fontColor: '#ffffff',
+                weight: true,
+                style: false
+            },
+            dotting: {
+                enabled: false,
+                spaces: 2,
+                repetitions: 5,
+                linesCount: 1,
+                fullDot: true,
+                outline: 'none',
+                color: '#e53935'
+            },
+            wordLayout: {}
+        });
+        $('#btn-menu-restore-draft').hide();
+        view.dismissDraftNotification();
+    }
+};
+
+view.generateProjectFileName = function (text) {
+    let cleanText = (text || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[\s\t\n]+/g, '_')
+        .replace(/[/\\:*?"<>|#%&{}+,;=~`^!@$()[\].,]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    if (!cleanText) cleanText = 'bai_tap';
+    if (cleanText.length > 35) {
+        cleanText = cleanText.substring(0, 35).replace(/_+$/, '');
+    }
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const mm = pad(now.getMonth() + 1);
+    const dd = pad(now.getDate());
+    const hh = pad(now.getHours());
+    const min = pad(now.getMinutes());
+
+    return `chudep_${cleanText}_${yyyy}${mm}${dd}-${hh}${min}.json`;
+};
+
+view.exportProjectFile = function () {
+    try {
+        const state = view.captureWorkspaceState();
+        const firstLine = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0)[0] || '';
+        const fileName = view.generateProjectFileName(firstLine);
+        const jsonStr = JSON.stringify(state, null, 2);
+
+        const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+        console.error('Lỗi khi xuất tệp dự án:', e);
+        alert('Không thể xuất tệp dự án: ' + e.message);
+    }
+};
+
+view.importProjectFile = function (file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
+        alert('Vui lòng chọn tệp có định dạng .json');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const state = JSON.parse(e.target.result);
+            if (!state || typeof state !== 'object' || Array.isArray(state)) {
+                throw new Error('Dữ liệu JSON không đúng định dạng đối tượng.');
+            }
+            if (state.app !== 'VietnameseHandwritingGenerator' && typeof state.text !== 'string' && !state.settings) {
+                throw new Error('Tệp này không phải là tệp dự án bài tập Viết Chữ Đẹp.');
+            }
+            view.applyWorkspaceState(state);
+
+            // Also stage into localStorage
+            localStorage.setItem('chudep_workspace_draft', JSON.stringify(state));
+            $('#btn-menu-restore-draft').show();
+            view.dismissDraftNotification();
+        } catch (err) {
+            console.error('Lỗi nạp tệp dự án:', err);
+            alert('Không thể mở tệp dự án: ' + (err.message || 'Cấu trúc không hợp lệ'));
+        }
+    };
+    reader.readAsText(file, 'utf-8');
+};
+
+view.setupProjectDragAndDrop = function () {
+    $(window).off('dragover.projectDrop dragleave.projectDrop drop.projectDrop');
+
+    $(window).on('dragover.projectDrop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('body').addClass('project-drag-active');
+    });
+
+    $(window).on('dragleave.projectDrop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.originalEvent.pageX === 0 && e.originalEvent.pageY === 0) {
+            $('body').removeClass('project-drag-active');
+        }
+    });
+
+    $(window).on('drop.projectDrop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('body').removeClass('project-drag-active');
+        const dt = e.originalEvent.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+            view.importProjectFile(dt.files[0]);
+        }
+    });
+
+    // File input handler
+    $('#project-file-input').off('change').on('change', function (e) {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+            view.importProjectFile(file);
+        }
+        $(this).val('');
     });
 };
 

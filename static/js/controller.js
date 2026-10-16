@@ -7,6 +7,9 @@ controller.initEditor = function(){
     view.init();
     model.getData(function(){
         view.render();
+        if (typeof view.checkDraftOnLoad === 'function') {
+            view.checkDraftOnLoad();
+        }
     });
 }
 
