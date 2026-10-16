@@ -121,6 +121,19 @@ view.init = function () {
         view.triggerAutoSave();
     });
 
+    // When clicking or moving cursor in textarea, follow active line in toolbar if a specific line is selected
+    $input.on('click keyup', function () {
+        if (!view.isDottingActive() || !$('#dotting-line-select').length) return;
+        const cursorPos = this.selectionStart;
+        if (cursorPos === undefined || cursorPos === null) return;
+        const textBefore = this.value.substring(0, cursorPos);
+        const lineIdx = textBefore.split('\n').length - 1;
+        const currentVal = $('#dotting-line-select').val();
+        if (currentVal !== 'all' && currentVal != lineIdx && $(`#dotting-line-select option[value="${lineIdx}"]`).length) {
+            $('#dotting-line-select').val(lineIdx).trigger('change');
+        }
+    });
+
     // Font size selector
     $('#font-size-select').on('change', function () {
         view.changeFontSize(this.value);
@@ -444,10 +457,14 @@ view.getDottingConfig = function (lineIndex, $lineEl) {
     let globalLinesCount = 1;
     if (view.userCustomGlobalLinesCount !== undefined && view.userCustomGlobalLinesCount !== null) {
         globalLinesCount = view.userCustomGlobalLinesCount;
-    } else if (isAllSelected) {
-        globalLinesCount = Math.max(1, parseInt($('#dotting-lines-input').val(), 10) || 1);
+    } else if (view.globalDefaultLinesCount !== undefined && view.globalDefaultLinesCount !== null) {
+        globalLinesCount = view.globalDefaultLinesCount;
     } else {
-        globalLinesCount = 1;
+        const val = parseInt($('#dotting-lines-input').val(), 10);
+        globalLinesCount = (!isNaN(val) && val >= 1) ? val : 1;
+        if (isAllSelected) {
+            view.globalDefaultLinesCount = globalLinesCount;
+        }
     }
     const globalFullDot = isAllSelected ? $('#dotting-fulldot-checkbox').is(':checked') : false;
     const globalOutline = isAllSelected ? ($('#dotting-outline-select').val() || 'none') : 'none';
@@ -521,25 +538,34 @@ view.updateDottingControlsState = function () {
     const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
 
     const selectedLine = $('#dotting-line-select').val();
-    let spaces, reps;
+    let spaces, reps, linesCount;
 
     if (selectedLine && selectedLine !== 'all') {
         const lineIdx = parseInt(selectedLine, 10);
         const cfg = view.getDottingConfig(lineIdx);
         spaces = cfg.spaces;
         reps = cfg.repetitions;
+        linesCount = cfg.linesCount;
         $('#dotting-spaces-input').val(spaces);
+        $('#dotting-lines-input').val(linesCount);
+        $('#dotting-fulldot-checkbox').prop('checked', cfg.fullDot);
+        $('#dotting-outline-select').val(cfg.outline);
         if (view.lineDotConfigs[lineIdx] && view.lineDotConfigs[lineIdx].isCustom) {
             $('#btn-reset-line-dotting').show();
         } else {
             $('#btn-reset-line-dotting').hide();
         }
     } else {
-        const cfg0 = view.getDottingConfig(0);
-        spaces = cfg0.spaces;
+        const globalCfg = view.getDottingConfig();
+        spaces = globalCfg.spaces;
+        reps = globalCfg.repetitions;
+        linesCount = globalCfg.linesCount;
         $('#dotting-spaces-input').val(spaces);
-        reps = cfg0.repetitions;
-        if (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) {
+        $('#dotting-lines-input').val(linesCount);
+        $('#dotting-fulldot-checkbox').prop('checked', globalCfg.fullDot);
+        $('#dotting-outline-select').val(globalCfg.outline);
+        if ((view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) ||
+            (view.userCustomGlobalLinesCount !== undefined && view.userCustomGlobalLinesCount !== null)) {
             $('#btn-reset-line-dotting').show();
         } else {
             $('#btn-reset-line-dotting').hide();
@@ -635,10 +661,13 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
             });
         });
     } else {
-        // Line is empty practice line, look up preceding line with words
-        let $sourceLine = $line.prevAll('p.line').filter(function () {
-            return $(this).children('.word').length > 0;
-        }).first();
+        // Line is empty practice line, look up source model line with words
+        let $sourceLine = $(`p.line[data-source-line-idx="${srcLineIdx}"][data-is-practice="false"]`).first();
+        if (!$sourceLine.length) {
+            $sourceLine = $line.prevAll('p.line').filter(function () {
+                return $(this).children('.word').length > 0;
+            }).first();
+        }
 
         if (!$sourceLine.length && config.isBlackboard) {
             const $board = $line.closest('.board.blackboard');
@@ -787,6 +816,25 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
     }
     $line.append($dotsLayer);
     view.syncInfiniteCanvasWidth();
+};
+
+view.renderDotsForLineAndPracticeLines = function ($line) {
+    if (!$line || !$line.length) return;
+    const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
+    const srcLineIdx = parseInt($line.attr('data-source-line-idx'), 10);
+    const targetSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : lineIdx;
+
+    // 1. Re-render dots on the model line
+    view.renderDotsForLine($line, null, lineIdx);
+
+    // 2. Re-render dots on all practice lines belonging to this source line
+    $('p.line[data-is-practice="true"]').each(function () {
+        const pSrcIdx = parseInt($(this).attr('data-source-line-idx'), 10);
+        if (pSrcIdx === targetSrcIdx) {
+            const pLineIdx = parseInt($(this).attr('id').replace('line-', ''), 10) || 0;
+            view.renderDotsForLine($(this), null, pLineIdx);
+        }
+    });
 };
 
 view.render = function () {
@@ -1307,13 +1355,34 @@ view.setupDragInteractions = function () {
     let dragState = null;
     let stretchState = null;
 
-    // Tap / click word to activate handles on touch / mobile devices
+    // Tap / click word to activate handles on touch / mobile devices and select line in toolbar
     $container.on('pointerdown click', '.word', function (e) {
         if ($(e.target).closest('.btn-word-stretch, .btn-word-drag, .btn-word-reset').length) {
             return;
         }
         $('.word.is-active').not(this).removeClass('is-active');
         $(this).addClass('is-active');
+
+        const $line = $(this).closest('p.line');
+        const srcLineIdx = parseInt($line.attr('data-source-line-idx'), 10);
+        if (!isNaN(srcLineIdx) && $('#dotting-line-select').length) {
+            if ($('#dotting-line-select').val() != srcLineIdx && $(`#dotting-line-select option[value="${srcLineIdx}"]`).length) {
+                $('#dotting-line-select').val(srcLineIdx).trigger('change');
+            }
+        }
+    });
+
+    // Tap / click line background to select line in toolbar
+    $container.on('pointerdown click', 'p.line', function (e) {
+        if ($(e.target).closest('.word, .line-dot-wrapper, .line-dot-popover, .word-dot-wrapper, .word-dot-config-popover').length) {
+            return;
+        }
+        const srcLineIdx = parseInt($(this).attr('data-source-line-idx'), 10);
+        if (!isNaN(srcLineIdx) && $('#dotting-line-select').length) {
+            if ($('#dotting-line-select').val() != srcLineIdx && $(`#dotting-line-select option[value="${srcLineIdx}"]`).length) {
+                $('#dotting-line-select').val(srcLineIdx).trigger('change');
+            }
+        }
     });
 
     $(document).on('pointerdown click', function (e) {
@@ -1398,8 +1467,7 @@ view.setupDragInteractions = function () {
         dragState.wordEl.style.marginLeft = Math.round(newMargin) + 'px';
         if (view.isDottingActive()) {
             const $line = dragState.$word.closest('p.line');
-            const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
-            view.renderDotsForLine($line, null, lineIdx);
+            view.renderDotsForLineAndPracticeLines($line);
         }
     }
 
@@ -1424,8 +1492,7 @@ view.setupDragInteractions = function () {
             dragState.$word.removeClass('is-dragging');
             if (view.isDottingActive()) {
                 const $line = dragState.$word.closest('p.line');
-                const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
-                view.renderDotsForLine($line, null, lineIdx);
+                view.renderDotsForLineAndPracticeLines($line);
             }
         }
         $('body').removeClass('is-word-dragging');
@@ -1456,8 +1523,7 @@ view.setupDragInteractions = function () {
             });
             if (view.isDottingActive()) {
                 const $line = $word.closest('p.line');
-                const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
-                view.renderDotsForLine($line, null, lineIdx);
+                view.renderDotsForLineAndPracticeLines($line);
             }
             e.preventDefault();
             e.stopPropagation();
@@ -1589,8 +1655,7 @@ view.setupDragInteractions = function () {
         });
 
         if (view.isDottingActive() && stretchState.$line) {
-            const lineIdx = parseInt(stretchState.$line.attr('id').replace('line-', ''), 10) || 0;
-            view.renderDotsForLine(stretchState.$line, null, lineIdx);
+            view.renderDotsForLineAndPracticeLines(stretchState.$line);
         }
     }
 
@@ -1622,8 +1687,7 @@ view.setupDragInteractions = function () {
             stretchState.$guideline.removeClass('is-snapped').hide();
         }
         if (view.isDottingActive() && stretchState.$line) {
-            const lineIdx = parseInt(stretchState.$line.attr('id').replace('line-', ''), 10) || 0;
-            view.renderDotsForLine(stretchState.$line, null, lineIdx);
+            view.renderDotsForLineAndPracticeLines(stretchState.$line);
         }
         stretchState = null;
         view.triggerAutoSave(true);
@@ -1643,8 +1707,7 @@ view.setupDragInteractions = function () {
         });
         if (view.isDottingActive()) {
             const $line = $word.closest('p.line');
-            const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
-            view.renderDotsForLine($line, null, lineIdx);
+            view.renderDotsForLineAndPracticeLines($line);
         }
         view.triggerAutoSave(true);
     });
@@ -1671,8 +1734,7 @@ view.setupDragInteractions = function () {
         });
         if (view.isDottingActive()) {
             const $line = $word.closest('p.line');
-            const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
-            view.renderDotsForLine($line, null, lineIdx);
+            view.renderDotsForLineAndPracticeLines($line);
         }
         view.triggerAutoSave(true);
     });
@@ -1690,8 +1752,7 @@ view.setupDragInteractions = function () {
             });
         });
         if (view.isDottingActive()) {
-            const lineIdx = parseInt($(this).attr('id').replace('line-', ''), 10) || 0;
-            view.renderDotsForLine($(this), null, lineIdx);
+            view.renderDotsForLineAndPracticeLines($(this));
         }
         view.triggerAutoSave(true);
     });
@@ -1983,7 +2044,7 @@ view.setupDragInteractions = function () {
                    .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${newSpaces} ô`);
         });
 
-        view.renderDotsForLine($line, null, lineIdx);
+        view.renderDotsForLineAndPracticeLines($line);
         view.updateDottingLineSelect();
 
         if ($('#dotting-line-select').val() == lineIdx) {
@@ -2035,7 +2096,7 @@ view.setupDragInteractions = function () {
 
         const $line = $(`#line-${lineIdx}`);
         $line.find('.btn-line-dot-badge').addClass('is-custom');
-        view.renderDotsForLine($line, null, lineIdx);
+        view.renderDotsForLineAndPracticeLines($line);
         view.updateDottingLineSelect();
 
         if ($('#dotting-line-select').val() == lineIdx) {
@@ -2059,7 +2120,7 @@ view.setupDragInteractions = function () {
 
         const $line = $(`#line-${lineIdx}`);
         $line.find('.btn-line-dot-badge').addClass('is-custom');
-        view.renderDotsForLine($line, null, lineIdx);
+        view.renderDotsForLineAndPracticeLines($line);
         view.updateDottingLineSelect();
 
         if ($('#dotting-line-select').val() == lineIdx) {
