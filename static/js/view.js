@@ -23,22 +23,43 @@ view.getActiveDotConfig = function (charUnit, lineIndex, wordIndex) {
     if (!charUnit) {
         charUnit = 'a';
     }
-    const wIdx = wordIndex || 0;
+    const wIdx = (wordIndex !== undefined && wordIndex !== null) ? wordIndex : 0;
+    const isFirstWord = (wIdx === 0);
     const wordKey = `${lineIndex}_${wIdx}`;
     const wordCfg = view.wordDotConfigs && view.wordDotConfigs[wordKey];
     const lineCfg = view.lineDotConfigs && view.lineDotConfigs[lineIndex];
+
+    // Explicitly disabled/turned off ('none')
+    if (wordCfg && (wordCfg.dotConfigId === 'none' || wordCfg.enabled === false)) {
+        return null;
+    }
+    if (isFirstWord && lineCfg && (lineCfg.dotConfigId === 'none' || lineCfg.enabled === false)) {
+        return null;
+    }
 
     // 1. Dynamic dotting check (runtime custom dot coordinates hook)
     if (wordCfg && Array.isArray(wordCfg.customDots) && wordCfg.customDots.length > 0) {
         return model.getGlyphDotConfig(charUnit, null, wordCfg.customDots);
     }
-    if (wIdx === 0 && lineCfg && Array.isArray(lineCfg.customDots) && lineCfg.customDots.length > 0) {
+    if (isFirstWord && lineCfg && Array.isArray(lineCfg.customDots) && lineCfg.customDots.length > 0) {
         return model.getGlyphDotConfig(charUnit, null, lineCfg.customDots);
     }
 
     // 2. Selected dotConfigId check
-    const chosenId = (wordCfg && wordCfg.dotConfigId) || (wIdx === 0 ? (lineCfg && lineCfg.dotConfigId) : null);
-    return model.getGlyphDotConfig(charUnit, chosenId);
+    const chosenId = (wordCfg && wordCfg.dotConfigId) || (isFirstWord ? (lineCfg && lineCfg.dotConfigId) : null);
+    if (chosenId) {
+        if (chosenId === 'none') return null;
+        return model.getGlyphDotConfig(charUnit, chosenId);
+    }
+
+    // 3. Default behavior:
+    // Only automatically dot the first word/character of the line!
+    // Subsequent words (wIdx > 0) are NOT dotted automatically by default.
+    if (!isFirstWord) {
+        return null;
+    }
+
+    return model.getGlyphDotConfig(charUnit);
 };
 
 view.resetLineDotConfigs = function () {
@@ -747,7 +768,7 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
 
     const activeDotConfig = view.getActiveDotConfig(charUnit, srcLineIdx, 0);
     let hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
-    if (!hasDotConfigs && hasText && wordsInfo.length > 1) {
+    if (!hasDotConfigs && wordsInfo && wordsInfo.length > 1) {
         for (let wIdx = 1; wIdx < wordsInfo.length; wIdx++) {
             const wInfo = wordsInfo[wIdx];
             const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
@@ -843,47 +864,44 @@ view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
                 }
             }
 
-            // B. Guide dots
-            if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
-                const dots = activeDotConfig.dots;
-                dots.forEach((dot, dotIdx) => {
-                    const dotX = baseWordX + (dot.x * olyUnitPx * stretch) + shiftX;
-                    const dotY = baselineY - (dot.y * olyUnitPx);
-                    const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
-                    const $dot = $('<span class="guide-dot"></span>').css({
-                        left: dotX + 'px',
-                        top: dotY + 'px',
-                        width: dotSizePx + 'px',
-                        height: dotSizePx + 'px',
-                        backgroundColor: config.color
-                    }).attr('title', dotTitle);
-                    $dotsLayer.append($dot);
-                });
-            }
-
-            // If model line text with multiple words: render guide dots for subsequent words on the model line (j === 0)
-            if (hasText && j === 0 && wordsInfo.length > 1) {
-                for (let wIdx = 1; wIdx < wordsInfo.length; wIdx++) {
-                    const wInfo = wordsInfo[wIdx];
-                    const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
-                    const wDotCfg = view.getActiveDotConfig(wChar, srcLineIdx, wIdx);
-                    if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
-                        const wBaseX = wInfo.offsetLeft;
-                        const wStretch = wInfo.stretch || 1.0;
-                        wDotCfg.dots.forEach((dot, dotIdx) => {
-                            const dotX = wBaseX + (dot.x * olyUnitPx * wStretch);
-                            const dotY = baselineY - (dot.y * olyUnitPx);
-                            const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
-                            const $dot = $('<span class="guide-dot"></span>').css({
-                                left: dotX + 'px',
-                                top: dotY + 'px',
-                                width: dotSizePx + 'px',
-                                height: dotSizePx + 'px',
-                                backgroundColor: config.color
-                            }).attr('title', dotTitle);
-                            $dotsLayer.append($dot);
-                        });
-                    }
+            // B. Guide dots (rendered and replicated across words and repetitions)
+            if (hasDotConfigs) {
+                if (wordsInfo && wordsInfo.length > 0) {
+                    wordsInfo.forEach((wInfo, wIdx) => {
+                        const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                        const wDotCfg = view.getActiveDotConfig(wChar, srcLineIdx, wIdx);
+                        if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                            const wBaseX = wInfo.offsetLeft;
+                            const wStretch = wInfo.stretch || 1.0;
+                            wDotCfg.dots.forEach((dot, dotIdx) => {
+                                const dotX = wBaseX + (dot.x * olyUnitPx * wStretch) + shiftX;
+                                const dotY = baselineY - (dot.y * olyUnitPx);
+                                const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
+                                const $dot = $('<span class="guide-dot"></span>').css({
+                                    left: dotX + 'px',
+                                    top: dotY + 'px',
+                                    width: dotSizePx + 'px',
+                                    height: dotSizePx + 'px',
+                                    backgroundColor: config.color
+                                }).attr('title', dotTitle);
+                                $dotsLayer.append($dot);
+                            });
+                        }
+                    });
+                } else if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
+                    activeDotConfig.dots.forEach((dot, dotIdx) => {
+                        const dotX = baseWordX + (dot.x * olyUnitPx * stretch) + shiftX;
+                        const dotY = baselineY - (dot.y * olyUnitPx);
+                        const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
+                        const $dot = $('<span class="guide-dot"></span>').css({
+                            left: dotX + 'px',
+                            top: dotY + 'px',
+                            width: dotSizePx + 'px',
+                            height: dotSizePx + 'px',
+                            backgroundColor: config.color
+                        }).attr('title', dotTitle);
+                        $dotsLayer.append($dot);
+                    });
                 }
             }
         }
@@ -1365,8 +1383,8 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
 
             const dotConfigBadgeHtml = isDotActive ? `
                 <span class="word-dot-wrapper">
-                    <button type="button" class="btn-word-dot-badge ${isCustomDotCfg ? 'is-custom' : ''} ${!hasDotConfigs ? 'is-empty' : ''}" data-line-idx="${srcLineIdx}" data-word-idx="${wordIndex}" data-char="${view.escapeHtml(charUnit)}" title="Cấu hình chấm chữ '${view.escapeHtml(charUnit)}'${hasDotConfigs ? `: ${view.escapeHtml(activeDotConfig.name)} (${dotsCount} chấm)` : ' (Chưa có mẫu chấm)'}">
-                        <i class="fa-solid ${hasDotConfigs ? 'fa-braille' : 'fa-wand-magic-sparkles'}"></i> ${hasDotConfigs ? `${dotsCount} chấm` : 'Chấm tự do'} <i class="fa-solid fa-caret-down" style="font-size: 0.65em; margin-left: 2px;"></i>
+                    <button type="button" class="btn-word-dot-badge ${isCustomDotCfg ? 'is-custom' : ''} ${!hasDotConfigs ? 'is-empty' : ''}" data-line-idx="${srcLineIdx}" data-word-idx="${wordIndex}" data-char="${view.escapeHtml(charUnit)}" title="Cấu hình chấm chữ '${view.escapeHtml(charUnit)}'${hasDotConfigs ? `: ${view.escapeHtml(activeDotConfig.name)} (${dotsCount} chấm)` : ' (Chưa bật chấm)'}">
+                        <i class="fa-solid ${hasDotConfigs ? 'fa-braille' : 'fa-circle-dot'}"></i> ${hasDotConfigs ? `${dotsCount} chấm` : 'Chấm'} <i class="fa-solid fa-caret-down" style="font-size: 0.65em; margin-left: 2px;"></i>
                     </button>
                 </span>` : '';
 
@@ -1867,12 +1885,14 @@ view.setupDragInteractions = function () {
         const lineAvailableCfgs = model.getGlyphDotConfigs(lineCharUnit);
 
         let cfgOptionsHtml = '';
-        if (lineAvailableCfgs && lineAvailableCfgs.length > 1) {
+        if (lineAvailableCfgs && lineAvailableCfgs.length > 0) {
+            const isNone = !lineActiveDotCfg;
             cfgOptionsHtml = `
                 <div class="popover-row">
                     <label>Mẫu chấm:</label>
                     <select class="form-select form-select-sm popover-cfg-select" style="max-width: 125px; font-size: 0.75rem; padding: 1px 4px;">
-                        ${lineAvailableCfgs.map(c => `<option value="${view.escapeHtml(c.id)}" ${c.id === (lineActiveDotCfg ? lineActiveDotCfg.id : '') ? 'selected' : ''}>${view.escapeHtml(c.name)} (${(c.dots || []).length}c)</option>`).join('')}
+                        <option value="none" ${isNone ? 'selected' : ''}>Không chấm</option>
+                        ${lineAvailableCfgs.map(c => `<option value="${view.escapeHtml(c.id)}" ${(!isNone && c.id === (lineActiveDotCfg ? lineActiveDotCfg.id : '')) ? 'selected' : ''}>${view.escapeHtml(c.name)} (${(c.dots || []).length}c)</option>`).join('')}
                     </select>
                 </div>
             `;
@@ -1976,6 +1996,19 @@ view.setupDragInteractions = function () {
             customDots = lineCfg.customDots;
         }
 
+        const isNoneSelected = (activeConfig === null);
+        const noneItemHtml = `
+            <div class="dot-cfg-item ${isNoneSelected ? 'is-selected' : ''}" data-config-id="none">
+                <div class="dot-cfg-item-main">
+                    <div class="dot-cfg-item-title">
+                        <strong><i class="fa-solid fa-ban text-secondary me-1"></i> Không chấm</strong>
+                    </div>
+                    <div class="dot-cfg-item-desc">Tắt hiển thị điểm chấm cho chữ này</div>
+                </div>
+                ${isNoneSelected ? '<i class="fa-solid fa-check text-success dot-cfg-check"></i>' : ''}
+            </div>
+        `;
+
         let customItemHtml = '';
         if (customDots && customDots.length > 0) {
             const isSelected = activeConfig && (activeConfig.id === 'dynamic');
@@ -2016,10 +2049,14 @@ view.setupDragInteractions = function () {
             });
         }
 
-        let popoverBodyHtml = '';
-        if (!customItemHtml && (!configs || configs.length === 0)) {
-            popoverBodyHtml = `
-                <div class="popover-dynamic-teaser" style="margin: 8px 0 4px 0; border-top: none;">
+        let popoverBodyHtml = `
+            <div class="dot-cfg-list">
+                ${noneItemHtml}
+                ${customItemHtml}
+                ${configsHtml}
+            </div>
+            ${(!customDots && (!configs || configs.length === 0)) ? `
+                <div class="popover-dynamic-teaser" style="margin: 8px 0 4px 0;">
                     <div class="dynamic-hint" style="margin-bottom: 8px; font-size: 0.8rem; color: #64748b;">
                         Chữ này chưa có cấu hình chấm mẫu trong editor. Bạn có thể tự do đặt các điểm chấm trực quan bằng công cụ bên dưới:
                     </div>
@@ -2027,18 +2064,12 @@ view.setupDragInteractions = function () {
                         <i class="fa-solid fa-wand-magic-sparkles"></i> Tùy chỉnh chấm tự do...
                     </button>
                 </div>
-            `;
-        } else {
-            popoverBodyHtml = `
-                <div class="dot-cfg-list">
-                    ${customItemHtml}
-                    ${configsHtml}
-                </div>
+            ` : `
                 <button type="button" class="btn-open-freestyle-modal">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> ${customDots ? 'Chỉnh sửa chấm tự do...' : 'Tùy chỉnh chấm tự do...'}
                 </button>
-            `;
-        }
+            `}
+        `;
 
         const $popover = $(`
             <div class="word-dot-config-popover no-print" data-line-idx="${lineIdx}" data-word-idx="${wordIdx}" data-char="${view.escapeHtml(charUnit)}">
@@ -2077,7 +2108,7 @@ view.setupDragInteractions = function () {
 
         if (view.wordDotConfigs && view.wordDotConfigs[wordKey]) {
             delete view.wordDotConfigs[wordKey].customDots;
-            view.wordDotConfigs[wordKey].dotConfigId = null;
+            view.wordDotConfigs[wordKey].dotConfigId = (wordIdx > 0 ? 'none' : null);
         }
         if (wordIdx === 0 && view.lineDotConfigs && view.lineDotConfigs[lineIdx]) {
             delete view.lineDotConfigs[lineIdx].customDots;
@@ -3575,7 +3606,7 @@ view.exportBlackboardToPng = async function () {
                 const charUnit = model.getFirstCharUnit(rawLine);
                 const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
                 let hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
-                if (!hasDotConfigs && hasText && wordsToDraw.length > 1) {
+                if (!hasDotConfigs && wordsToDraw.length > 1) {
                     for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
                         const wInfo = wordsToDraw[wIdx];
                         const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
@@ -3666,40 +3697,38 @@ view.exportBlackboardToPng = async function () {
                             }
 
                             // B. Guide dots
-                            if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
-                                for (const dot of activeDotConfig.dots) {
-                                    const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
-                                    const dotY = baselineY - (dot.y * olyUnitPx);
-                                    ctx.beginPath();
-                                    ctx.fillStyle = lineDotConfig.color;
-                                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                                    ctx.fill();
-                                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-                                    ctx.lineWidth = 1 * S;
-                                    ctx.stroke();
-                                }
-                            }
-
-                            // Model line subsequent words dots (j === 0)
-                            if (hasText && j === 0 && wordsToDraw.length > 1) {
-                                for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
-                                    const wInfo = wordsToDraw[wIdx];
-                                    const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
-                                    const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
-                                    if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
-                                        const wBaseX = startX + (wInfo.offsetLeft * S);
-                                        const wStretch = wInfo.stretch || 1.0;
-                                        for (const dot of wDotCfg.dots) {
-                                            const dotX = wBaseX + (dot.x * olyUnitPx * wStretch);
-                                            const dotY = baselineY - (dot.y * olyUnitPx);
-                                            ctx.beginPath();
-                                            ctx.fillStyle = lineDotConfig.color;
-                                            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                                            ctx.fill();
-                                            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-                                            ctx.lineWidth = 1 * S;
-                                            ctx.stroke();
+                            if (hasDotConfigs) {
+                                if (wordsToDraw && wordsToDraw.length > 0) {
+                                    wordsToDraw.forEach((wInfo, wIdx) => {
+                                        const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                                        const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                                        if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                                            const wBaseX = startX + (wInfo.offsetLeft * S);
+                                            const wStretch = wInfo.stretch || 1.0;
+                                            for (const dot of wDotCfg.dots) {
+                                                const dotX = wBaseX + (dot.x * olyUnitPx * wStretch) + shiftX;
+                                                const dotY = baselineY - (dot.y * olyUnitPx);
+                                                ctx.beginPath();
+                                                ctx.fillStyle = lineDotConfig.color;
+                                                ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                                ctx.fill();
+                                                ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                                                ctx.lineWidth = 1 * S;
+                                                ctx.stroke();
+                                            }
                                         }
+                                    });
+                                } else if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
+                                    for (const dot of activeDotConfig.dots) {
+                                        const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
+                                        const dotY = baselineY - (dot.y * olyUnitPx);
+                                        ctx.beginPath();
+                                        ctx.fillStyle = lineDotConfig.color;
+                                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                        ctx.fill();
+                                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                                        ctx.lineWidth = 1 * S;
+                                        ctx.stroke();
                                     }
                                 }
                             }
@@ -3915,7 +3944,7 @@ view.exportWhite11x14ToPng = async function () {
                     const charUnit = model.getFirstCharUnit(rawLineText);
                     const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
                     let hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
-                    if (!hasDotConfigs && hasText && wordsToDraw.length > 1) {
+                    if (!hasDotConfigs && wordsToDraw.length > 1) {
                         for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
                             const wInfo = wordsToDraw[wIdx];
                             const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
@@ -3998,8 +4027,26 @@ view.exportWhite11x14ToPng = async function () {
                                     }
                                 }
 
-                                    // B. Guide dots
-                                    if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
+                                // B. Guide dots
+                                if (hasDotConfigs) {
+                                    if (wordsToDraw && wordsToDraw.length > 0) {
+                                        wordsToDraw.forEach((wInfo, wIdx) => {
+                                            const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                                            const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                                            if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                                                const wBaseX = gridOriginX + wInfo.offsetLeft;
+                                                const wStretch = wInfo.stretch || 1.0;
+                                                for (const dot of wDotCfg.dots) {
+                                                    const dotX = wBaseX + (dot.x * olyUnitPx * wStretch) + shiftX;
+                                                    const dotY = yPos - (dot.y * olyUnitPx);
+                                                    ctx.beginPath();
+                                                    ctx.fillStyle = lineDotConfig.color;
+                                                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                                    ctx.fill();
+                                                }
+                                            }
+                                        });
+                                    } else if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
                                         for (const dot of activeDotConfig.dots) {
                                             const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
                                             const dotY = yPos - (dot.y * olyUnitPx);
@@ -4009,30 +4056,10 @@ view.exportWhite11x14ToPng = async function () {
                                             ctx.fill();
                                         }
                                     }
-
-                                    // Model line subsequent words dots (j === 0)
-                                    if (hasText && j === 0 && wordsToDraw.length > 1) {
-                                        for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
-                                            const wInfo = wordsToDraw[wIdx];
-                                            const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
-                                            const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
-                                            if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
-                                                const wBaseX = gridOriginX + wInfo.offsetLeft;
-                                                const wStretch = wInfo.stretch || 1.0;
-                                                for (const dot of wDotCfg.dots) {
-                                                    const dotX = wBaseX + (dot.x * olyUnitPx * wStretch);
-                                                    const dotY = yPos - (dot.y * olyUnitPx);
-                                                    ctx.beginPath();
-                                                    ctx.fillStyle = lineDotConfig.color;
-                                                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                                                    ctx.fill();
-                                                }
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
+                    }
                 }
             });
 
@@ -4301,7 +4328,7 @@ view.exportToPng = async function () {
             const charUnit = model.getFirstCharUnit(rawLineText);
             const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
             let hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
-            if (!hasDotConfigs && hasText && wordsToDraw.length > 1) {
+            if (!hasDotConfigs && wordsToDraw.length > 1) {
                 for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
                     const wInfo = wordsToDraw[wIdx];
                     const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
@@ -4384,34 +4411,32 @@ view.exportToPng = async function () {
                     }
 
                     // B. Guide dots
-                    if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
-                        for (const dot of activeDotConfig.dots) {
-                            const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
-                            const dotY = yPos - (dot.y * olyUnitPx);
-                            ctx.beginPath();
-                            ctx.fillStyle = lineDotConfig.color;
-                            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                    }
-
-                    // Model line subsequent words dots (j === 0)
-                    if (hasText && j === 0 && wordsToDraw.length > 1) {
-                        for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
-                            const wInfo = wordsToDraw[wIdx];
-                            const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
-                            const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
-                            if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
-                                const wBaseX = gridOriginX + wInfo.offsetLeft;
-                                const wStretch = wInfo.stretch || 1.0;
-                                for (const dot of wDotCfg.dots) {
-                                    const dotX = wBaseX + (dot.x * olyUnitPx * wStretch);
-                                    const dotY = yPos - (dot.y * olyUnitPx);
-                                    ctx.beginPath();
-                                    ctx.fillStyle = lineDotConfig.color;
-                                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-                                    ctx.fill();
+                    if (hasDotConfigs) {
+                        if (wordsToDraw && wordsToDraw.length > 0) {
+                            wordsToDraw.forEach((wInfo, wIdx) => {
+                                const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                                const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                                if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                                    const wBaseX = gridOriginX + wInfo.offsetLeft;
+                                    const wStretch = wInfo.stretch || 1.0;
+                                    for (const dot of wDotCfg.dots) {
+                                        const dotX = wBaseX + (dot.x * olyUnitPx * wStretch) + shiftX;
+                                        const dotY = yPos - (dot.y * olyUnitPx);
+                                        ctx.beginPath();
+                                        ctx.fillStyle = lineDotConfig.color;
+                                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                        ctx.fill();
+                                    }
                                 }
+                            });
+                        } else if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
+                            for (const dot of activeDotConfig.dots) {
+                                const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
+                                const dotY = yPos - (dot.y * olyUnitPx);
+                                ctx.beginPath();
+                                ctx.fillStyle = lineDotConfig.color;
+                                ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                ctx.fill();
                             }
                         }
                     }
