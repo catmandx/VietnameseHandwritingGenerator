@@ -107,6 +107,15 @@
         </div>
 
         <script>
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
             function updateTable() {
                 const text = $('#text-input').val();
                 const $tbody = $('#char-rows');
@@ -117,14 +126,14 @@
                     return;
                 }
 
-                for (let i = 0; i < text.length; i++) {
-                    const char = text[i];
-                    const code = char.charCodeAt(0);
+                for (const char of text) {
+                    const code = char.codePointAt(0);
                     const hex = 'U+' + code.toString(16).toUpperCase().padStart(4, '0');
+                    const safeChar = escapeHtml(char);
                     const row = `
                         <tr>
-                            <td style="font-size: 1.5rem;">${char === ' ' ? '<i>[khoảng trắng]</i>' : char}</td>
-                            <td class="glyph-cell">${char}</td>
+                            <td style="font-size: 1.5rem;">${char === ' ' ? '<i>[khoảng trắng]</i>' : safeChar}</td>
+                            <td class="glyph-cell">${safeChar}</td>
                             <td><code>${code}</code></td>
                             <td><code>${hex}</code></td>
                         </tr>

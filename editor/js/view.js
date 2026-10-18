@@ -2,6 +2,28 @@ const view = {
 
 }
 
+view.renderDotBadge = function(data) {
+    if (!data) return '';
+    const hasConfigs = data.dotConfigs && Array.isArray(data.dotConfigs) && data.dotConfigs.length > 0;
+    const hasLegacyStart = data.startPoint && typeof data.startPoint.x === 'number';
+    if (!hasConfigs && !hasLegacyStart) return '';
+
+    const numConfigs = hasConfigs ? data.dotConfigs.length : 1;
+    let tooltip = '';
+    if (hasConfigs) {
+        const configNames = data.dotConfigs.map((c, i) => c.name || `Cấu hình ${i + 1}`).join('; ');
+        tooltip = `${numConfigs} cấu hình chấm: ${configNames}`;
+    } else {
+        tooltip = '1 cấu hình chấm (Điểm đặt bút chuẩn)';
+    }
+
+    let dotsHtml = '';
+    for (let i = 0; i < numConfigs; i++) {
+        dotsHtml += '<span class="dot-indicator"></span>';
+    }
+    return `<div class="position-absolute top-0 end-0 m-2 dot-badge d-inline-flex align-items-center" title="${view.escapeXml(tooltip)}">${dotsHtml}</div>`;
+};
+
 view.showComponents = function(name){
     let app = $('#app');
     switch(name){
@@ -11,35 +33,91 @@ view.showComponents = function(name){
             let baseListHtml = baseList.html();
             let sortedData = Object.fromEntries(Object.entries(model.glyphData).sort())
             for (const [base, data] of Object.entries(sortedData)) {
+                let dotBadge = view.renderDotBadge(data);
                 baseListHtml += `
-                    ${components.baseCard.replace("{{name}}", base)}
+                    ${components.baseCard.replaceAll("{{name}}", view.escapeXml(base)).replace("{{dotBadge}}", dotBadge)}
                 `
             }
             baseList.html(baseListHtml)
             //new base card modal
-            $('#addNewBaseCardModal').on('shown.bs.modal', function () {
+            $('#addNewBaseCardModal').off('shown.bs.modal').on('shown.bs.modal', function () {
                 $('#newBaseCardInput').trigger('focus')
             })
             let newBaseCardForm = $("#newBaseCardForm");
-            newBaseCardForm.on('submit', function(e){
+            newBaseCardForm.off('submit').on('submit', function(e){
                 e.preventDefault();
                 controller.addNewBase(newBaseCardForm.children('input').val())
             })
 
-            //Download json button
-            $('#downloadJson').on('click', function(e){
-                model.download('all.json', JSON.stringify(model.glyphData, null, 2))
-            })
+            // Download json timestamped (primary button & option)
+            $('#downloadJsonTimestamped, #downloadJsonTimestampedOption').off('click').on('click', function(e){
+                e.preventDefault();
+                const filename = view.getTimestampedFilename();
+                model.download(filename, JSON.stringify(model.glyphData, null, 2));
+                toastr.info(`Đang tải file: ${filename}`);
+            });
+
+            // Download raw all.json option (for backend overwrite)
+            $('#downloadJsonRawOption').off('click').on('click', function(e){
+                e.preventDefault();
+                model.download('all.json', JSON.stringify(model.glyphData, null, 2));
+                toastr.info('Đang tải file: all.json');
+            });
+
+            // Copy JSON to clipboard
+            $('#copyJsonToClipboardOption').off('click').on('click', function(e){
+                e.preventDefault();
+                const jsonStr = JSON.stringify(model.glyphData, null, 2);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(jsonStr)
+                        .then(() => toastr.success('Đã sao chép toàn bộ JSON vào clipboard!'))
+                        .catch(() => view.fallbackCopyText(jsonStr));
+                } else {
+                    view.fallbackCopyText(jsonStr);
+                }
+            });
+
+            // Import JSON button & file picker
+            $('#btnImportJson').off('click').on('click', function(e){
+                e.preventDefault();
+                $('#importJsonFileInput').trigger('click');
+            });
+
+            $('#importJsonFileInput').off('change').on('change', function(e){
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    view.importJsonFile(file);
+                }
+                $(this).val('');
+            });
+
+            // Set up drag and drop import
+            view.setupDragAndDrop();
 
             //edit base
             baseList.children('.baseCard:not(:first-child)')
-                    .on('click', view.populateEditForm)
+                    .off('click').on('click', view.populateEditForm)
             
             this.setUpEditModal()
-            $(document).on('submit','form#editBaseForm',function(e){
-                e.preventDefault()
-                model.saveBaseData($(e.target).serializeArray())
-             });
+            $(document).off('submit','form#editBaseForm').on('submit','form#editBaseForm',function(e){
+                e.preventDefault();
+                const $btn = $('#saveButton');
+                const originalText = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Saving...');
+                setTimeout(() => {
+                    try {
+                        model.saveBaseData($(e.target).serializeArray());
+                        $btn.html('<i class="fa-solid fa-check"></i> Saved!').removeClass('btn-success').addClass('btn-outline-success');
+                        setTimeout(() => {
+                            $btn.prop('disabled', false).html(originalText).removeClass('btn-outline-success').addClass('btn-success');
+                        }, 800);
+                    } catch(err) {
+                        $btn.prop('disabled', false).html(originalText);
+                        console.error(err);
+                        toastr.error('Lỗi khi lưu dữ liệu');
+                    }
+                }, 10);
+            });
             break;
         default:
             app.html(components.loading)
@@ -48,7 +126,7 @@ view.showComponents = function(name){
 
 view.populateEditForm = function (e){
     let baseCard = $(e.target).closest('.baseCard');
-    let baseChar = baseCard.find('.card-header').text().trim();
+    let baseChar = baseCard.attr('data-base-name') || baseCard.find('.card-header').text().trim();
     if (!baseChar || baseChar === '+') return;
     let baseCardEditorModal = $('#editBaseModal').find('.modal-body');
     let editFormHtml = components.baseEditForm;
@@ -66,15 +144,68 @@ view.populateEditForm = function (e){
         view.addNewTypeEditor(numOfTypes);
         view.populateTypeEditor(type, numOfTypes);
     }
+    const glyphInfo = view.getFirstStandaloneLevelGlyph(charData, baseChar);
+    view.initStartPointEditor(baseChar, charData.startPoint, glyphInfo, charData.dotConfigs);
 }
 
 view.setUpEditModal = function (){
     let addNewTypeButton = $('#addNewTypeButton');
-    addNewTypeButton.on('click', function(e){
-        let numOfTypesDisplay = $('#numberOfTypes')
-        numOfTypesDisplay.val(Number(numOfTypesDisplay.val())+1)
-        view.addNewTypeEditor(numOfTypesDisplay.val())
-    })
+    addNewTypeButton.off('click').on('click', function(e){
+        let numOfTypesDisplay = $('#numberOfTypes');
+        let currentCount = $('#editBaseForm .base-type-editor').length;
+        let nextIndex = currentCount + 1;
+        numOfTypesDisplay.val(nextIndex);
+        view.addNewTypeEditor(nextIndex);
+    });
+
+    $(document).off('click', '.btn-delete-type').on('click', '.btn-delete-type', function(e) {
+        e.preventDefault();
+        const $typeRow = $(this).closest('.base-type-editor');
+        $typeRow.remove();
+        view.reindexTypes();
+    });
+
+    $('#saveButton').off('click').on('click', function(e) {
+        e.preventDefault();
+        $('#editBaseForm').trigger('submit');
+    });
+}
+
+view.reindexTypes = function() {
+    const listTones = ['level', 'acute', 'lower', 'rising', 'raised', 'heavy'];
+    const $typeRows = $('#editBaseForm .base-type-editor');
+    $typeRows.each(function(idx) {
+        const num = idx + 1;
+        const $row = $(this);
+        $row.attr('id', `type${num}`);
+        $row.find('.type-num').text(`Type ${num}`);
+        $row.find('.btn-delete-type').attr('data-type-num', num);
+        
+        // Capitalization
+        $row.find('label[for^="isCap"]').attr('for', `isCap${num}`);
+        $row.find('input[type="checkbox"][name^="isCap"]').attr('id', `isCap${num}`).attr('name', `isCap${num}`);
+
+        // Tones
+        listTones.forEach(tone => {
+            $row.find(`input[name^="${tone}"]`).not('[name^="glyphinput"]').attr('id', `${tone}${num}`).attr('name', `${tone}${num}`);
+            $row.find(`input[name^="glyphinput${tone}"]`)
+                .attr('id', `glyphinput${tone}${num}`)
+                .attr('name', `glyphinput${tone}${num}`)
+                .attr('for', `${tone}${num}`);
+        });
+
+        // Previous
+        $row.find('textarea[name^="prev"]').attr('id', `prev${num}`).attr('name', `prev${num}`);
+        $row.find('label[for^="noNeedPrev"]').attr('for', `noNeedPrev${num}`);
+        $row.find('input[type="checkbox"][name^="noNeedPrev"]').attr('id', `noNeedPrev${num}`).attr('name', `noNeedPrev${num}`);
+
+        // Next
+        $row.find('textarea[name^="next"]').attr('id', `next${num}`).attr('name', `next${num}`);
+        $row.find('label[for^="noNeedNext"]').attr('for', `noNeedNext${num}`);
+        $row.find('input[type="checkbox"][name^="noNeedNext"]').attr('id', `noNeedNext${num}`).attr('name', `noNeedNext${num}`);
+    });
+
+    $('#numberOfTypes').val($typeRows.length);
 }
 
 view.addNewTypeEditor = function(numOfTypes){
@@ -86,19 +217,20 @@ view.addNewTypeEditor = function(numOfTypes){
 }
 
 view.addPasteHandler = function (glyphInputLevel, numOfTypes){
+    if (!glyphInputLevel) return;
     glyphInputLevel.addEventListener('paste', (e) => {
         e.preventDefault();
         let paste = (e.clipboardData || window.clipboardData).getData('text');
-        let listAccent = paste.trim().split(' ').map(element => element.trim()).filter(element => element.length != 0);;
+        let listAccent = paste.trim().split(' ').map(element => element.trim()).filter(element => element.length != 0);
         
         let listTones = ['level', 'acute', 'lower', 'rising', 'raised', 'heavy'];
+        let container = $(e.currentTarget).closest('.base-type-editor');
 
         for (let j = 0; j < listAccent.length; j++) {
             const glyph = listAccent[j];
             const tone = listTones[j];
-            $('#glyphinput'+tone+numOfTypes).val(glyph);
-            $('#'+tone+numOfTypes).val(glyph.split('').map(char => char.charCodeAt(0)).join(','));
-        
+            container.find(`input[name^="glyphinput${tone}"]`).val(glyph);
+            container.find(`input[name^="${tone}"]`).not('[name^="glyphinput"]').val(glyph.split('').map(char => char.charCodeAt(0)).join(','));
         }
     });
 }
@@ -126,4 +258,744 @@ view.populateTypeEditor = function (typeData, numOfTypes){
         $("#noNeedNext"+numOfTypes).prop('checked',typeData.next.includes(null));
     }
 }
+
+view.updateBaseCardBadge = function(baseChar) {
+    const $card = $('.baseCard').filter((_, el) => $(el).attr('data-base-name') === baseChar);
+    if (!$card.length) return;
+    $card.find('.dot-badge').remove();
+    const data = model.glyphData && model.glyphData[baseChar];
+    const badgeHtml = view.renderDotBadge(data);
+    if (badgeHtml) {
+        $card.prepend(badgeHtml);
+    }
+};
+
+view.escapeXml = function(str) {
+    if (!str) return '';
+    return str.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+};
+
+view.glyphCodeToString = function(glyphCode) {
+    if (!glyphCode) return '';
+    try {
+        const codes = glyphCode.toString().split(',').map(c => parseInt(c.trim(), 10)).filter(c => !isNaN(c));
+        return String.fromCharCode(...codes);
+    } catch(e) {
+        return '';
+    }
+};
+
+view.getFirstStandaloneLevelGlyph = function(charData, fallbackChar) {
+    const types = (charData && charData.types) || [];
+    // 1. Look for the first type that has "No need previous" (prev includes null or empty) and has an accent.level
+    for (let i = 0; i < types.length; i++) {
+        const t = types[i];
+        const prev = t.prev || [];
+        const isNoNeedPrev = !prev.length || prev.includes(null);
+        if (isNoNeedPrev && t.accent && t.accent.level) {
+            const glyphStr = view.glyphCodeToString(t.accent.level);
+            if (glyphStr) {
+                return {
+                    glyph: glyphStr,
+                    levelCode: t.accent.level,
+                    typeIndex: i + 1,
+                    desc: `Type ${i + 1} (Level: ${t.accent.level}, Không cần chữ trước)`
+                };
+            }
+        }
+    }
+
+    // 2. Fallback: first type with accent.level
+    for (let i = 0; i < types.length; i++) {
+        const t = types[i];
+        if (t.accent && t.accent.level) {
+            const glyphStr = view.glyphCodeToString(t.accent.level);
+            if (glyphStr) {
+                return {
+                    glyph: glyphStr,
+                    levelCode: t.accent.level,
+                    typeIndex: i + 1,
+                    desc: `Type ${i + 1} (Level: ${t.accent.level})`
+                };
+            }
+        }
+    }
+
+    // 3. Fallback: baseGlyph
+    if (charData && charData.baseGlyph) {
+        const glyphStr = view.glyphCodeToString(charData.baseGlyph);
+        if (glyphStr) {
+            return {
+                glyph: glyphStr,
+                levelCode: charData.baseGlyph,
+                typeIndex: null,
+                desc: `BaseGlyph: ${charData.baseGlyph}`
+            };
+        }
+    }
+
+    // 4. Fallback: baseChar
+    return {
+        glyph: fallbackChar,
+        levelCode: null,
+        typeIndex: null,
+        desc: fallbackChar
+    };
+};
+
+view.initStartPointEditor = function(baseChar, startPoint, glyphInfo, dotConfigs) {
+    const $container = $('#startPointPreviewContainer');
+    if (!$container.length) return;
+
+    if (!glyphInfo) {
+        let charData = model.glyphData[baseChar] || { types: [] };
+        glyphInfo = view.getFirstStandaloneLevelGlyph(charData, baseChar);
+    }
+    let displayGlyph = glyphInfo.glyph || baseChar;
+
+    $('#startPointGlyphBadge').html(`
+        <div class="d-inline-flex align-items-center gap-1">
+            <span class="badge bg-primary text-white" style="font-family: HP001, serif; font-size: 1.15rem; line-height: 1.1;">${view.escapeXml(displayGlyph)}</span>
+            <span class="badge bg-light text-secondary border">${view.escapeXml(glyphInfo.desc)}</span>
+        </div>
+    `);
+
+    const CELL_PX = 56;
+    const COLS = 8;
+    const ROWS = 9;
+    const WIDTH = COLS * CELL_PX; // 448px
+    const HEIGHT = ROWS * CELL_PX; // 504px
+    const ORIGIN_X = CELL_PX; // 1 ô ly margin on left (X = 0 = 56px)
+    const BASELINE_Y = 6 * CELL_PX; // 6 ô ly from top, leaving 3 ô ly for descenders (Y = 0 = 336px)
+    const FONT_SIZE = CELL_PX * (2048 / 412); // ~278.37px
+
+    // 1. Initialize configurations
+    let configs = [];
+    let isInitiallyEnabled = false;
+
+    if (dotConfigs && Array.isArray(dotConfigs) && dotConfigs.length > 0) {
+        configs = JSON.parse(JSON.stringify(dotConfigs));
+        isInitiallyEnabled = true;
+    } else if (startPoint && typeof startPoint.x === 'number' && typeof startPoint.y === 'number') {
+        configs = [{
+            id: 'start',
+            name: '1. Điểm đặt bút (Chuẩn)',
+            desc: '1 chấm chuẩn',
+            dots: [{ x: startPoint.x, y: startPoint.y, label: 'Nét 1' }]
+        }];
+        isInitiallyEnabled = true;
+    } else {
+        configs = [{
+            id: 'start',
+            name: '1. Điểm đặt bút (Chuẩn)',
+            desc: '1 chấm chuẩn',
+            dots: [{ x: 0.50, y: 1.75, label: 'Nét 1' }]
+        }];
+        isInitiallyEnabled = false;
+    }
+
+    let activeConfigIdx = 0;
+    let activeDotIdx = 0;
+    let isEnabled = isInitiallyEnabled;
+
+    // 2. Build SVG Grid
+    let svgHtml = `
+    <svg id="startPointSvg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" style="display: block; width: 100%; height: 100%; cursor: crosshair;">
+        <defs>
+            <pattern id="subgrid" width="14" height="14" patternUnits="userSpaceOnUse">
+                <path d="M 14 0 L 0 0 0 14" fill="none" stroke="#f1f5f9" stroke-width="0.75" />
+            </pattern>
+            <pattern id="grid" width="${CELL_PX}" height="${CELL_PX}" patternUnits="userSpaceOnUse">
+                <rect width="${CELL_PX}" height="${CELL_PX}" fill="url(#subgrid)" />
+                <path d="M ${CELL_PX} 0 L 0 0 0 ${CELL_PX}" fill="none" stroke="#cbd5e1" stroke-width="1" />
+            </pattern>
+        </defs>
+        
+        <!-- Base Grid -->
+        <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#grid)" />
+        <rect width="${WIDTH}" height="${HEIGHT}" fill="none" stroke="#94a3b8" stroke-width="1" />
+
+        <!-- Reference Lines & Labels -->
+        <!-- Baseline (ĐK 1, y = 0) -->
+        <line x1="0" y1="${BASELINE_Y}" x2="${WIDTH}" y2="${BASELINE_Y}" stroke="#2563eb" stroke-width="2.5" />
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 5}" font-size="10.5" font-weight="bold" fill="#2563eb" text-anchor="end">ĐK 1 (0)</text>
+
+        <!-- ĐK 3 (y = +2 ô ly = 224px) -->
+        <line x1="0" y1="${BASELINE_Y - 2 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y - 2 * CELL_PX}" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="4,2" />
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 2 * CELL_PX - 5}" font-size="10.5" fill="#3b82f6" text-anchor="end">ĐK 3 (+2)</text>
+
+        <!-- ĐK 5 (y = +5 ô ly = 56px) -->
+        <line x1="0" y1="${BASELINE_Y - 5 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y - 5 * CELL_PX}" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4,2" />
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 5 * CELL_PX - 5}" font-size="10.5" fill="#60a5fa" text-anchor="end">ĐK 5 (+5)</text>
+
+        <!-- ĐK Dưới (y = -2 ô ly = 448px) -->
+        <line x1="0" y1="${BASELINE_Y + 2 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y + 2 * CELL_PX}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2" />
+        <text x="${WIDTH - 6}" y="${BASELINE_Y + 2 * CELL_PX - 5}" font-size="10.5" fill="#94a3b8" text-anchor="end">ĐK Dưới (-2)</text>
+
+        <!-- Origin X = 0 (Left bearing line, x = 56px) -->
+        <line x1="${ORIGIN_X}" y1="0" x2="${ORIGIN_X}" y2="${HEIGHT}" stroke="#2563eb" stroke-width="1.5" />
+        <text x="${ORIGIN_X + 6}" y="${HEIGHT - 8}" font-size="10.5" font-weight="bold" fill="#2563eb">X=0</text>
+
+        <!-- Render Glyph -->
+        <text id="previewGlyphText" x="${ORIGIN_X}" y="${BASELINE_Y}" font-family="HP001, serif" font-size="${FONT_SIZE}" fill="#1e293b" font-weight="bold" pointer-events="none" style="user-select: none;">${view.escapeXml(displayGlyph)}</text>
+
+        <!-- SVG Dots Layer -->
+        <g id="svgDotsLayer"></g>
+    </svg>
+    `;
+
+    $container.html(svgHtml);
+
+    const $svg = $('#startPointSvg');
+    const $dotsLayer = $('#svgDotsLayer');
+    const $hasStartPoint = $('#hasStartPoint');
+    const $inputX = $('#dotInputX');
+    const $inputY = $('#dotInputY');
+    const $inputLabel = $('#dotInputLabel');
+    const $inputConfigName = $('#dotConfigName');
+    const $inputConfigDesc = $('#dotConfigDesc');
+    const $btnSnap = $('#btnSnapOly');
+    const $btnAddDot = $('#btnAddDot');
+    const $btnDeleteDot = $('#btnDeleteDot');
+    const $btnAddNewConfig = $('#btnAddNewConfig');
+    const $btnDeleteCurrentConfig = $('#btnDeleteCurrentConfig');
+    const $tabsContainer = $('#dotConfigTabsContainer');
+    const $dotsListContainer = $('#configDotsListContainer');
+    const $dotConfigsJson = $('#dotConfigsJson');
+    const $hiddenX = $('#startPointX');
+    const $hiddenY = $('#startPointY');
+
+    function getCurrentConfig() {
+        if (!configs[activeConfigIdx]) {
+            activeConfigIdx = 0;
+        }
+        return configs[activeConfigIdx];
+    }
+
+    function getCurrentDot() {
+        const cfg = getCurrentConfig();
+        if (!cfg.dots || cfg.dots.length === 0) {
+            cfg.dots = [{ x: 0.50, y: 1.75, label: 'Nét 1' }];
+        }
+        if (!cfg.dots[activeDotIdx]) {
+            activeDotIdx = 0;
+        }
+        return cfg.dots[activeDotIdx];
+    }
+
+    function syncHiddenInputs() {
+        $hasStartPoint.prop('checked', isEnabled);
+        if (isEnabled && configs.length > 0) {
+            $dotConfigsJson.val(JSON.stringify(configs));
+            const firstDot = configs[0]?.dots?.[0];
+            if (firstDot && typeof firstDot.x === 'number' && typeof firstDot.y === 'number') {
+                $hiddenX.val(firstDot.x.toFixed(2));
+                $hiddenY.val(firstDot.y.toFixed(2));
+            } else {
+                $hiddenX.val('');
+                $hiddenY.val('');
+            }
+        } else {
+            $dotConfigsJson.val('');
+            $hiddenX.val('');
+            $hiddenY.val('');
+        }
+    }
+
+    function renderConfigTabs() {
+        let html = '';
+        configs.forEach((cfg, idx) => {
+            const isActive = (idx === activeConfigIdx);
+            const btnClass = isActive ? 'btn-primary text-white shadow-sm' : 'btn-outline-secondary bg-white';
+            const dotCount = (cfg.dots && cfg.dots.length) || 0;
+            html += `
+                <button type="button" class="btn btn-sm ${btnClass} config-tab-pill py-1 px-2 d-inline-flex align-items-center gap-1" data-config-idx="${idx}" style="font-size: 0.8rem;">
+                    <span>${view.escapeXml(cfg.name || ('Cấu hình ' + (idx + 1)))}</span>
+                    <span class="badge ${isActive ? 'bg-white text-primary' : 'bg-secondary text-white'} rounded-pill" style="font-size: 0.68rem;">${dotCount} chấm</span>
+                </button>
+            `;
+        });
+        $tabsContainer.html(html);
+    }
+
+    function renderConfigMetadata() {
+        const cfg = getCurrentConfig();
+        $inputConfigName.val(cfg.name || '');
+        $inputConfigDesc.val(cfg.desc || '');
+    }
+
+    function renderDotsList() {
+        const cfg = getCurrentConfig();
+        let html = '';
+        cfg.dots.forEach((dot, idx) => {
+            const isActive = (idx === activeDotIdx);
+            const badgeClass = isActive ? 'bg-danger text-white shadow-sm' : 'bg-light text-dark border';
+            const labelStr = dot.label ? `: ${view.escapeXml(dot.label)}` : '';
+            html += `
+                <button type="button" class="btn btn-xs ${badgeClass} dot-item-pill py-0 px-2" data-dot-idx="${idx}" style="font-size: 0.75rem; cursor: pointer;">
+                    <strong>Chấm ${idx + 1}</strong>${labelStr} <span class="small text-muted ${isActive ? 'text-white-50' : ''}">(${dot.x.toFixed(2)}, ${dot.y.toFixed(2)})</span>
+                </button>
+            `;
+        });
+        $dotsListContainer.html(html);
+    }
+
+    function renderActiveDotInputs() {
+        const dot = getCurrentDot();
+        $('#selectedDotHeading').html(`
+            <i class="fa-solid fa-circle-dot text-danger"></i> Chấm đang chọn: <strong>Chấm ${activeDotIdx + 1}</strong>
+        `);
+        $inputX.val(dot.x.toFixed(2));
+        $inputY.val(dot.y.toFixed(2));
+        $inputLabel.val(dot.label || '');
+    }
+
+    function renderSvgDots() {
+        $dotsLayer.empty();
+        if (!isEnabled) return;
+
+        const cfg = getCurrentConfig();
+        if (!cfg.dots || cfg.dots.length === 0) {
+            cfg.dots = [{ x: 0.50, y: 1.75, label: 'Nét 1' }];
+        }
+        if (activeDotIdx >= cfg.dots.length) {
+            activeDotIdx = 0;
+        }
+
+        cfg.dots.forEach((dot, idx) => {
+            const px = ORIGIN_X + dot.x * CELL_PX;
+            const py = BASELINE_Y - dot.y * CELL_PX;
+            const isActive = (idx === activeDotIdx);
+
+            let $g = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'))
+                .attr('class', `svg-dot-node ${isActive ? 'is-active' : ''}`)
+                .attr('data-dot-idx', idx)
+                .attr('transform', `translate(${px}, ${py})`)
+                .css('cursor', isActive ? 'grab' : 'pointer');
+
+            if (isActive) {
+                // Active Halo (pointer-events: none)
+                let $halo = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 18)
+                    .attr('fill', 'rgba(239, 68, 68, 0.25)')
+                    .attr('pointer-events', 'none');
+                // Active Center
+                let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 8)
+                    .attr('fill', '#ef4444')
+                    .attr('stroke', '#ffffff').attr('stroke-width', 2);
+                // Active Tooltip Badge (pointer-events: none)
+                let tooltipText = `${dot.label || ('Chấm ' + (idx + 1))}: (${dot.x.toFixed(2)}, ${dot.y.toFixed(2)})`;
+                let badgeWidth = Math.max(70, tooltipText.length * 7);
+                let $badgeBg = $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
+                    .attr('x', -badgeWidth / 2).attr('y', -28)
+                    .attr('width', badgeWidth).attr('height', 18)
+                    .attr('rx', 4).attr('fill', 'rgba(15, 23, 42, 0.88)')
+                    .attr('pointer-events', 'none');
+                let $badgeText = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
+                    .attr('x', 0).attr('y', -15)
+                    .attr('font-size', '10.5').attr('font-weight', 'bold')
+                    .attr('fill', '#ffffff').attr('text-anchor', 'middle')
+                    .attr('pointer-events', 'none')
+                    .text(tooltipText);
+
+                $g.append($halo).append($center).append($badgeBg).append($badgeText);
+            } else {
+                // Secondary Dot
+                let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 7)
+                    .attr('fill', '#3b82f6')
+                    .attr('stroke', '#ffffff').attr('stroke-width', 1.5);
+                let $numBadge = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
+                    .attr('x', 9).attr('y', -7)
+                    .attr('font-size', '10').attr('font-weight', 'bold')
+                    .attr('fill', '#1e40af')
+                    .attr('pointer-events', 'none')
+                    .text(`${idx + 1}`);
+
+                $g.append($center).append($numBadge);
+            }
+
+            $dotsLayer.append($g);
+        });
+    }
+
+    // High performance in-place visual updater during dragging (avoids DOM destruction and stringification)
+    function updateActiveDotVisualsOnly(x, y) {
+        if (!isEnabled) {
+            isEnabled = true;
+            $hasStartPoint.prop('checked', true);
+            renderSvgDots();
+        }
+        let $activeG = $dotsLayer.find('.svg-dot-node.is-active');
+        if (!$activeG.length) {
+            renderSvgDots();
+            $activeG = $dotsLayer.find('.svg-dot-node.is-active');
+        }
+        const px = ORIGIN_X + x * CELL_PX;
+        const py = BASELINE_Y - y * CELL_PX;
+        if ($activeG.length) {
+            $activeG[0].setAttribute('transform', `translate(${px}, ${py})`);
+            const dot = getCurrentDot();
+            const tooltipText = `${dot.label || ('Chấm ' + (activeDotIdx + 1))}: (${x.toFixed(2)}, ${y.toFixed(2)})`;
+            const badgeWidth = Math.max(70, tooltipText.length * 7);
+            const rect = $activeG.find('rect')[0];
+            const text = $activeG.find('text')[0];
+            if (rect) {
+                rect.setAttribute('x', -badgeWidth / 2);
+                rect.setAttribute('width', badgeWidth);
+            }
+            if (text) {
+                text.textContent = tooltipText;
+            }
+        }
+        $inputX.val(x.toFixed(2));
+        $inputY.val(y.toFixed(2));
+    }
+
+    function renderAll() {
+        renderConfigTabs();
+        renderConfigMetadata();
+        renderDotsList();
+        renderActiveDotInputs();
+        renderSvgDots();
+        syncHiddenInputs();
+    }
+
+    // Initial render
+    renderAll();
+
+    // 3. User Interactions
+    // Config Tab Selection
+    $tabsContainer.off('click', '.config-tab-pill').on('click', '.config-tab-pill', function(e) {
+        e.preventDefault();
+        const idx = parseInt($(this).attr('data-config-idx'), 10);
+        if (!isNaN(idx) && idx !== activeConfigIdx) {
+            activeConfigIdx = idx;
+            activeDotIdx = 0;
+            renderAll();
+        }
+    });
+
+    // Dot Pill Selection
+    $dotsListContainer.off('click', '.dot-item-pill').on('click', '.dot-item-pill', function(e) {
+        e.preventDefault();
+        const idx = parseInt($(this).attr('data-dot-idx'), 10);
+        if (!isNaN(idx) && idx !== activeDotIdx) {
+            activeDotIdx = idx;
+            renderDotsList();
+            renderActiveDotInputs();
+            renderSvgDots();
+        }
+    });
+
+    // Metadata changes
+    $inputConfigName.off('input change').on('input change', function() {
+        getCurrentConfig().name = $(this).val();
+        renderConfigTabs();
+        syncHiddenInputs();
+    });
+
+    $inputConfigDesc.off('input change').on('input change', function() {
+        getCurrentConfig().desc = $(this).val();
+        syncHiddenInputs();
+    });
+
+    // Active Dot Coordinate Inputs
+    function onDotInputChange() {
+        const xVal = parseFloat($inputX.val());
+        const yVal = parseFloat($inputY.val());
+        const labelVal = $inputLabel.val().trim();
+        const dot = getCurrentDot();
+        if (!isNaN(xVal)) dot.x = Math.round(Math.max(-0.5, Math.min(6.5, xVal)) * 100) / 100;
+        if (!isNaN(yVal)) dot.y = Math.round(Math.max(-3.0, Math.min(6.0, yVal)) * 100) / 100;
+        dot.label = labelVal;
+        renderDotsList();
+        renderSvgDots();
+        syncHiddenInputs();
+    }
+    $inputX.off('input change').on('input change', onDotInputChange);
+    $inputY.off('input change').on('input change', onDotInputChange);
+    $inputLabel.off('input change').on('input change', onDotInputChange);
+
+    // Toggle switch
+    $hasStartPoint.off('change').on('change', function() {
+        isEnabled = this.checked;
+        renderAll();
+    });
+
+    // Add Dot
+    $btnAddDot.off('click').on('click', function(e) {
+        e.preventDefault();
+        const cfg = getCurrentConfig();
+        const curDot = getCurrentDot();
+        const newX = Math.round(Math.min(6.0, curDot.x + 0.5) * 100) / 100;
+        const newY = Math.round(curDot.y * 100) / 100;
+        cfg.dots.push({
+            x: newX,
+            y: newY,
+            label: `Nét ${cfg.dots.length + 1}`
+        });
+        activeDotIdx = cfg.dots.length - 1;
+        isEnabled = true;
+        renderAll();
+    });
+
+    // Delete Dot
+    $btnDeleteDot.off('click').on('click', function(e) {
+        e.preventDefault();
+        const cfg = getCurrentConfig();
+        if (cfg.dots.length <= 1) {
+            toastr.info('Mỗi cấu hình cần ít nhất 1 điểm chấm.');
+            return;
+        }
+        cfg.dots.splice(activeDotIdx, 1);
+        activeDotIdx = Math.max(0, activeDotIdx - 1);
+        renderAll();
+    });
+
+    // Add New Config
+    $btnAddNewConfig.off('click').on('click', function(e) {
+        e.preventDefault();
+        const curDot = getCurrentDot();
+        const newConfigNum = configs.length + 1;
+        configs.push({
+            id: 'cfg_' + Date.now(),
+            name: `${newConfigNum}. Cấu hình mới`,
+            desc: 'Giai đoạn tập viết',
+            dots: [{ x: curDot.x, y: curDot.y, label: 'Nét 1' }]
+        });
+        activeConfigIdx = configs.length - 1;
+        activeDotIdx = 0;
+        isEnabled = true;
+        renderAll();
+    });
+
+    // Delete Current Config
+    $btnDeleteCurrentConfig.off('click').on('click', function(e) {
+        e.preventDefault();
+        if (configs.length <= 1) {
+            toastr.warning('Chữ cần giữ lại ít nhất 1 cấu hình. Bạn có thể tắt "Bật cấu hình chấm" nếu không muốn hiển thị.');
+            return;
+        }
+        configs.splice(activeConfigIdx, 1);
+        activeConfigIdx = Math.max(0, activeConfigIdx - 1);
+        activeDotIdx = 0;
+        renderAll();
+    });
+
+    // Snap to 0.25 ô ly
+    $btnSnap.off('click').on('click', function(e) {
+        e.preventDefault();
+        const dot = getCurrentDot();
+        dot.x = Math.round(dot.x * 4) / 4;
+        dot.y = Math.round(dot.y * 4) / 4;
+        renderActiveDotInputs();
+        renderDotsList();
+        renderSvgDots();
+        syncHiddenInputs();
+    });
+
+    // SVG Dragging & Clicking with Unified Pointer Events & Pointer Capture
+    let isDragging = false;
+
+    function getOlyFromEvent(e) {
+        const rect = $svg[0].getBoundingClientRect();
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        if (clientX === undefined && e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (clientX === undefined && e.originalEvent) {
+            if (e.originalEvent.touches && e.originalEvent.touches.length > 0) {
+                clientX = e.originalEvent.touches[0].clientX;
+                clientY = e.originalEvent.touches[0].clientY;
+            } else {
+                clientX = e.originalEvent.clientX;
+                clientY = e.originalEvent.clientY;
+            }
+        }
+        const scaleX = WIDTH / rect.width;
+        const scaleY = HEIGHT / rect.height;
+        const px = ((clientX || 0) - rect.left) * scaleX;
+        const py = ((clientY || 0) - rect.top) * scaleY;
+        const xOly = (px - ORIGIN_X) / CELL_PX;
+        const yOly = (BASELINE_Y - py) / CELL_PX;
+        return {
+            x: Math.round(Math.max(-0.5, Math.min(6.5, xOly)) * 100) / 100,
+            y: Math.round(Math.max(-3.0, Math.min(6.0, yOly)) * 100) / 100
+        };
+    }
+
+    $container.off('pointerdown mousedown touchstart').on('pointerdown mousedown touchstart', function(e) {
+        let wasDisabled = !isEnabled;
+        if (!isEnabled) {
+            isEnabled = true;
+            $hasStartPoint.prop('checked', true);
+            renderSvgDots();
+        }
+
+        // Check if user clicked on another dot node (secondary dot)
+        const $dotNode = $(e.target).closest('.svg-dot-node');
+        if ($dotNode.length && !wasDisabled) {
+            const clickedIdx = parseInt($dotNode.attr('data-dot-idx'), 10);
+            if (!isNaN(clickedIdx) && clickedIdx !== activeDotIdx) {
+                activeDotIdx = clickedIdx;
+                renderDotsList();
+                renderActiveDotInputs();
+                renderSvgDots();
+            }
+        } else {
+            // Clicked on canvas or near active dot -> position active dot immediately
+            const pos = getOlyFromEvent(e);
+            const dot = getCurrentDot();
+            dot.x = pos.x;
+            dot.y = pos.y;
+            updateActiveDotVisualsOnly(pos.x, pos.y);
+        }
+
+        isDragging = true;
+        try {
+            if (e.pointerId !== undefined && this.setPointerCapture) {
+                this.setPointerCapture(e.pointerId);
+            }
+        } catch(err) {}
+        e.preventDefault();
+    });
+
+    $container.off('pointermove mousemove touchmove').on('pointermove mousemove touchmove', function(e) {
+        if (!isDragging || !isEnabled) return;
+        const pos = getOlyFromEvent(e);
+        const dot = getCurrentDot();
+        dot.x = pos.x;
+        dot.y = pos.y;
+        updateActiveDotVisualsOnly(pos.x, pos.y);
+        e.preventDefault();
+    });
+
+    function endDrag(e) {
+        if (isDragging) {
+            isDragging = false;
+            try {
+                if (e && e.pointerId !== undefined && $container[0].releasePointerCapture) {
+                    $container[0].releasePointerCapture(e.pointerId);
+                }
+            } catch(err) {}
+            renderDotsList();
+            renderActiveDotInputs();
+            renderSvgDots();
+            syncHiddenInputs();
+        }
+    }
+
+    $container.off('pointerup pointercancel mouseup touchend').on('pointerup pointercancel mouseup touchend', endDrag);
+
+    // Global safety listener in case pointer capture is unsupported
+    $(window).off('.startPoint');
+    $(window).on('pointerup.startPoint pointercancel.startPoint mouseup.startPoint touchend.startPoint', function(e) {
+        if (isDragging) {
+            endDrag(e);
+        }
+    });
+
+    $('#editBaseModal').off('hidden.bs.modal.startPoint').one('hidden.bs.modal.startPoint', function() {
+        isDragging = false;
+        $(window).off('.startPoint');
+    });
+};
+
+view.getTimestampedFilename = function() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const mm = pad(now.getMonth() + 1);
+    const dd = pad(now.getDate());
+    const hh = pad(now.getHours());
+    const min = pad(now.getMinutes());
+    const ss = pad(now.getSeconds());
+    return `all-${yyyy}${mm}${dd}-${hh}${min}${ss}.json`;
+};
+
+view.fallbackCopyText = function(text) {
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        toastr.success('Đã sao chép toàn bộ JSON vào clipboard!');
+    } catch(e) {
+        toastr.error('Không thể tự động sao chép: ' + e);
+    }
+};
+
+view.importJsonFile = function(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
+        toastr.error('Vui lòng chọn file có định dạng .json');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                throw new Error('Dữ liệu JSON không đúng cấu trúc (phải là đối tượng dictionary glyphs)');
+            }
+            const keys = Object.keys(data);
+            if (keys.length === 0) {
+                toastr.warning('File JSON không chứa ký tự nào.');
+                return;
+            }
+            model.glyphData = data;
+            view.showComponents('baseList');
+            toastr.success(`Đã nạp thành công ${keys.length} ký tự từ "${file.name}"!`);
+        } catch(err) {
+            console.error('Lỗi nạp file JSON:', err);
+            toastr.error('Không thể đọc file JSON: ' + (err.message || 'Cấu trúc không hợp lệ'));
+        }
+    };
+    reader.onerror = function() {
+        toastr.error('Không thể đọc file từ thiết bị.');
+    };
+    reader.readAsText(file, 'utf-8');
+};
+
+view.setupDragAndDrop = function() {
+    $(window).off('dragover.editorDrop dragleave.editorDrop drop.editorDrop');
+    
+    $(window).on('dragover.editorDrop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('#app').addClass('drop-zone-active');
+    });
+
+    $(window).on('dragleave.editorDrop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.originalEvent.pageX === 0 && e.originalEvent.pageY === 0) {
+            $('#app').removeClass('drop-zone-active');
+        }
+    });
+
+    $(window).on('drop.editorDrop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('#app').removeClass('drop-zone-active');
+        const dt = e.originalEvent.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+            view.importJsonFile(dt.files[0]);
+        }
+    });
+};
+
+
 

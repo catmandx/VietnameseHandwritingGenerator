@@ -1,7 +1,7 @@
 const model = {
     glyphGroups: null,
     glyphData: null
-}
+};
 
 model.loadJsonData = function(){
     $.getJSON("/data/all.json", function(data){
@@ -91,7 +91,37 @@ model.saveBaseData = function(formData){
         this.glyphData[baseCharacter] = {};
     }
     this.glyphData[baseCharacter].types = newBaseTypesData;
+
+    // Handle Dot Configurations & Start Point
+    let hasStartPoint = !!data['hasStartPoint'];
+    let dotConfigsJson = data['dotConfigsJson'];
+    let parsedConfigs = null;
+    if (dotConfigsJson) {
+        try {
+            parsedConfigs = JSON.parse(dotConfigsJson);
+        } catch (e) {
+            console.error('Failed to parse dotConfigsJson', e);
+        }
+    }
+
+    if (hasStartPoint && Array.isArray(parsedConfigs) && parsedConfigs.length > 0) {
+        this.glyphData[baseCharacter].dotConfigs = parsedConfigs;
+        const firstDot = parsedConfigs[0]?.dots?.[0];
+        if (firstDot && typeof firstDot.x === 'number' && typeof firstDot.y === 'number') {
+            this.glyphData[baseCharacter].startPoint = {
+                x: Math.round(firstDot.x * 100) / 100,
+                y: Math.round(firstDot.y * 100) / 100
+            };
+        }
+    } else {
+        delete this.glyphData[baseCharacter].dotConfigs;
+        delete this.glyphData[baseCharacter].startPoint;
+    }
+
     toastr.success('Save success!')
+    if (typeof view.updateBaseCardBadge === 'function') {
+        view.updateBaseCardBadge(baseCharacter);
+    }
 }
 
 function validatePrevAndNext(text){

@@ -1,4 +1,120 @@
 const view = {};
+window.view = view;
+
+view.escapeHtml = function (str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+};
+
+view.lineDotConfigs = {};
+view.prevLineFirstChars = [];
+view.userCustomGlobalSpaces = null;
+view.userCustomGlobalLinesCount = null;
+view.userCustomGlobalFullDot = null;
+view.userCustomGlobalOutline = null;
+
+view.wordDotConfigs = {};
+
+view.getActiveDotConfig = function (charUnit, lineIndex, wordIndex) {
+    if (!charUnit) {
+        charUnit = 'a';
+    }
+    const wIdx = (wordIndex !== undefined && wordIndex !== null) ? wordIndex : 0;
+    const isFirstWord = (wIdx === 0);
+    const wordKey = `${lineIndex}_${wIdx}`;
+    const wordCfg = view.wordDotConfigs && view.wordDotConfigs[wordKey];
+    const lineCfg = view.lineDotConfigs && view.lineDotConfigs[lineIndex];
+
+    // Explicitly disabled/turned off ('none')
+    if (wordCfg && (wordCfg.dotConfigId === 'none' || wordCfg.enabled === false)) {
+        return null;
+    }
+    if (isFirstWord && lineCfg && (lineCfg.dotConfigId === 'none' || lineCfg.enabled === false)) {
+        return null;
+    }
+
+    // 1. Dynamic dotting check (runtime custom dot coordinates hook)
+    if (wordCfg && Array.isArray(wordCfg.customDots) && wordCfg.customDots.length > 0) {
+        return model.getGlyphDotConfig(charUnit, null, wordCfg.customDots);
+    }
+    if (isFirstWord && lineCfg && Array.isArray(lineCfg.customDots) && lineCfg.customDots.length > 0) {
+        return model.getGlyphDotConfig(charUnit, null, lineCfg.customDots);
+    }
+
+    // 2. Selected dotConfigId check
+    const chosenId = (wordCfg && wordCfg.dotConfigId) || (isFirstWord ? (lineCfg && lineCfg.dotConfigId) : null);
+    if (chosenId) {
+        if (chosenId === 'none') return null;
+        return model.getGlyphDotConfig(charUnit, chosenId);
+    }
+
+    // 3. Default behavior:
+    // Only automatically dot the first word/character of the line!
+    // Subsequent words (wIdx > 0) are NOT dotted automatically by default.
+    if (!isFirstWord) {
+        return null;
+    }
+
+    return model.getGlyphDotConfig(charUnit);
+};
+
+view.resetLineDotConfigs = function () {
+    view.lineDotConfigs = {};
+    view.wordDotConfigs = {};
+    view.userCustomGlobalSpaces = null;
+    view.userCustomGlobalLinesCount = null;
+    view.userCustomGlobalFullDot = null;
+    view.userCustomGlobalOutline = null;
+    if (window.model && typeof model.getFirstCharUnit === 'function') {
+        view.prevLineFirstChars = ($('#input').val() || '').split('\n').map(l => model.getFirstCharUnit(l));
+    }
+    if ($('#dotting-line-select').length) {
+        $('#dotting-line-select').val('all');
+        $('#btn-reset-line-dotting').hide();
+    }
+};
+
+view.syncLineDotConfigs = function (newLines) {
+    if (!newLines) {
+        newLines = ($('#input').val() || '').split('\n');
+    }
+    if (!window.model || typeof model.getFirstCharUnit !== 'function') {
+        return;
+    }
+    view.userCustomGlobalSpaces = null;
+    const newFirstChars = newLines.map(l => model.getFirstCharUnit(l));
+    if (!view.prevLineFirstChars) {
+        view.prevLineFirstChars = [];
+    }
+    const maxLines = Math.max(newLines.length, view.prevLineFirstChars.length);
+    for (let i = 0; i < maxLines; i++) {
+        // If the line was deleted or its first character changed, wipe this line's custom config
+        if (i >= newLines.length || newFirstChars[i] !== view.prevLineFirstChars[i]) {
+            if (view.lineDotConfigs && view.lineDotConfigs[i]) {
+                delete view.lineDotConfigs[i];
+            }
+            if (view.wordDotConfigs) {
+                Object.keys(view.wordDotConfigs).forEach(k => {
+                    if (k.startsWith(`${i}_`)) delete view.wordDotConfigs[k];
+                });
+            }
+        }
+    }
+    view.prevLineFirstChars = newFirstChars;
+    if ($('#dotting-line-select').length) {
+        const currentSelected = $('#dotting-line-select').val();
+        if (currentSelected !== 'all') {
+            const lineIdx = parseInt(currentSelected, 10);
+            if (lineIdx >= newLines.length || !view.lineDotConfigs[lineIdx] || !view.lineDotConfigs[lineIdx].isCustom) {
+                $('#btn-reset-line-dotting').hide();
+            }
+        }
+    }
+};
 
 view.sampleTexts = {
     "sample1": "Nét chữ nết người",
@@ -13,6 +129,7 @@ view.init = function () {
 
     // Preload blackboard background image
     view.blackboardImg = new Image();
+    view.blackboardImg.crossOrigin = 'anonymous';
     view.blackboardImg.src = '/static/img/blackboard.png';
 
     // Default text if empty
@@ -20,70 +137,818 @@ view.init = function () {
         $input.val("Nét chữ nết người");
     }
 
+    if (window.model && typeof model.getFirstCharUnit === 'function') {
+        view.prevLineFirstChars = ($input.val() || '').split('\n').map(l => model.getFirstCharUnit(l));
+    }
+
     // Input listener (handles typing, paste, cut, composition IME)
+    // Only wipe custom dotting config when the first character of the line changes
     $input.on('input propertychange', function () {
+        view.syncLineDotConfigs();
         view.render();
+        view.triggerAutoSave();
+    });
+
+    // When clicking or moving cursor in textarea, follow active line in toolbar if a specific line is selected
+    $input.on('click keyup', function () {
+        if (!view.isDottingActive() || !$('#dotting-line-select').length) return;
+        const cursorPos = this.selectionStart;
+        if (cursorPos === undefined || cursorPos === null) return;
+        const textBefore = this.value.substring(0, cursorPos);
+        const lineIdx = textBefore.split('\n').length - 1;
+        const currentVal = $('#dotting-line-select').val();
+        if (currentVal !== 'all' && currentVal != lineIdx && $(`#dotting-line-select option[value="${lineIdx}"]`).length) {
+            $('#dotting-line-select').val(lineIdx).trigger('change');
+        }
     });
 
     // Font size selector
     $('#font-size-select').on('change', function () {
         view.changeFontSize(this.value);
+        view.triggerAutoSave(true);
     });
 
     // Font color picker
     $('#font-color-input').on('input change', function () {
         view.changeColorText(this.value);
+        view.triggerAutoSave(true);
     });
 
     // Board color selector
     $('#board-color-select').on('change', function () {
         view.changeBoardColor(this.value);
+        view.triggerAutoSave(true);
     });
 
     // Bold weight checkbox
     $('#weight-checkbox').on('change', function () {
         view.changeWeight(this.checked);
+        view.triggerAutoSave(true);
     });
 
     // Italic / Slant checkbox
     $('#style-checkbox').on('change', function () {
         view.changeStyle(this.checked);
+        view.triggerAutoSave(true);
     });
 
     // Setup word drag interactions (drag handle at top left of word)
     view.setupDragInteractions();
 
+    // Dotting controls listeners
+    $('#dotting-checkbox').on('change', function () {
+        if (this.checked) {
+            $('#dotting-options').show();
+            view.updateDottingLineSelect();
+            view.updateDottingControlsState();
+        } else {
+            $('#dotting-options').hide();
+        }
+        view.render();
+        view.triggerAutoSave(true);
+    });
+
+    $('#dotting-line-select').on('change', function () {
+        const val = this.value;
+        if (val === 'all') {
+            const globalCfg = view.getDottingConfig();
+            $('#dotting-spaces-input').val(globalCfg.spaces);
+            $('#dotting-reps-input').val(globalCfg.repetitions);
+            $('#dotting-lines-input').val(globalCfg.linesCount);
+            $('#dotting-fulldot-checkbox').prop('checked', globalCfg.fullDot);
+            $('#dotting-outline-select').val(globalCfg.outline);
+            $('#btn-reset-line-dotting').hide();
+        } else {
+            const lineIdx = parseInt(val, 10);
+            const cfg = view.getDottingConfig(lineIdx);
+            $('#dotting-spaces-input').val(cfg.spaces);
+            $('#dotting-reps-input').val(cfg.repetitions);
+            $('#dotting-lines-input').val(cfg.linesCount);
+            $('#dotting-fulldot-checkbox').prop('checked', cfg.fullDot);
+            $('#dotting-outline-select').val(cfg.outline);
+            if (view.lineDotConfigs[lineIdx] && view.lineDotConfigs[lineIdx].isCustom) {
+                $('#btn-reset-line-dotting').show();
+            } else {
+                $('#btn-reset-line-dotting').hide();
+            }
+        }
+        view.updateDottingControlsState();
+    });
+
+    $('#btn-reset-line-dotting').on('click', function () {
+        const val = $('#dotting-line-select').val();
+        if (val !== 'all') {
+            const lineIdx = parseInt(val, 10);
+            delete view.lineDotConfigs[lineIdx];
+            view.updateDottingLineSelect();
+            $('#dotting-line-select').val(val).trigger('change');
+            view.render();
+        } else {
+            view.userCustomGlobalSpaces = null;
+            view.userCustomGlobalLinesCount = null;
+            view.userCustomGlobalFullDot = null;
+            view.userCustomGlobalOutline = null;
+            view.lineDotConfigs = {};
+            view.updateDottingLineSelect();
+            view.render();
+        }
+        view.triggerAutoSave(true);
+    });
+
+    $('#dotting-spaces-input').on('input change', function () {
+        let val = parseInt(this.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 30) val = 30;
+        this.value = val;
+
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].spaces = val;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        } else {
+            view.userCustomGlobalSpaces = val;
+            $('#btn-reset-line-dotting').show();
+        }
+        view.updateDottingControlsState();
+        view.render();
+        view.updateDottingLineSelect();
+        view.triggerAutoSave(true);
+    });
+
+    $('#dotting-reps-input').on('input change', function () {
+        let val = parseInt(this.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 50) val = 50;
+        this.value = val;
+
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].repetitions = val;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        }
+        view.render();
+        view.triggerAutoSave(true);
+    });
+
+    $('#dotting-lines-input').on('input change', function () {
+        let val = parseInt(this.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 30) val = 30;
+        this.value = val;
+
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].linesCount = val;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        } else {
+            view.userCustomGlobalLinesCount = val;
+            $('#btn-reset-line-dotting').show();
+        }
+        view.render();
+        view.updateDottingLineSelect();
+        view.triggerAutoSave(true);
+    });
+
+    $('#dotting-fulldot-checkbox').on('change', function () {
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].fullDot = this.checked;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        } else {
+            view.userCustomGlobalFullDot = this.checked;
+            $('#btn-reset-line-dotting').show();
+        }
+        view.render();
+        view.triggerAutoSave(true);
+    });
+
+    $('#dotting-outline-select').on('change', function () {
+        const val = this.value;
+        const selectedLine = $('#dotting-line-select').val();
+        if (selectedLine && selectedLine !== 'all') {
+            const lineIdx = parseInt(selectedLine, 10);
+            if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+            view.lineDotConfigs[lineIdx].outline = val;
+            view.lineDotConfigs[lineIdx].isCustom = true;
+            $('#btn-reset-line-dotting').show();
+        } else {
+            view.userCustomGlobalOutline = val;
+            $('#btn-reset-line-dotting').show();
+        }
+        view.render();
+        view.updateDottingLineSelect();
+        view.triggerAutoSave(true);
+    });
+
+    $('#dotting-color-input').on('input change', function () {
+        view.render();
+        view.triggerAutoSave(true);
+    });
+
+    view.updateDottingControlsState();
+    view.updateDottingLineSelect();
+
     // Trigger initial render
     view.render();
+    view.setupProjectDragAndDrop();
 };
 
-view.escapeHtml = function (str) {
-    if (!str) return '';
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+view.isDottingActive = function () {
+    const rawVal = $('#input').val() || '';
+    const hasAnyText = rawVal.trim().length > 0;
+    if (!hasAnyText) return false;
+    return $('#dotting-checkbox').is(':checked');
+};
+
+view.calculateAutoSpaces = function (lineIndex, $lineEl) {
+    let $line = $lineEl;
+    if ((!$line || !$line.length) && lineIndex !== undefined && lineIndex !== null) {
+        $line = $(`p.line[data-source-line-idx="${lineIndex}"][data-is-practice="false"]`).first();
+        if (!$line.length) {
+            $line = $(`#line-${lineIndex}`);
+        }
+    }
+
+    const layout = $('#board-color-select').val();
+    const isBlackboard = (layout === 'blackboard') || ($line && $line.closest('.board').hasClass('blackboard'));
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || ($line && $line.closest('.result-text').hasClass('small')) || $('#result').hasClass('small');
+
+    const blockWidth = isBlackboard ? 225.2 : 76.8;
+
+    let words = [];
+    if ($line && $line.length) {
+        $line.children('.word').each(function () {
+            const $w = $(this);
+            words.push({
+                offsetLeft: this.offsetLeft,
+                offsetWidth: this.offsetWidth,
+                stretch: parseFloat($w.attr('data-stretch')) || 1.0
+            });
+        });
+    }
+
+    // If this line has no words (e.g. an empty practice line), borrow from first line with words
+    if (words.length === 0) {
+        $('p.line').each(function () {
+            if (words.length > 0) return;
+            const $other = $(this);
+            const $wList = $other.children('.word');
+            if ($wList.length > 0) {
+                $wList.each(function () {
+                    const $w = $(this);
+                    words.push({
+                        offsetLeft: this.offsetLeft,
+                        offsetWidth: this.offsetWidth,
+                        stretch: parseFloat($w.attr('data-stretch')) || 1.0
+                    });
+                });
+            }
+        });
+    }
+
+    // Fallback if DOM not yet rendered (e.g. pre-render or headless)
+    if (words.length === 0) {
+        const rawLines = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const lineText = (lineIndex !== undefined && lineIndex !== null && rawLines[lineIndex]) || rawLines[0];
+        if (lineText && lineText.length > 0) {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                let fontSizePx = 72;
+                if (isBlackboard) {
+                    fontSizePx = isSmall ? 144.66 : 281.5;
+                } else {
+                    fontSizePx = isSmall ? 36 : 72;
+                }
+                const isBold = $('#weight-checkbox').is(':checked');
+                ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
+                const converted = window.model && typeof model.getUnicodeStr === 'function' ? model.getUnicodeStr(lineText) : lineText;
+                const measuredWidth = ctx.measureText(converted).width;
+                const blocks = measuredWidth / blockWidth;
+                return Math.max(1, Math.ceil(blocks - 0.001) + 1);
+            } catch (_) {}
+        }
+        return 2;
+    }
+
+    const firstWord = words[0];
+    const lastWord = words[words.length - 1];
+    const startX = firstWord.offsetLeft;
+    const endX = lastWord.offsetLeft + lastWord.offsetWidth;
+    const totalWidth = Math.max(0, endX - startX);
+    if (totalWidth <= 0) {
+        return 2;
+    }
+
+    const blocks = totalWidth / blockWidth;
+    return Math.max(1, Math.ceil(blocks - 0.001) + 1);
+};
+
+view.parseOutlineOption = function (outlineVal) {
+    if (!outlineVal || outlineVal === 'none') {
+        return { isEnabled: false, style: 'none', scope: 'none', raw: 'none' };
+    }
+    let val = outlineVal;
+    if (val === 'all') val = 'faint_all';
+    if (val === 'first') val = 'faint_first';
+
+    const parts = val.split('_');
+    const style = parts[0]; // 'faint', 'dotted', 'curve'
+    const scope = parts[1] || 'all'; // 'all', 'first'
+    return {
+        isEnabled: true,
+        style: style,
+        scope: scope,
+        raw: val
+    };
+};
+
+view.getDottingConfig = function (lineIndex, $lineEl) {
+    const enabled = view.isDottingActive();
+    const layout = $('#board-color-select').val();
+    const isBlackboard = (layout === 'blackboard');
+    const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
+
+    const isAllSelected = ($('#dotting-line-select').val() === 'all' || !$('#dotting-line-select').val());
+
+    const autoSpacesLine0 = view.calculateAutoSpaces(0, $lineEl);
+    let globalSpaces;
+    if (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) {
+        globalSpaces = view.userCustomGlobalSpaces;
+    } else if (isAllSelected) {
+        globalSpaces = parseInt($('#dotting-spaces-input').val(), 10) || autoSpacesLine0;
+    } else {
+        globalSpaces = autoSpacesLine0;
+    }
+
+    let globalLinesCount = 1;
+    if (view.userCustomGlobalLinesCount !== undefined && view.userCustomGlobalLinesCount !== null) {
+        globalLinesCount = view.userCustomGlobalLinesCount;
+    } else if (view.globalDefaultLinesCount !== undefined && view.globalDefaultLinesCount !== null) {
+        globalLinesCount = view.globalDefaultLinesCount;
+    } else {
+        const val = parseInt($('#dotting-lines-input').val(), 10);
+        globalLinesCount = (!isNaN(val) && val >= 1) ? val : 1;
+        if (isAllSelected) {
+            view.globalDefaultLinesCount = globalLinesCount;
+        }
+    }
+    let globalFullDot = true;
+    if (view.userCustomGlobalFullDot !== undefined && view.userCustomGlobalFullDot !== null) {
+        globalFullDot = view.userCustomGlobalFullDot;
+    } else {
+        globalFullDot = $('#dotting-fulldot-checkbox').is(':checked');
+    }
+
+    let globalOutline = 'none';
+    if (view.userCustomGlobalOutline !== undefined && view.userCustomGlobalOutline !== null) {
+        globalOutline = view.userCustomGlobalOutline;
+    } else {
+        globalOutline = $('#dotting-outline-select').val() || 'none';
+    }
+    const color = $('#dotting-color-input').val() || '#e53935';
+
+    let globalReps;
+    if (isWhite11x14) {
+        globalReps = Math.min(11, Math.max(1, Math.floor(12 / globalSpaces)));
+    } else if (isBlackboard) {
+        globalReps = Math.min(3, Math.max(1, Math.floor(4 / globalSpaces)));
+    } else if (isAllSelected) {
+        globalReps = Math.max(1, parseInt($('#dotting-reps-input').val(), 10) || 5);
+    } else {
+        globalReps = 5;
+    }
+
+    if (lineIndex !== undefined && lineIndex !== null) {
+        const lineCfg = (view.lineDotConfigs && view.lineDotConfigs[lineIndex]) || {};
+        let spaces;
+        if (lineCfg.spaces !== undefined) {
+            spaces = lineCfg.spaces;
+        } else if (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) {
+            spaces = view.userCustomGlobalSpaces;
+        } else {
+            spaces = view.calculateAutoSpaces(lineIndex, $lineEl);
+        }
+
+        let reps;
+        if (isWhite11x14) {
+            reps = Math.min(11, Math.max(1, Math.floor(12 / spaces)));
+        } else if (isBlackboard) {
+            reps = Math.min(3, Math.max(1, Math.floor(4 / spaces)));
+        } else {
+            reps = lineCfg.repetitions !== undefined ? lineCfg.repetitions : globalReps;
+        }
+        const linesCount = lineCfg.linesCount !== undefined ? lineCfg.linesCount : globalLinesCount;
+        const fullDot = lineCfg.fullDot !== undefined ? lineCfg.fullDot : globalFullDot;
+        const outline = lineCfg.outline !== undefined ? lineCfg.outline : globalOutline;
+
+        return {
+            enabled: enabled,
+            spaces: spaces,
+            repetitions: reps,
+            linesCount: linesCount,
+            fullDot: fullDot,
+            outline: outline,
+            color: color,
+            isBlackboard: isBlackboard,
+            isWhite11x14: isWhite11x14,
+            isCustom: !!lineCfg.isCustom
+        };
+    }
+
+    return {
+        enabled: enabled,
+        spaces: globalSpaces,
+        repetitions: globalReps,
+        linesCount: globalLinesCount,
+        fullDot: globalFullDot,
+        outline: globalOutline,
+        color: color,
+        isBlackboard: isBlackboard,
+        isWhite11x14: isWhite11x14,
+        isCustom: (view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) || (view.userCustomGlobalLinesCount !== undefined && view.userCustomGlobalLinesCount !== null)
+    };
+};
+
+view.updateDottingControlsState = function () {
+    const layout = $('#board-color-select').val();
+    const isBlackboard = (layout === 'blackboard');
+    const isWhite11x14 = (layout === 'white_11x14' || layout === 'white_10x14');
+
+    const selectedLine = $('#dotting-line-select').val();
+    let spaces, reps, linesCount;
+
+    if (selectedLine && selectedLine !== 'all') {
+        const lineIdx = parseInt(selectedLine, 10);
+        const cfg = view.getDottingConfig(lineIdx);
+        spaces = cfg.spaces;
+        reps = cfg.repetitions;
+        linesCount = cfg.linesCount;
+        $('#dotting-spaces-input').val(spaces);
+        $('#dotting-lines-input').val(linesCount);
+        $('#dotting-fulldot-checkbox').prop('checked', cfg.fullDot);
+        $('#dotting-outline-select').val(cfg.outline);
+        if (view.lineDotConfigs[lineIdx] && view.lineDotConfigs[lineIdx].isCustom) {
+            $('#btn-reset-line-dotting').show();
+        } else {
+            $('#btn-reset-line-dotting').hide();
+        }
+    } else {
+        const globalCfg = view.getDottingConfig();
+        spaces = globalCfg.spaces;
+        reps = globalCfg.repetitions;
+        linesCount = globalCfg.linesCount;
+        $('#dotting-spaces-input').val(spaces);
+        $('#dotting-lines-input').val(linesCount);
+        $('#dotting-fulldot-checkbox').prop('checked', globalCfg.fullDot);
+        $('#dotting-outline-select').val(globalCfg.outline);
+        if ((view.userCustomGlobalSpaces !== undefined && view.userCustomGlobalSpaces !== null) ||
+            (view.userCustomGlobalLinesCount !== undefined && view.userCustomGlobalLinesCount !== null)) {
+            $('#btn-reset-line-dotting').show();
+        } else {
+            $('#btn-reset-line-dotting').hide();
+        }
+    }
+
+    const $repsInput = $('#dotting-reps-input');
+    const $repsBadge = $('#dotting-reps-badge');
+
+    if (isWhite11x14) {
+        const autoReps = Math.min(11, Math.max(1, Math.floor(12 / spaces)));
+        $repsInput.val(autoReps).prop('disabled', true);
+        $repsBadge.text(`Tự động: ${autoReps}`).attr('title', 'Tính tự động theo chiều rộng 11 ô của trang');
+    } else if (isBlackboard) {
+        const autoReps = Math.min(3, Math.max(1, Math.floor(4 / spaces)));
+        $repsInput.val(autoReps).prop('disabled', true);
+        $repsBadge.text(`Tự động: ${autoReps}`).attr('title', 'Tính tự động theo chiều rộng 3 ô của bảng con');
+    } else {
+        $repsInput.prop('disabled', false);
+        $repsBadge.text('Tự do').attr('title', 'Tự do chọn số chấm lặp trên dòng vô hạn');
+        if (reps !== undefined) {
+            $repsInput.val(reps);
+        }
+    }
+};
+
+view.updateDottingLineSelect = function () {
+    const $select = $('#dotting-line-select');
+    if (!$select.length) return;
+    const currentVal = $select.val() || 'all';
+
+    const rawLines = ($('#input').val() || '').split('\n');
+    const hasAnyText = ($('#input').val() || '').trim().length > 0;
+
+    let html = '<option value="all">Tất cả các dòng</option>';
+    if (hasAnyText) {
+        for (let i = 0; i < rawLines.length; i++) {
+            const lineText = (rawLines[i] || '').trim();
+            if (!lineText) {
+                continue; // Only track lines that have text, ignore empty lines
+            }
+            const customCfg = view.lineDotConfigs[i];
+            const cfg = view.getDottingConfig(i);
+            const customBadge = (customCfg && customCfg.isCustom) ? ` [Cách ${cfg.spaces} ô]` : '';
+            const preview = ` "${lineText.slice(0, 15)}${lineText.length > 15 ? '...' : ''}"`;
+            html += `<option value="${i}">Dòng ${i + 1}${view.escapeHtml(customBadge)}:${view.escapeHtml(preview)}</option>`;
+        }
+    }
+    $select.html(html);
+
+    if ($select.find(`option[value="${currentVal}"]`).length) {
+        $select.val(currentVal);
+    } else {
+        $select.val('all');
+    }
+};
+
+view.renderDotsForLine = function ($line, lineTokens, lineIndex, config) {
+    let srcLineIdx = lineIndex;
+    if (lineTokens && lineTokens.sourceLineIndex !== undefined) {
+        srcLineIdx = lineTokens.sourceLineIndex;
+    } else if ($line && $line.length) {
+        const attrSrc = parseInt($line.attr('data-source-line-idx'), 10);
+        if (!isNaN(attrSrc)) {
+            srcLineIdx = attrSrc;
+        }
+    }
+    if (!config) config = view.getDottingConfig(srcLineIdx, $line);
+    const hasAnyText = ($('#input').val() || '').trim().length > 0;
+    if (!config.enabled || !hasAnyText) {
+        $line.find('.guide-dots-layer').remove();
+        return;
+    }
+
+    $line.find('.btn-line-dot-badge')
+        .attr('title', `Dòng ${srcLineIdx + 1}: Cách ${config.spaces} ô (Nhấp để chỉnh riêng)`)
+        .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${config.spaces} ô`);
+
+    $line.find('.guide-dots-layer').remove();
+
+    // 1. Check if this line has text
+    let wordTokens = (lineTokens || []).filter(t => t.type === 'word');
+    if (wordTokens.length === 0) {
+        const domWords = $line.children('.word');
+        if (domWords.length > 0) {
+            wordTokens = Array.from(domWords).map(w => ({ type: 'word', text: $(w).find('.word-text').text() || $(w).text() }));
+        }
+    }
+    const hasText = wordTokens.length > 0;
+
+    // Collect wordsInfo with their text, raw, offsetLeft, and stretch
+    let wordsInfo = [];
+    if (hasText) {
+        $line.children('.word').each(function () {
+            const $w = $(this);
+            wordsInfo.push({
+                text: $w.find('.word-text').text() || $w.text(),
+                raw: $w.attr('data-raw') || '',
+                offsetLeft: this.offsetLeft,
+                stretch: parseFloat($w.attr('data-stretch')) || 1.0
+            });
+        });
+    } else {
+        // Line is empty practice line, look up source model line with words
+        let $sourceLine = $(`p.line[data-source-line-idx="${srcLineIdx}"][data-is-practice="false"]`).first();
+        if (!$sourceLine.length) {
+            $sourceLine = $line.prevAll('p.line').filter(function () {
+                return $(this).children('.word').length > 0;
+            }).first();
+        }
+
+        if (!$sourceLine.length && config.isBlackboard) {
+            const $board = $line.closest('.board.blackboard');
+            const $prevBoard = $board.prevAll('.board.blackboard').filter(function () {
+                return $(this).find('p.line .word').length > 0;
+            }).first();
+            if ($prevBoard.length) {
+                $sourceLine = $prevBoard.find('p.line');
+            }
+        }
+
+        if ($sourceLine && $sourceLine.length) {
+            $sourceLine.children('.word').each(function () {
+                const $w = $(this);
+                wordsInfo.push({
+                    text: $w.find('.word-text').text() || $w.text(),
+                    raw: $w.attr('data-raw') || '',
+                    offsetLeft: this.offsetLeft,
+                    stretch: parseFloat($w.attr('data-stretch')) || 1.0
+                });
+            });
+        }
+
+        if (wordsInfo.length === 0) {
+            const rawInputLines = ($('#input').val() || '').split('\n');
+            const lineFromInput = (rawInputLines[srcLineIdx] !== undefined ? rawInputLines[srcLineIdx].trim() : '') || rawInputLines.find(l => l.trim().length > 0) || 'a';
+            const wordTokensFromInput = lineFromInput.split(/\s+/).filter(w => w.length > 0);
+            wordsInfo = (wordTokensFromInput.length > 0 ? wordTokensFromInput : ['a']).map(w => ({
+                text: model.getUnicodeStr(w),
+                raw: w,
+                offsetLeft: 0,
+                stretch: 1.0
+            }));
+        }
+    }
+
+    // Identify glyph character unit for this line
+    const rawChar = wordsInfo.length > 0 ? (wordsInfo[0].raw || wordsInfo[0].text) : 'a';
+    const charUnit = model.getFirstCharUnit(rawChar);
+
+    const activeDotConfig = view.getActiveDotConfig(charUnit, srcLineIdx, 0);
+    let hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+    if (!hasDotConfigs && wordsInfo && wordsInfo.length > 1) {
+        for (let wIdx = 1; wIdx < wordsInfo.length; wIdx++) {
+            const wInfo = wordsInfo[wIdx];
+            const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+            const wDotCfg = view.getActiveDotConfig(wChar, srcLineIdx, wIdx);
+            if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                hasDotConfigs = true;
+                break;
+            }
+        }
+    }
+    const outlineInfo = view.parseOutlineOption(config.outline);
+
+    if (!hasDotConfigs && !outlineInfo.isEnabled) {
+        $line.find('.guide-dots-layer').remove();
+        return;
+    }
+
+    // 2. Determine geometry units
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $line.closest('.result-text').hasClass('small') || $('#result').hasClass('small');
+    const isBlackboard = config.isBlackboard;
+
+    let olyUnitPx, blockWidth, dotSizePx;
+    if (isBlackboard) {
+        olyUnitPx = isSmall ? 28.932 : 56.3;
+        blockWidth = 225.2;
+        dotSizePx = isSmall ? 8 : 14;
+    } else {
+        olyUnitPx = isSmall ? 9.6 : 19.2;
+        blockWidth = 76.8;
+        dotSizePx = isSmall ? 5 : 7;
+    }
+
+    // 3. Measure baseline Y inside $line
+    let baselineY = 0;
+    const $probe = $('<span style="display:inline-block;vertical-align:baseline;width:0;height:0;visibility:hidden;pointer-events:none;"></span>');
+    $line.append($probe);
+    baselineY = $probe[0].offsetTop;
+    $probe.remove();
+
+    if (baselineY <= 0) {
+        if (isBlackboard) {
+            baselineY = isSmall ? 108 : 216;
+        } else {
+            baselineY = isSmall ? 58.2 : 115.95;
+        }
+    }
+
+    // 4. Measure base X and stretch
+    const baseWordX = wordsInfo.length > 0 ? wordsInfo[0].offsetLeft : 0;
+    const stretch = wordsInfo.length > 0 ? (wordsInfo[0].stretch || 1.0) : 1.0;
+
+    // 5. Build guide dots & outline copies
+    const $dotsLayer = $('<div class="guide-dots-layer"></div>');
+    for (let j = 0; j < config.repetitions; j++) {
+        // Line with text is a model line: ALWAYS draw all dots for that line!
+        // Empty line is a practice line: draw all dots if fullDot is true, else only j === 0
+        if (hasText || config.fullDot || j === 0) {
+            const shiftX = j * blockWidth * config.spaces;
+
+            // A. Faint / Dotted / Curve outline copies for students to trace
+            if (outlineInfo.isEnabled) {
+                const isCopy = (!hasText || j > 0);
+                if (isCopy) {
+                    const outlineClass = `guide-outline-word guide-outline-${outlineInfo.style}`;
+                    if (outlineInfo.scope === 'first') {
+                        const word0 = wordsInfo[0];
+                        const x = word0 ? (word0.offsetLeft + shiftX) : (baseWordX + shiftX);
+                        const wStretch = word0 ? (word0.stretch || 1.0) : (stretch || 1.0);
+                        const transformStyle = wStretch !== 1.0 ? `transform: scaleX(${wStretch}); transform-origin: 0 0;` : '';
+                        let displayText = '';
+                        if (outlineInfo.style === 'dotted') {
+                            displayText = charUnit;
+                        } else {
+                            displayText = model.getUnicodeStr(charUnit);
+                        }
+                        const $span = $(`<span class="${outlineClass}" style="left: ${x}px; ${transformStyle}">${view.escapeHtml(displayText)}</span>`);
+                        $dotsLayer.append($span);
+                    } else if (outlineInfo.scope === 'all') {
+                        wordsInfo.forEach(w => {
+                            const x = w.offsetLeft + shiftX;
+                            const wStretch = w.stretch || 1.0;
+                            const transformStyle = wStretch !== 1.0 ? `transform: scaleX(${wStretch}); transform-origin: 0 0;` : '';
+                            let displayText = '';
+                            if (outlineInfo.style === 'dotted') {
+                                displayText = w.raw || w.text;
+                            } else {
+                                displayText = w.text || model.getUnicodeStr(w.raw);
+                            }
+                            const $span = $(`<span class="${outlineClass}" style="left: ${x}px; ${transformStyle}">${view.escapeHtml(displayText)}</span>`);
+                            $dotsLayer.append($span);
+                        });
+                    }
+                }
+            }
+
+            // B. Guide dots (rendered and replicated across words and repetitions)
+            if (hasDotConfigs) {
+                if (wordsInfo && wordsInfo.length > 0) {
+                    wordsInfo.forEach((wInfo, wIdx) => {
+                        const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                        const wDotCfg = view.getActiveDotConfig(wChar, srcLineIdx, wIdx);
+                        if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                            const wBaseX = wInfo.offsetLeft;
+                            const wStretch = wInfo.stretch || 1.0;
+                            wDotCfg.dots.forEach((dot, dotIdx) => {
+                                const dotX = wBaseX + (dot.x * olyUnitPx * wStretch) + shiftX;
+                                const dotY = baselineY - (dot.y * olyUnitPx);
+                                const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
+                                const $dot = $('<span class="guide-dot"></span>').css({
+                                    left: dotX + 'px',
+                                    top: dotY + 'px',
+                                    width: dotSizePx + 'px',
+                                    height: dotSizePx + 'px',
+                                    backgroundColor: config.color
+                                }).attr('title', dotTitle);
+                                $dotsLayer.append($dot);
+                            });
+                        }
+                    });
+                } else if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
+                    activeDotConfig.dots.forEach((dot, dotIdx) => {
+                        const dotX = baseWordX + (dot.x * olyUnitPx * stretch) + shiftX;
+                        const dotY = baselineY - (dot.y * olyUnitPx);
+                        const dotTitle = dot.label ? `${dot.label} (${dot.x}, ${dot.y})` : `Chấm ${dotIdx + 1} (${dot.x}, ${dot.y})`;
+                        const $dot = $('<span class="guide-dot"></span>').css({
+                            left: dotX + 'px',
+                            top: dotY + 'px',
+                            width: dotSizePx + 'px',
+                            height: dotSizePx + 'px',
+                            backgroundColor: config.color
+                        }).attr('title', dotTitle);
+                        $dotsLayer.append($dot);
+                    });
+                }
+            }
+        }
+    }
+    $line.append($dotsLayer);
+    view.syncInfiniteCanvasWidth();
+};
+
+view.renderDotsForLineAndPracticeLines = function ($line) {
+    if (!$line || !$line.length) return;
+    const lineIdx = parseInt($line.attr('id').replace('line-', ''), 10) || 0;
+    const srcLineIdx = parseInt($line.attr('data-source-line-idx'), 10);
+    const targetSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : lineIdx;
+
+    // 1. Re-render dots on the model line
+    view.renderDotsForLine($line, null, targetSrcIdx);
+
+    // 2. Re-render dots on all practice lines belonging to this source line
+    $('p.line[data-is-practice="true"]').each(function () {
+        const pSrcIdx = parseInt($(this).attr('data-source-line-idx'), 10);
+        if (pSrcIdx === targetSrcIdx) {
+            view.renderDotsForLine($(this), null, targetSrcIdx);
+        }
+    });
 };
 
 view.render = function () {
     if (!model.isLoaded) return;
     const $input = $('#input');
-    const isBlackboard = $('#board-color-select').val() === 'blackboard' || $('.board').hasClass('blackboard');
-    const rawLines = $input.val().split('\n');
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout ? (layout === 'blackboard') : $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout ? (layout === 'white_11x14' || layout === 'white_10x14') : ($('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14'));
+    let rawLines = $input.val().split('\n');
 
-    if (isBlackboard) {
-        // In blackboard mode, each input line gets its own blackboard slate!
+    const hasAnyText = $input.val().trim().length > 0;
+    const dotConfig = view.getDottingConfig();
+
+    // Build linesData array: each non-empty text line generates 1 model line + (linesCount - 1) practice lines directly below it
+    let linesData = [];
+    if (!dotConfig.enabled || !hasAnyText) {
         let lines = rawLines.map(l => l.replace(/[\t]/g, "    "));
-        // Remove trailing empty lines if more than 1
         while (lines.length > 1 && lines[lines.length - 1].trim() === '' && lines[lines.length - 2].trim() === '') {
             lines.pop();
         }
-        if (lines.length === 0) {
-            lines = [''];
-        }
+        if (lines.length === 0) lines = [''];
 
-        const linesData = lines.map(line => {
+        linesData = lines.map((line, idx) => {
             const tokens = line.split(/(\s+)/);
             const lineTokens = [];
             for (const token of tokens) {
@@ -95,34 +960,126 @@ view.render = function () {
                     lineTokens.push({ type: 'word', text: converted, raw: token });
                 }
             }
+            lineTokens.sourceLineIndex = idx;
+            lineTokens.isPractice = false;
             return lineTokens;
         });
+    } else {
+        for (let i = 0; i < rawLines.length; i++) {
+            const rawLine = rawLines[i].replace(/[\t]/g, "    ");
+            const isBlank = rawLine.trim().length === 0;
+            if (isBlank) {
+                const blankTokens = [];
+                blankTokens.sourceLineIndex = i;
+                blankTokens.isPractice = false;
+                linesData.push(blankTokens);
+                continue;
+            }
 
+            const tokens = rawLine.split(/(\s+)/);
+            const modelTokens = [];
+            for (const token of tokens) {
+                if (!token) continue;
+                if (/^\s+$/.test(token)) {
+                    modelTokens.push({ type: 'space', text: token });
+                } else {
+                    const converted = model.getUnicodeStr(token);
+                    modelTokens.push({ type: 'word', text: converted, raw: token });
+                }
+            }
+            modelTokens.sourceLineIndex = i;
+            modelTokens.isPractice = false;
+            linesData.push(modelTokens);
+
+            // Practice lines for this line
+            const lineCfg = view.getDottingConfig(i);
+            const count = Math.max(1, lineCfg.linesCount || 1);
+            for (let p = 1; p < count; p++) {
+                const practiceTokens = [];
+                practiceTokens.sourceLineIndex = i;
+                practiceTokens.isPractice = true;
+                practiceTokens.practiceIndex = p;
+                linesData.push(practiceTokens);
+            }
+        }
+        if (linesData.length === 0) {
+            const emptyTokens = [];
+            emptyTokens.sourceLineIndex = 0;
+            emptyTokens.isPractice = false;
+            linesData = [emptyTokens];
+        }
+    }
+
+    if (isBlackboard) {
         view.syncBlackboards(linesData);
         view.adjustBlackboardFontSize();
+    } else if (isWhite11x14) {
+        view.syncWhite11x14(linesData);
     } else {
         view.syncNormalBoard();
         const $result = $('#result');
         $result.css({ 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'max-width': '', 'min-width': '', 'white-space': '' });
-
-        const linesData = rawLines.map(rawLine => {
-            const line = rawLine.replace(/[\t]/g, "    ");
-            const tokens = line.split(/(\s+)/);
-            const lineTokens = [];
-            for (const token of tokens) {
-                if (!token) continue;
-                if (/^\s+$/.test(token)) {
-                    lineTokens.push({ type: 'space', text: token });
-                } else {
-                    const converted = model.getUnicodeStr(token);
-                    lineTokens.push({ type: 'word', text: converted, raw: token });
-                }
-            }
-            return lineTokens;
-        });
-
         view.updateLines(linesData);
         $result.css({ 'font-size': '', 'top': '' });
+        view.syncInfiniteCanvasWidth();
+    }
+    view.updateDottingLineSelect();
+    view.updateDottingControlsState();
+};
+
+view.syncInfiniteCanvasWidth = function () {
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout ? (layout === 'blackboard') : $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout ? (layout === 'white_11x14' || layout === 'white_10x14') : ($('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14'));
+
+    if (isBlackboard || isWhite11x14) return;
+
+    const $result = $('#result');
+    if (!$result.length) return;
+
+    const dotConfig = view.getDottingConfig();
+    const hasAnyText = ($('#input').val() || '').trim().length > 0;
+    const isDotActive = view.isDottingActive() && dotConfig && dotConfig.enabled && hasAnyText;
+
+    if (!isDotActive) {
+        $result.css('min-width', '');
+        return;
+    }
+
+    const subGridPx = 19.2;
+    const bigGridPx = 76.8;
+    let maxDotsRight = 0;
+
+    const $lines = $result.children('p.line');
+    const totalLinesCount = Math.max($lines.length, dotConfig.linesCount || 0);
+
+    for (let idx = 0; idx < totalLinesCount; idx++) {
+        const lineCfg = view.getDottingConfig(idx);
+        const outlineInfo = view.parseOutlineOption(lineCfg.outline);
+        const reps = Math.max(1, lineCfg.repetitions || 1);
+        const spaces = Math.max(1, lineCfg.spaces || 1);
+
+        let lineMax = subGridPx + (reps * bigGridPx * spaces);
+
+        const $line = $lines.eq(idx);
+        if ($line.length) {
+            const $words = $line.children('.word');
+            const $lastWord = $words.last();
+            if ($lastWord.length) {
+                if (outlineInfo.isEnabled && outlineInfo.scope === 'all') {
+                    const shiftMax = (reps - 1) * bigGridPx * spaces;
+                    const lastWordRight = $lastWord[0].offsetLeft + ($lastWord[0].offsetWidth * (parseFloat($lastWord.attr('data-stretch')) || 1.0)) + shiftMax + subGridPx;
+                    if (lastWordRight > lineMax) lineMax = lastWordRight;
+                }
+            }
+        }
+        if (lineMax > maxDotsRight) maxDotsRight = lineMax;
+    }
+
+    if (maxDotsRight > 0) {
+        $result.css('min-width', `${Math.ceil(maxDotsRight)}px`);
+    } else {
+        $result.css('min-width', '');
     }
 };
 
@@ -143,7 +1100,7 @@ view.syncBlackboards = function (linesData) {
     }
 
     // 2. Add missing blackboards
-    const isSmall = $('#font-size-select').val() === '36' || $('#result').hasClass('small');
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('#result').hasClass('small');
     const isBold = $('#weight-checkbox').is(':checked');
     const color = $('#font-color-input').val() || '#ffd700';
     const isItalics = $('#style-checkbox').is(':checked');
@@ -191,13 +1148,13 @@ view.syncNormalBoard = function () {
     const $container = $('.board-container');
     const $boards = $container.children('.board');
 
-    // If multiple boards exist, or the single board is blackboard, replace with single normal board
-    if ($boards.length !== 1 || $boards.hasClass('blackboard')) {
+    // If multiple boards exist, or the single board is blackboard or white_11x14/white_10x14, replace with single normal board
+    if ($boards.length !== 1 || $boards.hasClass('blackboard') || $boards.hasClass('white_11x14') || $boards.hasClass('white_10x14')) {
         $container.empty();
         const currentColor = $('#board-color-select').val() || 'black';
         const isBold = $('#weight-checkbox').is(':checked');
         const color = $('#font-color-input').val() || (currentColor === 'white' ? '#2b1055' : '#ffffff');
-        const isSmall = $('#font-size-select').val() === '36';
+        const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36';
         const isItalics = $('#style-checkbox').is(':checked');
 
         const $normalBoard = $(`
@@ -211,21 +1168,123 @@ view.syncNormalBoard = function () {
     }
 };
 
+view.syncWhite11x14 = function (linesData) {
+    const $container = $('.board-container');
+    let $existingBoards = $container.children('.board.white_11x14, .board.white_10x14');
+
+    // If container had boards that are NOT white_11x14/white_10x14, clean them out
+    if ($container.children('.board:not(.white_11x14):not(.white_10x14)').length > 0) {
+        $container.empty();
+        $existingBoards = $();
+    }
+
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('#result').hasClass('small');
+    const isBold = $('#weight-checkbox').is(':checked');
+    const color = $('#font-color-input').val() || '#2b1055';
+    const isItalics = $('#style-checkbox').is(':checked');
+
+    // 14 blocks tall: small font (1 block/line) fits 14 lines; large font (2 blocks/line) fits 7 lines
+    const linesPerPage = isSmall ? 14 : 7;
+    const totalPages = Math.max(1, Math.ceil(linesData.length / linesPerPage));
+
+    // 1. Remove excess pages
+    if ($existingBoards.length > totalPages) {
+        $existingBoards.slice(totalPages).remove();
+        $existingBoards = $container.children('.board.white_11x14, .board.white_10x14');
+    }
+
+    // 2. Add missing pages
+    if ($existingBoards.length < totalPages) {
+        for (let p = $existingBoards.length; p < totalPages; p++) {
+            const idAttr = p === 0 ? 'id="result"' : `id="result-p${p}"`;
+            const $newPage = $(`
+                <div class="board white white_11x14 white_10x14 ${isItalics ? 'italics' : ''}" data-page-idx="${p}">
+                    <div class="grid ${isItalics ? 'italics' : ''}">
+                        <div class="result-text ${isSmall ? 'small' : ''} ${isBold ? 'bold' : ''}" ${idAttr} style="color: ${color};"></div>
+                    </div>
+                </div>
+            `);
+            $container.append($newPage);
+        }
+        $existingBoards = $container.children('.board.white_11x14, .board.white_10x14');
+    }
+
+    // 3. Populate lines for each page
+    $existingBoards.each(function (pIdx, boardEl) {
+        const $board = $(boardEl);
+        $board.attr('data-page-idx', pIdx);
+        if (isItalics) {
+            $board.addClass('italics');
+            $board.find('.grid').addClass('italics');
+        } else {
+            $board.removeClass('italics');
+            $board.find('.grid').removeClass('italics');
+        }
+
+        const $resultText = $board.find('.result-text, #result');
+        if (pIdx === 0) {
+            $resultText.attr('id', 'result');
+        } else {
+            $resultText.attr('id', 'result-p' + pIdx);
+        }
+
+        if (isSmall) {
+            $resultText.addClass('small');
+        } else {
+            $resultText.removeClass('small');
+        }
+
+        if (isBold) {
+            $resultText.addClass('bold');
+        } else {
+            $resultText.removeClass('bold');
+        }
+        $resultText.css('color', color);
+
+        const startLineIdx = pIdx * linesPerPage;
+        const endLineIdx = Math.min(startLineIdx + linesPerPage, linesData.length);
+        const pageLinesData = linesData.slice(startLineIdx, endLineIdx);
+
+        // Manage <p class="line"> inside $resultText
+        let $existingLines = $resultText.children('p.line');
+        if ($existingLines.length > pageLinesData.length) {
+            $existingLines.slice(pageLinesData.length).remove();
+            $existingLines = $resultText.children('p.line');
+        }
+        if ($existingLines.length < pageLinesData.length) {
+            for (let l = $existingLines.length; l < pageLinesData.length; l++) {
+                const globalLineIdx = startLineIdx + l;
+                const $newLine = $(`<p class="line" id="line-${globalLineIdx}"></p>`);
+                $resultText.append($newLine);
+            }
+            $existingLines = $resultText.children('p.line');
+        }
+
+        // Render each line
+        $existingLines.each(function (lIdx, lineEl) {
+            const globalLineIdx = startLineIdx + lIdx;
+            const $line = $(lineEl);
+            $line.attr('id', 'line-' + globalLineIdx);
+            view.renderLineElement($line, pageLinesData[lIdx] || [], globalLineIdx);
+        });
+    });
+};
+view.syncWhite10x14 = view.syncWhite11x14;
+
 view.adjustBlackboardFontSize = function () {
     const $results = $('.board.blackboard .result-text, .board.blackboard #result');
     if (!$results.length) return;
 
-    const isSmall = $('#font-size-select').val() === '36' || $results.first().hasClass('small');
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $results.first().hasClass('small');
     // Large font: capitalized glyphs like I are 5 cells high, normal glyphs like o are 2 cells high -> font size = 281.5px
-    // Small font: capitalized glyphs like I are 2.5 cells high, normal glyphs like o are 1 cell high -> font size = 140.75px
-    const finalSize = isSmall ? 140.75 : 281.5;
+    // Small font: capitalized glyphs like I are 2.5 cells high, normal glyphs like o are 1 cell high -> font size = 144.66px (37pt equivalent)
+    const finalSize = isSmall ? 144.66 : 281.5;
 
     // Baseline calculation:
-    // Target Line 2 baseline is anchored on y = 408.05px (thick horizontal grid line).
-    // In font HP001 (line-height: 1), baseline offset from top of CSS line box is ~0.769 * finalSize.
+    // Target Line 2 baseline is anchored on y = 408.05px (thick horizontal grid line; text bottom sits midway through guideline).
     // 281.5px: baseline offset = 216px -> top = 192px.
-    // 140.75px: baseline offset = 108px -> top = 300px.
-    const topPx = Math.round(408.05 - (0.769 * finalSize));
+    // 144.66px (37pt equivalent): baseline offset = 111px -> top = 297px.
+    const topPx = isSmall ? 297 : 192;
     const baselineOffset = 408.05 - topPx;
 
     $results.each(function () {
@@ -243,7 +1302,11 @@ view.adjustBlackboardFontSize = function () {
 };
 
 view.renderLineElement = function ($line, lineTokens, lineIndex) {
+    const srcLineIdx = (lineTokens && lineTokens.sourceLineIndex !== undefined) ? lineTokens.sourceLineIndex : lineIndex;
+    const isPractice = !!(lineTokens && lineTokens.isPractice);
     $line.attr('id', 'line-' + lineIndex);
+    $line.attr('data-source-line-idx', srcLineIdx);
+    $line.attr('data-is-practice', isPractice ? 'true' : 'false');
 
     // Collect existing word margins & stretch to preserve user adjustments across re-renders
     const existingMargins = [];
@@ -263,11 +1326,21 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
     if (wordTokens.length === 0) {
         // Non-breaking space keeps the empty line height intact on the grid
         $line.empty().html('&nbsp;');
+        if (view.isDottingActive()) {
+            const lineDotConfig = view.getDottingConfig(srcLineIdx, $line);
+            view.renderDotsForLine($line, lineTokens, srcLineIdx, lineDotConfig);
+        } else {
+            $line.find('.guide-dots-layer').remove();
+        }
+        $line.find('.line-dot-controls, .line-dot-wrapper, .btn-line-dot-badge').remove();
         return;
     }
 
     let wordIndex = 0;
     let html = '';
+    let lineDotConfig = view.getDottingConfig(srcLineIdx, $line);
+    const isDotActive = view.isDottingActive();
+
     for (const token of lineTokens) {
         if (token.type === 'space') {
             html += `<span class="word-space">${view.escapeHtml(token.text)}</span>`;
@@ -295,10 +1368,33 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
             const styleAttr = wordStyles.length ? ` style="${wordStyles.join('; ')};"` : '';
             const textStyleAttr = textStyles.length ? ` style="${textStyles.join('; ')};"` : '';
 
-            html += `<span class="word" data-word-idx="${wordIndex}"${stretchAttr}${natWAttr}${styleAttr}>` +
+            const charUnit = model.getFirstCharUnit(token.raw || token.text);
+            const activeDotConfig = view.getActiveDotConfig(charUnit, srcLineIdx, wordIndex);
+            const hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+            const dotsCount = hasDotConfigs ? activeDotConfig.dots.length : 0;
+            const isCustomDotCfg = !!(lineDotConfig.dotConfigId || (view.wordDotConfigs && view.wordDotConfigs[`${srcLineIdx}_${wordIndex}`]));
+
+            const dotBadgeHtml = (isDotActive && wordIndex === 0) ? `
+                <span class="line-dot-wrapper">
+                    <button type="button" class="btn-line-dot-badge ${lineDotConfig.isCustom ? 'is-custom' : ''}" data-line-idx="${srcLineIdx}" title="Dòng ${srcLineIdx + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)">
+                        <i class="fa-solid fa-circle-dot"></i> Cách ${lineDotConfig.spaces} ô
+                    </button>
+                </span>` : '';
+
+            const dotConfigBadgeHtml = isDotActive ? `
+                <span class="word-dot-wrapper">
+                    <button type="button" class="btn-word-dot-badge ${isCustomDotCfg ? 'is-custom' : ''} ${!hasDotConfigs ? 'is-empty' : ''}" data-line-idx="${srcLineIdx}" data-word-idx="${wordIndex}" data-char="${view.escapeHtml(charUnit)}" title="Cấu hình chấm chữ '${view.escapeHtml(charUnit)}'${hasDotConfigs ? `: ${view.escapeHtml(activeDotConfig.name)} (${dotsCount} chấm)` : ' (Chưa bật chấm)'}">
+                        <i class="fa-solid ${hasDotConfigs ? 'fa-braille' : 'fa-circle-dot'}"></i> ${hasDotConfigs ? `${dotsCount} chấm` : 'Chấm'} <i class="fa-solid fa-caret-down" style="font-size: 0.65em; margin-left: 2px;"></i>
+                    </button>
+                </span>` : '';
+
+            const rawTokenAttr = ` data-raw="${view.escapeHtml(token.raw || token.text)}"`;
+            html += `<span class="word" data-word-idx="${wordIndex}"${rawTokenAttr}${stretchAttr}${natWAttr}${styleAttr}>` +
                 `<span class="word-handle no-print">` +
                     `<span class="btn-word-drag" title="Kéo để dịch chuyển (và các từ phía sau)"><i class="fa-solid fa-up-down-left-right"></i></span>` +
                     `<span class="btn-word-reset" title="Đặt lại vị trí ban đầu"><i class="fa-solid fa-arrow-rotate-left"></i></span>` +
+                    dotBadgeHtml +
+                    dotConfigBadgeHtml +
                 `</span>` +
                 `<span class="word-text"${textStyleAttr}>${view.escapeHtml(token.text)}</span>` +
                 `<span class="btn-word-stretch no-print" title="Kéo để kéo giãn chữ (Nhấp đúp để đặt lại cỡ chữ)"></span>` +
@@ -307,6 +1403,20 @@ view.renderLineElement = function ($line, lineTokens, lineIndex) {
         }
     }
     $line.empty().html(html);
+
+    const lineCustomSpaces = view.lineDotConfigs && view.lineDotConfigs[srcLineIdx] && view.lineDotConfigs[srcLineIdx].spaces !== undefined;
+    if (!lineCustomSpaces && (view.userCustomGlobalSpaces === null || view.userCustomGlobalSpaces === undefined)) {
+        lineDotConfig = view.getDottingConfig(srcLineIdx, $line);
+        $line.find('.btn-line-dot-badge')
+            .attr('title', `Dòng ${srcLineIdx + 1}: Cách ${lineDotConfig.spaces} ô (Nhấp để chỉnh riêng)`)
+            .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${lineDotConfig.spaces} ô`);
+    }
+
+    if (view.isDottingActive()) {
+        view.renderDotsForLine($line, lineTokens, srcLineIdx, lineDotConfig);
+    } else {
+        $line.find('.guide-dots-layer').remove();
+    }
 };
 
 view.updateLines = function (linesData) {
@@ -336,13 +1446,34 @@ view.setupDragInteractions = function () {
     let dragState = null;
     let stretchState = null;
 
-    // Tap / click word to activate handles on touch / mobile devices
+    // Tap / click word to activate handles on touch / mobile devices and select line in toolbar
     $container.on('pointerdown click', '.word', function (e) {
         if ($(e.target).closest('.btn-word-stretch, .btn-word-drag, .btn-word-reset').length) {
             return;
         }
         $('.word.is-active').not(this).removeClass('is-active');
         $(this).addClass('is-active');
+
+        const $line = $(this).closest('p.line');
+        const srcLineIdx = parseInt($line.attr('data-source-line-idx'), 10);
+        if (!isNaN(srcLineIdx) && $('#dotting-line-select').length) {
+            if ($('#dotting-line-select').val() != srcLineIdx && $(`#dotting-line-select option[value="${srcLineIdx}"]`).length) {
+                $('#dotting-line-select').val(srcLineIdx).trigger('change');
+            }
+        }
+    });
+
+    // Tap / click line background to select line in toolbar
+    $container.on('pointerdown click', 'p.line', function (e) {
+        if ($(e.target).closest('.word, .line-dot-wrapper, .line-dot-popover, .word-dot-wrapper, .word-dot-config-popover').length) {
+            return;
+        }
+        const srcLineIdx = parseInt($(this).attr('data-source-line-idx'), 10);
+        if (!isNaN(srcLineIdx) && $('#dotting-line-select').length) {
+            if ($('#dotting-line-select').val() != srcLineIdx && $(`#dotting-line-select option[value="${srcLineIdx}"]`).length) {
+                $('#dotting-line-select').val(srcLineIdx).trigger('change');
+            }
+        }
     });
 
     $(document).on('pointerdown click', function (e) {
@@ -402,6 +1533,9 @@ view.setupDragInteractions = function () {
         $word.addClass('is-dragging is-active');
         $('body').addClass('is-word-dragging');
 
+        $(window).off('.wordDrag').on('pointermove.wordDrag', handlePointerMove);
+        $(window).off('pointerup.wordDrag pointercancel.wordDrag blur.wordDrag').on('pointerup.wordDrag pointercancel.wordDrag blur.wordDrag', endDrag);
+
         e.preventDefault();
         e.stopPropagation();
     });
@@ -422,10 +1556,11 @@ view.setupDragInteractions = function () {
         let newMargin = dragState.startMargin + deltaX;
         newMargin = Math.max(dragState.minMargin, newMargin);
         dragState.wordEl.style.marginLeft = Math.round(newMargin) + 'px';
+        if (view.isDottingActive()) {
+            const $line = dragState.$word.closest('p.line');
+            view.renderDotsForLineAndPracticeLines($line);
+        }
     }
-
-    $container.on('pointermove mousemove', '.btn-word-drag', handlePointerMove);
-    $(window).on('pointermove mousemove', handlePointerMove);
 
     // Pointer up / cancel / blur: finish drag
     function endDrag(e) {
@@ -433,6 +1568,8 @@ view.setupDragInteractions = function () {
         if (e && e.pointerId !== undefined && dragState.pointerId !== undefined && e.pointerId !== dragState.pointerId) {
             return;
         }
+
+        $(window).off('.wordDrag');
 
         if (dragState.handleEl && typeof dragState.handleEl.releasePointerCapture === 'function') {
             try {
@@ -444,13 +1581,16 @@ view.setupDragInteractions = function () {
 
         if (dragState.$word) {
             dragState.$word.removeClass('is-dragging');
+            if (view.isDottingActive()) {
+                const $line = dragState.$word.closest('p.line');
+                view.renderDotsForLineAndPracticeLines($line);
+            }
         }
         $('body').removeClass('is-word-dragging');
         dragState = null;
+        view.triggerAutoSave(true);
     }
 
-    $(window).on('pointerup pointercancel mouseup blur', endDrag);
-    $(document).on('pointerup pointercancel mouseup', endDrag);
     $container.on('lostpointercapture', '.btn-word-drag', endDrag);
 
     let lastStretchClick = 0;
@@ -472,6 +1612,10 @@ view.setupDragInteractions = function () {
                 'width': '',
                 'transform': ''
             });
+            if (view.isDottingActive()) {
+                const $line = $word.closest('p.line');
+                view.renderDotsForLineAndPracticeLines($line);
+            }
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -556,6 +1700,9 @@ view.setupDragInteractions = function () {
         $(handleEl).addClass('is-stretching');
         $('body').addClass('is-word-stretching');
 
+        $(window).off('.wordStretch').on('pointermove.wordStretch', handleStretchMove);
+        $(window).off('pointerup.wordStretch pointercancel.wordStretch blur.wordStretch').on('pointerup.wordStretch pointercancel.wordStretch blur.wordStretch', endStretch);
+
         e.preventDefault();
         e.stopPropagation();
     });
@@ -597,10 +1744,11 @@ view.setupDragInteractions = function () {
             'transform': 'scaleX(' + newScale + ')',
             'transform-origin': '0 0'
         });
-    }
 
-    $container.on('pointermove mousemove', '.btn-word-stretch', handleStretchMove);
-    $(window).on('pointermove mousemove', handleStretchMove);
+        if (view.isDottingActive() && stretchState.$line) {
+            view.renderDotsForLineAndPracticeLines(stretchState.$line);
+        }
+    }
 
     // Pointer up for stretch
     function endStretch(e) {
@@ -608,6 +1756,8 @@ view.setupDragInteractions = function () {
         if (e && e.pointerId !== undefined && stretchState.pointerId !== undefined && e.pointerId !== stretchState.pointerId) {
             return;
         }
+
+        $(window).off('.wordStretch');
 
         if (stretchState.handleEl && typeof stretchState.handleEl.releasePointerCapture === 'function') {
             try {
@@ -627,11 +1777,13 @@ view.setupDragInteractions = function () {
         if (stretchState.$guideline) {
             stretchState.$guideline.removeClass('is-snapped').hide();
         }
+        if (view.isDottingActive() && stretchState.$line) {
+            view.renderDotsForLineAndPracticeLines(stretchState.$line);
+        }
         stretchState = null;
+        view.triggerAutoSave(true);
     }
 
-    $(window).on('pointerup pointercancel mouseup blur', endStretch);
-    $(document).on('pointerup pointercancel mouseup', endStretch);
     $container.on('lostpointercapture', '.btn-word-stretch', endStretch);
 
     // Double-click on .btn-word-stretch: reset stretch only back to 100%
@@ -639,11 +1791,16 @@ view.setupDragInteractions = function () {
         e.stopPropagation();
         e.preventDefault();
         const $word = $(this).closest('.word');
-        $word.css('width', '').removeAttr('data-stretch');
+        $word.css('width', '').removeAttr('data-stretch').removeAttr('data-natural-width');
         $word.children('.word-text').css({
             'width': '',
             'transform': ''
         });
+        if (view.isDottingActive()) {
+            const $line = $word.closest('p.line');
+            view.renderDotsForLineAndPracticeLines($line);
+        }
+        view.triggerAutoSave(true);
     });
 
     // Reset button .btn-word-reset: resets BOTH margin-left and stretch
@@ -661,40 +1818,1086 @@ view.setupDragInteractions = function () {
         e.preventDefault();
         const $word = $(this).closest('.word');
         $word.addClass('is-active');
-        $word.css({ 'margin-left': '0px', 'width': '' }).removeAttr('data-stretch');
+        $word.css({ 'margin-left': '0px', 'width': '' }).removeAttr('data-stretch').removeAttr('data-natural-width');
         $word.children('.word-text').css({
             'width': '',
             'transform': ''
         });
+        if (view.isDottingActive()) {
+            const $line = $word.closest('p.line');
+            view.renderDotsForLineAndPracticeLines($line);
+        }
+        view.triggerAutoSave(true);
     });
 
     // Double-click empty line background: reset all words on that line
     $container.on('dblclick', 'p.line', function (e) {
-        if ($(e.target).closest('.word').length) return;
+        if ($(e.target).closest('.word, .line-dot-wrapper, .line-dot-popover').length) return;
         $(this).find('.word').each(function () {
             this.style.marginLeft = '0px';
             this.style.width = '';
-            $(this).removeAttr('data-stretch');
+            $(this).removeAttr('data-stretch').removeAttr('data-natural-width');
             $(this).children('.word-text').css({
                 'width': '',
                 'transform': ''
             });
         });
+        if (view.isDottingActive()) {
+            view.renderDotsForLineAndPracticeLines($(this));
+        }
+        view.triggerAutoSave(true);
+    });
+
+    // Line dotting badge popover click handlers
+    $container.on('click', '.btn-line-dot-badge', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $badge = $(this);
+        const $wrapper = $badge.closest('.line-dot-wrapper');
+        const $word = $badge.closest('.word');
+        const $line = $badge.closest('p.line');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+
+        // If clicking on already open popover button, toggle close
+        if ($wrapper.children('.line-dot-popover').length) {
+            $('.line-dot-popover').remove();
+            $('.word').removeClass('is-dotting-open');
+            $('p.line').removeClass('has-dot-popover');
+            return;
+        }
+
+        // Close any other open popovers
+        $('.line-dot-popover').remove();
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+
+        $line.addClass('has-dot-popover');
+        $word.addClass('is-dotting-open');
+
+        // Select this line in top toolbar
+        $('#dotting-line-select').val(lineIdx).trigger('change');
+
+        const cfg = view.getDottingConfig(lineIdx);
+        const lineFirstWord = $line.children('.word').first();
+        const lineRawText = lineFirstWord.length ? (lineFirstWord.attr('data-raw') || lineFirstWord.find('.word-text').text()) : '';
+        const lineCharUnit = model.getFirstCharUnit(lineRawText);
+        const lineActiveDotCfg = view.getActiveDotConfig(lineCharUnit, lineIdx, 0);
+        const lineAvailableCfgs = model.getGlyphDotConfigs(lineCharUnit);
+
+        let cfgOptionsHtml = '';
+        if (lineAvailableCfgs && lineAvailableCfgs.length > 0) {
+            const isNone = !lineActiveDotCfg;
+            cfgOptionsHtml = `
+                <div class="popover-row">
+                    <label>Mẫu chấm:</label>
+                    <select class="form-select form-select-sm popover-cfg-select" style="max-width: 125px; font-size: 0.75rem; padding: 1px 4px;">
+                        <option value="none" ${isNone ? 'selected' : ''}>Không chấm</option>
+                        ${lineAvailableCfgs.map(c => `<option value="${view.escapeHtml(c.id)}" ${(!isNone && c.id === (lineActiveDotCfg ? lineActiveDotCfg.id : '')) ? 'selected' : ''}>${view.escapeHtml(c.name)} (${(c.dots || []).length}c)</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        }
+
+        const $popover = $(`
+            <div class="line-dot-popover no-print" data-line-idx="${lineIdx}">
+                <div class="popover-header">
+                    <strong>Dòng ${lineIdx + 1}</strong>
+                    <button type="button" class="popover-close" title="Đóng">&times;</button>
+                </div>
+                <div class="popover-row">
+                    <label>Khoảng cách:</label>
+                    <div class="step-control">
+                        <button type="button" class="btn-step" data-action="dec" title="Giảm khoảng cách">-</button>
+                        <span class="step-val step-spaces-val">${cfg.spaces} ô</span>
+                        <button type="button" class="btn-step" data-action="inc" title="Tăng khoảng cách">+</button>
+                    </div>
+                </div>
+                <div class="popover-row">
+                    <label>Số chấm:</label>
+                    <span class="step-val step-reps-val">${cfg.repetitions}</span>
+                </div>
+                <div class="popover-row">
+                    <label>Số dòng:</label>
+                    <div class="step-control">
+                        <button type="button" class="btn-step-lines" data-action="dec" title="Giảm số dòng">-</button>
+                        <span class="step-val step-lines-val">${cfg.linesCount}</span>
+                        <button type="button" class="btn-step-lines" data-action="inc" title="Tăng số dòng">+</button>
+                    </div>
+                </div>
+                ${cfgOptionsHtml}
+                <div class="popover-row">
+                    <label>Nét mờ:</label>
+                    <select class="form-select form-select-sm popover-outline-select" style="max-width: 125px; font-size: 0.75rem; padding: 1px 4px;">
+                        <option value="none" ${cfg.outline === 'none' ? 'selected' : ''}>Không nét mờ</option>
+                        <optgroup label="Nét mờ (Độ mờ)">
+                            <option value="faint_all" ${cfg.outline === 'faint_all' || cfg.outline === 'all' ? 'selected' : ''}>Cả dòng (Mờ)</option>
+                            <option value="faint_first" ${cfg.outline === 'faint_first' || cfg.outline === 'first' ? 'selected' : ''}>Chữ đầu (Mờ)</option>
+                        </optgroup>
+                        <optgroup label="Chữ chấm đồ (HP001TD)">
+                            <option value="dotted_all" ${cfg.outline === 'dotted_all' ? 'selected' : ''}>Cả dòng (Chấm đồ)</option>
+                            <option value="dotted_first" ${cfg.outline === 'dotted_first' ? 'selected' : ''}>Chữ đầu (Chấm đồ)</option>
+                        </optgroup>
+                        <optgroup label="Viền nét (Rỗng lòng)">
+                            <option value="curve_all" ${cfg.outline === 'curve_all' ? 'selected' : ''}>Cả dòng (Viền nét)</option>
+                            <option value="curve_first" ${cfg.outline === 'curve_first' ? 'selected' : ''}>Chữ đầu (Viền nét)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="popover-row">
+                    <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                        <input type="checkbox" class="popover-fulldot" ${cfg.fullDot ? 'checked' : ''} /> Chấm hết dòng
+                    </label>
+                </div>
+                ${cfg.isCustom ? '<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>' : ''}
+            </div>
+        `);
+
+        $wrapper.append($popover);
+    });
+
+    // Word dotting configuration popover click handler
+    $container.on('click', '.btn-word-dot-badge', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $badge = $(this);
+        const $wrapper = $badge.closest('.word-dot-wrapper');
+        const $word = $badge.closest('.word');
+        const $line = $badge.closest('p.line');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+        const wordIdx = parseInt($badge.attr('data-word-idx'), 10);
+        const charUnit = $badge.attr('data-char') || 'a';
+
+        // Toggle close if already open
+        if ($wrapper.children('.word-dot-config-popover').length) {
+            $('.word-dot-config-popover, .line-dot-popover').remove();
+            $('.word').removeClass('is-dotting-open');
+            $('p.line').removeClass('has-dot-popover');
+            return;
+        }
+
+        // Close any other open popovers
+        $('.word-dot-config-popover, .line-dot-popover').remove();
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+
+        $line.addClass('has-dot-popover');
+        $word.addClass('is-dotting-open');
+
+        const activeConfig = view.getActiveDotConfig(charUnit, lineIdx, wordIdx);
+        const configs = model.getGlyphDotConfigs(charUnit);
+        const wordKey = `${lineIdx}_${wordIdx}`;
+        const wordCfg = view.wordDotConfigs && view.wordDotConfigs[wordKey];
+        const lineCfg = view.lineDotConfigs && view.lineDotConfigs[lineIdx];
+
+        let customDots = null;
+        if (wordCfg && Array.isArray(wordCfg.customDots) && wordCfg.customDots.length > 0) {
+            customDots = wordCfg.customDots;
+        } else if (wordIdx === 0 && lineCfg && Array.isArray(lineCfg.customDots) && lineCfg.customDots.length > 0) {
+            customDots = lineCfg.customDots;
+        }
+
+        const isNoneSelected = (activeConfig === null);
+        const noneItemHtml = `
+            <div class="dot-cfg-item ${isNoneSelected ? 'is-selected' : ''}" data-config-id="none">
+                <div class="dot-cfg-item-main">
+                    <div class="dot-cfg-item-title">
+                        <strong><i class="fa-solid fa-ban text-secondary me-1"></i> Không chấm</strong>
+                    </div>
+                    <div class="dot-cfg-item-desc">Tắt hiển thị điểm chấm cho chữ này</div>
+                </div>
+                ${isNoneSelected ? '<i class="fa-solid fa-check text-success dot-cfg-check"></i>' : ''}
+            </div>
+        `;
+
+        let customItemHtml = '';
+        if (customDots && customDots.length > 0) {
+            const isSelected = activeConfig && (activeConfig.id === 'dynamic');
+            customItemHtml = `
+                <div class="dot-cfg-item is-custom-dynamic ${isSelected ? 'is-selected' : ''}" data-config-id="dynamic">
+                    <div class="dot-cfg-item-main">
+                        <div class="dot-cfg-item-title">
+                            <strong><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> Chấm tự do</strong>
+                            <span class="badge bg-danger rounded-pill">${customDots.length} chấm</span>
+                        </div>
+                        <div class="dot-cfg-item-desc">${customDots.length} điểm chấm tự do tùy chỉnh</div>
+                    </div>
+                    <div class="dot-cfg-actions">
+                        <button type="button" class="btn-icon-xs btn-edit-freestyle-dots" title="Chỉnh sửa chấm tự do"><i class="fa-solid fa-pen"></i></button>
+                        <button type="button" class="btn-icon-xs text-danger btn-remove-freestyle-dots" title="Xóa chấm tự do"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+        }
+
+        let configsHtml = '';
+        if (configs && configs.length > 0) {
+            configs.forEach((cfg) => {
+                const isSelected = activeConfig && (cfg.id === activeConfig.id);
+                const dotCount = (cfg.dots && cfg.dots.length) || 1;
+                configsHtml += `
+                    <div class="dot-cfg-item ${isSelected ? 'is-selected' : ''}" data-config-id="${view.escapeHtml(cfg.id)}">
+                        <div class="dot-cfg-item-main">
+                            <div class="dot-cfg-item-title">
+                                <strong>${view.escapeHtml(cfg.name)}</strong>
+                                <span class="badge bg-danger rounded-pill">${dotCount} chấm</span>
+                            </div>
+                            ${cfg.desc ? `<div class="dot-cfg-item-desc">${view.escapeHtml(cfg.desc)}</div>` : ''}
+                        </div>
+                        ${isSelected ? '<i class="fa-solid fa-check text-success dot-cfg-check"></i>' : ''}
+                    </div>
+                `;
+            });
+        }
+
+        let popoverBodyHtml = `
+            <div class="dot-cfg-list">
+                ${noneItemHtml}
+                ${customItemHtml}
+                ${configsHtml}
+            </div>
+            ${(!customDots && (!configs || configs.length === 0)) ? `
+                <div class="popover-dynamic-teaser" style="margin: 8px 0 4px 0;">
+                    <div class="dynamic-hint" style="margin-bottom: 8px; font-size: 0.8rem; color: #64748b;">
+                        Chữ này chưa có cấu hình chấm mẫu trong editor. Bạn có thể tự do đặt các điểm chấm trực quan bằng công cụ bên dưới:
+                    </div>
+                    <button type="button" class="btn-open-freestyle-modal">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Tùy chỉnh chấm tự do...
+                    </button>
+                </div>
+            ` : `
+                <button type="button" class="btn-open-freestyle-modal">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> ${customDots ? 'Chỉnh sửa chấm tự do...' : 'Tùy chỉnh chấm tự do...'}
+                </button>
+            `}
+        `;
+
+        const $popover = $(`
+            <div class="word-dot-config-popover no-print" data-line-idx="${lineIdx}" data-word-idx="${wordIdx}" data-char="${view.escapeHtml(charUnit)}">
+                <div class="popover-header">
+                    <div class="d-flex align-items-center gap-1">
+                        <i class="fa-solid fa-braille text-danger"></i>
+                        <strong>Cấu hình chấm:</strong>
+                        <span class="badge bg-primary text-white" style="font-family: HP001, serif; font-size: 0.95rem; line-height: 1;">${view.escapeHtml(charUnit)}</span>
+                    </div>
+                    <button type="button" class="popover-close" title="Đóng">&times;</button>
+                </div>
+                ${popoverBodyHtml}
+            </div>
+        `);
+
+        $wrapper.append($popover);
+    });
+
+    $container.on('click', '.word-dot-config-popover .btn-open-freestyle-modal, .word-dot-config-popover .btn-edit-freestyle-dots', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $popover = $(this).closest('.word-dot-config-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+        const wordIdx = parseInt($popover.attr('data-word-idx'), 10);
+        const charUnit = $popover.attr('data-char');
+        view.openFreestyleDottingModal(charUnit, lineIdx, wordIdx);
+    });
+
+    $container.on('click', '.word-dot-config-popover .btn-remove-freestyle-dots', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $popover = $(this).closest('.word-dot-config-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+        const wordIdx = parseInt($popover.attr('data-word-idx'), 10);
+        const wordKey = `${lineIdx}_${wordIdx}`;
+
+        if (view.wordDotConfigs && view.wordDotConfigs[wordKey]) {
+            delete view.wordDotConfigs[wordKey].customDots;
+            view.wordDotConfigs[wordKey].dotConfigId = (wordIdx > 0 ? 'none' : null);
+        }
+        if (wordIdx === 0 && view.lineDotConfigs && view.lineDotConfigs[lineIdx]) {
+            delete view.lineDotConfigs[lineIdx].customDots;
+            view.lineDotConfigs[lineIdx].dotConfigId = null;
+        }
+
+        $('.word-dot-config-popover, .line-dot-popover').remove();
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+
+        view.render();
+        view.saveWorkspaceToLocalStorage();
+    });
+
+    $container.on('click', '.word-dot-config-popover .dot-cfg-item', function (e) {
+        // Prevent click if clicking action buttons inside the item
+        if ($(e.target).closest('.dot-cfg-actions').length) {
+            return;
+        }
+        e.stopPropagation();
+        e.preventDefault();
+        const $item = $(this);
+        const $popover = $item.closest('.word-dot-config-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+        const wordIdx = parseInt($popover.attr('data-word-idx'), 10);
+        const configId = $item.attr('data-config-id');
+        const wordKey = `${lineIdx}_${wordIdx}`;
+
+        if (!view.lineDotConfigs[lineIdx]) {
+            view.lineDotConfigs[lineIdx] = {};
+        }
+        if (!view.wordDotConfigs) view.wordDotConfigs = {};
+
+        if (configId === 'dynamic') {
+            if (view.wordDotConfigs[wordKey]) {
+                view.wordDotConfigs[wordKey].dotConfigId = 'dynamic';
+            }
+            if (wordIdx === 0) {
+                view.lineDotConfigs[lineIdx].dotConfigId = 'dynamic';
+                view.lineDotConfigs[lineIdx].isCustom = true;
+            }
+        } else {
+            // Selecting preset config: clear customDots override
+            if (view.wordDotConfigs[wordKey]) {
+                delete view.wordDotConfigs[wordKey].customDots;
+            }
+            view.wordDotConfigs[wordKey] = { dotConfigId: configId };
+
+            if (wordIdx === 0) {
+                delete view.lineDotConfigs[lineIdx].customDots;
+                view.lineDotConfigs[lineIdx].dotConfigId = configId;
+                view.lineDotConfigs[lineIdx].isCustom = true;
+            }
+        }
+
+        $('.word-dot-config-popover, .line-dot-popover').remove();
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+
+        $('#btn-reset-line-dotting').show();
+        view.render();
+        view.saveWorkspaceToLocalStorage();
+    });
+
+    $container.on('change', '.line-dot-popover .popover-cfg-select', function (e) {
+        const $popover = $(this).closest('.line-dot-popover');
+        const $wrapper = $popover.closest('.line-dot-wrapper');
+        const $badge = $wrapper.children('.btn-line-dot-badge');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+        const newCfgId = $(this).val();
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].dotConfigId = newCfgId;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        $badge.addClass('is-custom');
+        $('#btn-reset-line-dotting').show();
+        view.render();
+    });
+
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.line-dot-wrapper, .line-dot-popover, .word-dot-wrapper, .word-dot-config-popover').length) {
+            $('.line-dot-popover, .word-dot-config-popover').remove();
+            $('.word').removeClass('is-dotting-open');
+            $('p.line').removeClass('has-dot-popover');
+        }
+    });
+
+    $container.on('click', '.popover-close', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        $('.line-dot-popover, .word-dot-config-popover').remove();
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+    });
+
+    $container.on('click', '.line-dot-popover .btn-step', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const action = $(this).attr('data-action');
+        const $popover = $(this).closest('.line-dot-popover');
+        const $wrapper = $popover.closest('.line-dot-wrapper');
+        const $badge = $wrapper.children('.btn-line-dot-badge');
+        const lineIdx = parseInt($badge.attr('data-line-idx'), 10);
+        const cfg = view.getDottingConfig(lineIdx);
+        let newSpaces = cfg.spaces + (action === 'inc' ? 1 : -1);
+        newSpaces = Math.max(1, Math.min(30, newSpaces));
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].spaces = newSpaces;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        const updatedCfg = view.getDottingConfig(lineIdx);
+        $popover.find('.step-spaces-val').text(`${newSpaces} ô`);
+        $popover.find('.step-reps-val').text(updatedCfg.repetitions);
+
+        if (!$popover.find('.btn-popover-reset').length) {
+            $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
+        }
+
+        let $line = $(`p.line[data-source-line-idx="${lineIdx}"][data-is-practice="false"]`).first();
+        if (!$line.length) $line = $(`#line-${lineIdx}`);
+        $line.find('.btn-line-dot-badge').each(function () {
+            $(this).addClass('is-custom')
+                   .attr('title', `Dòng ${lineIdx + 1}: Cách ${newSpaces} ô (Nhấp để chỉnh riêng)`)
+                   .html(`<i class="fa-solid fa-circle-dot"></i> Cách ${newSpaces} ô`);
+        });
+
+        view.renderDotsForLineAndPracticeLines($line);
+        view.updateDottingLineSelect();
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-spaces-input').val(newSpaces);
+            $('#dotting-reps-input').val(updatedCfg.repetitions);
+            $('#btn-reset-line-dotting').show();
+        }
+    });
+
+    $container.on('click', '.line-dot-popover .btn-step-lines', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const action = $(this).attr('data-action');
+        const $popover = $(this).closest('.line-dot-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+        const cfg = view.getDottingConfig(lineIdx);
+        let newLines = cfg.linesCount + (action === 'inc' ? 1 : -1);
+        newLines = Math.max(1, Math.min(30, newLines));
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].linesCount = newLines;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-lines-input').val(newLines);
+            $('#btn-reset-line-dotting').show();
+        }
+        view.render();
+
+        // Re-open popover on the line badge after re-render so user can keep clicking +/-
+        const $targetBadge = $(`[data-line-idx="${lineIdx}"]`).first();
+        if ($targetBadge.length) {
+            $targetBadge.trigger('click');
+        }
+    });
+
+    $container.on('change', '.line-dot-popover .popover-fulldot', function (e) {
+        e.stopPropagation();
+        const $popover = $(this).closest('.line-dot-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].fullDot = this.checked;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        if (!$popover.find('.btn-popover-reset').length) {
+            $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
+        }
+
+        let $line = $(`p.line[data-source-line-idx="${lineIdx}"][data-is-practice="false"]`).first();
+        if (!$line.length) $line = $(`#line-${lineIdx}`);
+        $line.find('.btn-line-dot-badge').addClass('is-custom');
+        view.renderDotsForLineAndPracticeLines($line);
+        view.updateDottingLineSelect();
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-fulldot-checkbox').prop('checked', this.checked);
+            $('#btn-reset-line-dotting').show();
+        }
+    });
+
+    $container.on('change', '.line-dot-popover .popover-outline-select', function (e) {
+        e.stopPropagation();
+        const $popover = $(this).closest('.line-dot-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+
+        if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+        view.lineDotConfigs[lineIdx].outline = this.value;
+        view.lineDotConfigs[lineIdx].isCustom = true;
+
+        if (!$popover.find('.btn-popover-reset').length) {
+            $popover.append('<button type="button" class="btn-popover-reset">Đặt lại mặc định</button>');
+        }
+
+        let $line = $(`p.line[data-source-line-idx="${lineIdx}"][data-is-practice="false"]`).first();
+        if (!$line.length) $line = $(`#line-${lineIdx}`);
+        $line.find('.btn-line-dot-badge').addClass('is-custom');
+        view.renderDotsForLineAndPracticeLines($line);
+        view.updateDottingLineSelect();
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-outline-select').val(this.value);
+            $('#btn-reset-line-dotting').show();
+        }
+    });
+
+    $container.on('click', '.line-dot-popover .btn-popover-reset', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const $popover = $(this).closest('.line-dot-popover');
+        const lineIdx = parseInt($popover.attr('data-line-idx'), 10);
+
+        delete view.lineDotConfigs[lineIdx];
+        if (view.wordDotConfigs) {
+            Object.keys(view.wordDotConfigs).forEach(k => {
+                if (k.startsWith(`${lineIdx}_`)) delete view.wordDotConfigs[k];
+            });
+        }
+        const defaultCfg = view.getDottingConfig(lineIdx);
+
+        if ($('#dotting-line-select').val() == lineIdx) {
+            $('#dotting-spaces-input').val(defaultCfg.spaces);
+            $('#dotting-reps-input').val(defaultCfg.repetitions);
+            $('#dotting-lines-input').val(defaultCfg.linesCount);
+            $('#dotting-fulldot-checkbox').prop('checked', defaultCfg.fullDot);
+            $('#dotting-outline-select').val(defaultCfg.outline);
+            $('#btn-reset-line-dotting').hide();
+        }
+
+        $('.line-dot-popover').remove();
+        $('.word').removeClass('is-dotting-open');
+        $('p.line').removeClass('has-dot-popover');
+        view.render();
+    });
+};
+
+view.openFreestyleDottingModal = function (charUnit, lineIdx, wordIdx) {
+    if (!charUnit) charUnit = 'a';
+    lineIdx = parseInt(lineIdx, 10) || 0;
+    wordIdx = parseInt(wordIdx, 10) || 0;
+
+    // 1. Close any open popovers
+    $('.word-dot-config-popover, .line-dot-popover').remove();
+    $('.word').removeClass('is-dotting-open');
+    $('p.line').removeClass('has-dot-popover');
+
+    const $modal = $('#freestyleDottingModal');
+    if (!$modal.length) return;
+
+    // 2. Set title and glyph badge
+    $('#freestyleCharBadge').text(charUnit);
+    $('#freestyleApplyAllText').text(`Áp dụng cho tất cả chữ '${charUnit}' trong bài viết`);
+    $('#freestyleApplyAll').prop('checked', false);
+
+    // 3. Resolve starting dots
+    const wordKey = `${lineIdx}_${wordIdx}`;
+    const wordCfg = view.wordDotConfigs && view.wordDotConfigs[wordKey];
+    const lineCfg = view.lineDotConfigs && view.lineDotConfigs[lineIdx];
+
+    let localDots = [];
+    if (wordCfg && Array.isArray(wordCfg.customDots) && wordCfg.customDots.length > 0) {
+        localDots = JSON.parse(JSON.stringify(wordCfg.customDots));
+    } else if (wordIdx === 0 && lineCfg && Array.isArray(lineCfg.customDots) && lineCfg.customDots.length > 0) {
+        localDots = JSON.parse(JSON.stringify(lineCfg.customDots));
+    } else {
+        const activeCfg = view.getActiveDotConfig(charUnit, lineIdx, wordIdx);
+        if (activeCfg && Array.isArray(activeCfg.dots) && activeCfg.dots.length > 0) {
+            localDots = JSON.parse(JSON.stringify(activeCfg.dots));
+        } else {
+            localDots = [{ x: 0.50, y: 1.75, label: 'Nét 1' }];
+        }
+    }
+
+    if (localDots.length === 0) {
+        localDots = [{ x: 0.50, y: 1.75, label: 'Nét 1' }];
+    }
+
+    let activeDotIdx = 0;
+    let isDragging = false;
+
+    // Geometry constants matching editor ô ly grid
+    const CELL_PX = 56;
+    const COLS = 8;
+    const ROWS = 9;
+    const WIDTH = COLS * CELL_PX; // 448px
+    const HEIGHT = ROWS * CELL_PX; // 504px
+    const ORIGIN_X = CELL_PX; // 56px (X = 0)
+    const BASELINE_Y = 6 * CELL_PX; // 336px (Y = 0)
+    const FONT_SIZE = CELL_PX * (2048 / 412); // ~278.37px
+
+    // 4. Build SVG Grid
+    const $container = $('#freestylePreviewContainer');
+    const svgHtml = `
+    <svg id="freestyleDottingSvg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" style="display: block; width: 100%; height: 100%; cursor: crosshair;">
+        <defs>
+            <pattern id="freestyle_subgrid" width="14" height="14" patternUnits="userSpaceOnUse">
+                <path d="M 14 0 L 0 0 0 14" fill="none" stroke="#f1f5f9" stroke-width="0.75" />
+            </pattern>
+            <pattern id="freestyle_grid" width="${CELL_PX}" height="${CELL_PX}" patternUnits="userSpaceOnUse">
+                <rect width="${CELL_PX}" height="${CELL_PX}" fill="url(#freestyle_subgrid)" />
+                <path d="M ${CELL_PX} 0 L 0 0 0 ${CELL_PX}" fill="none" stroke="#cbd5e1" stroke-width="1" />
+            </pattern>
+        </defs>
+        
+        <!-- Base Grid -->
+        <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#freestyle_grid)" />
+        <rect width="${WIDTH}" height="${HEIGHT}" fill="none" stroke="#94a3b8" stroke-width="1" />
+
+        <!-- Reference Lines & Labels -->
+        <!-- Baseline (ĐK 1, y = 0) -->
+        <line x1="0" y1="${BASELINE_Y}" x2="${WIDTH}" y2="${BASELINE_Y}" stroke="#2563eb" stroke-width="2.5" />
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 5}" font-size="10.5" font-weight="bold" fill="#2563eb" text-anchor="end">ĐK 1 (0)</text>
+
+        <!-- ĐK 3 (y = +2 ô ly = 224px) -->
+        <line x1="0" y1="${BASELINE_Y - 2 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y - 2 * CELL_PX}" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="4,2" />
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 2 * CELL_PX - 5}" font-size="10.5" fill="#3b82f6" text-anchor="end">ĐK 3 (+2)</text>
+
+        <!-- ĐK 5 (y = +5 ô ly = 56px) -->
+        <line x1="0" y1="${BASELINE_Y - 5 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y - 5 * CELL_PX}" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4,2" />
+        <text x="${WIDTH - 6}" y="${BASELINE_Y - 5 * CELL_PX - 5}" font-size="10.5" fill="#60a5fa" text-anchor="end">ĐK 5 (+5)</text>
+
+        <!-- ĐK Dưới (y = -2 ô ly = 448px) -->
+        <line x1="0" y1="${BASELINE_Y + 2 * CELL_PX}" x2="${WIDTH}" y2="${BASELINE_Y + 2 * CELL_PX}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2" />
+        <text x="${WIDTH - 6}" y="${BASELINE_Y + 2 * CELL_PX - 5}" font-size="10.5" fill="#94a3b8" text-anchor="end">ĐK Dưới (-2)</text>
+
+        <!-- Origin X = 0 (Left bearing line, x = 56px) -->
+        <line x1="${ORIGIN_X}" y1="0" x2="${ORIGIN_X}" y2="${HEIGHT}" stroke="#2563eb" stroke-width="1.5" />
+        <text x="${ORIGIN_X + 6}" y="${HEIGHT - 8}" font-size="10.5" font-weight="bold" fill="#2563eb">X=0</text>
+
+        <!-- Render Glyph -->
+        <text id="freestylePreviewGlyph" x="${ORIGIN_X}" y="${BASELINE_Y}" font-family="HP001, serif" font-size="${FONT_SIZE}" fill="#1e293b" font-weight="bold" pointer-events="none" style="user-select: none;">${view.escapeHtml(charUnit)}</text>
+
+        <!-- SVG Dots Layer -->
+        <g id="freestyleSvgDotsLayer"></g>
+    </svg>
+    `;
+    $container.html(svgHtml);
+
+    const $svg = $('#freestyleDottingSvg');
+    const $dotsLayer = $('#freestyleSvgDotsLayer');
+    const $dotsListContainer = $('#freestyleDotsList');
+    const $inputX = $('#freestyleInputX');
+    const $inputY = $('#freestyleInputY');
+    const $inputLabel = $('#freestyleInputLabel');
+
+    function getCurrentDot() {
+        if (!localDots[activeDotIdx]) {
+            activeDotIdx = 0;
+        }
+        return localDots[activeDotIdx];
+    }
+
+    function renderDotsList() {
+        let html = '';
+        localDots.forEach((dot, idx) => {
+            const isActive = (idx === activeDotIdx);
+            const labelStr = dot.label ? `: ${view.escapeHtml(dot.label)}` : '';
+            html += `
+                <button type="button" class="freestyle-dot-pill ${isActive ? 'is-active' : ''}" data-dot-idx="${idx}">
+                    <strong>Chấm ${idx + 1}</strong>${labelStr} <span class="small opacity-75">(${dot.x.toFixed(2)}, ${dot.y.toFixed(2)})</span>
+                </button>
+            `;
+        });
+        $dotsListContainer.html(html);
+    }
+
+    function renderActiveDotInputs() {
+        const dot = getCurrentDot();
+        $('#freestyleActiveDotHeading').html(`
+            <i class="fa-solid fa-circle-dot text-danger"></i> Đang chỉnh: <strong>Chấm ${activeDotIdx + 1}</strong>
+        `);
+        $inputX.val(dot.x.toFixed(2));
+        $inputY.val(dot.y.toFixed(2));
+        $inputLabel.val(dot.label || '');
+    }
+
+    function renderSvgDots() {
+        $dotsLayer.empty();
+        if (activeDotIdx >= localDots.length) {
+            activeDotIdx = 0;
+        }
+
+        localDots.forEach((dot, idx) => {
+            const px = ORIGIN_X + dot.x * CELL_PX;
+            const py = BASELINE_Y - dot.y * CELL_PX;
+            const isActive = (idx === activeDotIdx);
+
+            let $g = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'))
+                .attr('class', `svg-dot-node ${isActive ? 'is-active' : ''}`)
+                .attr('data-dot-idx', idx)
+                .attr('transform', `translate(${px}, ${py})`)
+                .css('cursor', isActive ? 'grab' : 'pointer');
+
+            if (isActive) {
+                let $halo = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 18)
+                    .attr('fill', 'rgba(239, 68, 68, 0.25)')
+                    .attr('pointer-events', 'none');
+                let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 8)
+                    .attr('fill', '#ef4444')
+                    .attr('stroke', '#ffffff').attr('stroke-width', 2);
+                let tooltipText = `${dot.label || ('Chấm ' + (idx + 1))}: (${dot.x.toFixed(2)}, ${dot.y.toFixed(2)})`;
+                let badgeWidth = Math.max(70, tooltipText.length * 7);
+                let $badgeBg = $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
+                    .attr('x', -badgeWidth / 2).attr('y', -28)
+                    .attr('width', badgeWidth).attr('height', 18)
+                    .attr('rx', 4).attr('fill', 'rgba(15, 23, 42, 0.88)')
+                    .attr('pointer-events', 'none');
+                let $badgeText = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
+                    .attr('x', 0).attr('y', -15)
+                    .attr('font-size', '10.5').attr('font-weight', 'bold')
+                    .attr('fill', '#ffffff').attr('text-anchor', 'middle')
+                    .attr('pointer-events', 'none')
+                    .text(tooltipText);
+
+                $g.append($halo).append($center).append($badgeBg).append($badgeText);
+            } else {
+                let $center = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                    .attr('cx', 0).attr('cy', 0).attr('r', 7)
+                    .attr('fill', '#3b82f6')
+                    .attr('stroke', '#ffffff').attr('stroke-width', 1.5);
+                let $numBadge = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
+                    .attr('x', 9).attr('y', -7)
+                    .attr('font-size', '10').attr('font-weight', 'bold')
+                    .attr('fill', '#1e40af')
+                    .attr('pointer-events', 'none')
+                    .text(`${idx + 1}`);
+
+                $g.append($center).append($numBadge);
+            }
+
+            $dotsLayer.append($g);
+        });
+    }
+
+    function updateActiveDotVisualsOnly(x, y) {
+        let $activeG = $dotsLayer.find('.svg-dot-node.is-active');
+        if (!$activeG.length) {
+            renderSvgDots();
+            $activeG = $dotsLayer.find('.svg-dot-node.is-active');
+        }
+        const px = ORIGIN_X + x * CELL_PX;
+        const py = BASELINE_Y - y * CELL_PX;
+        if ($activeG.length) {
+            $activeG[0].setAttribute('transform', `translate(${px}, ${py})`);
+            const dot = getCurrentDot();
+            const tooltipText = `${dot.label || ('Chấm ' + (activeDotIdx + 1))}: (${x.toFixed(2)}, ${y.toFixed(2)})`;
+            const badgeWidth = Math.max(70, tooltipText.length * 7);
+            const rect = $activeG.find('rect')[0];
+            const text = $activeG.find('text')[0];
+            if (rect) {
+                rect.setAttribute('x', -badgeWidth / 2);
+                rect.setAttribute('width', badgeWidth);
+            }
+            if (text) {
+                text.textContent = tooltipText;
+            }
+        }
+        $inputX.val(x.toFixed(2));
+        $inputY.val(y.toFixed(2));
+    }
+
+    function renderAll() {
+        renderDotsList();
+        renderActiveDotInputs();
+        renderSvgDots();
+    }
+
+    renderAll();
+    $modal.fadeIn(150);
+
+    // Event cleanup helper
+    function cleanupModal() {
+        $container.off('.freestyle');
+        $(window).off('.freestyleDrag');
+        $(document).off('.freestyleKey');
+        $('#btn-close-freestyle-modal, #btn-freestyle-cancel').off('click');
+        $('#btn-freestyle-add-dot, #btn-freestyle-del-dot, #btn-freestyle-snap, #btn-freestyle-load-preset').off('click');
+        $('#btn-freestyle-reset-default, #btn-freestyle-apply').off('click');
+        $dotsListContainer.off('click');
+        $inputX.off('input change');
+        $inputY.off('input change');
+        $inputLabel.off('input change');
+    }
+
+    // Dot Pill Selection
+    $dotsListContainer.off('click').on('click', '.freestyle-dot-pill', function (e) {
+        e.preventDefault();
+        const idx = parseInt($(this).attr('data-dot-idx'), 10);
+        if (!isNaN(idx) && idx !== activeDotIdx) {
+            activeDotIdx = idx;
+            renderAll();
+        }
+    });
+
+    // Inputs change
+    function onInputChange() {
+        const xVal = parseFloat($inputX.val());
+        const yVal = parseFloat($inputY.val());
+        const labelVal = $inputLabel.val().trim();
+        const dot = getCurrentDot();
+        if (!isNaN(xVal)) dot.x = Math.round(Math.max(-0.5, Math.min(6.5, xVal)) * 100) / 100;
+        if (!isNaN(yVal)) dot.y = Math.round(Math.max(-3.0, Math.min(6.0, yVal)) * 100) / 100;
+        dot.label = labelVal;
+        renderDotsList();
+        renderSvgDots();
+    }
+    $inputX.off('input change').on('input change', onInputChange);
+    $inputY.off('input change').on('input change', onInputChange);
+    $inputLabel.off('input change').on('input change', onInputChange);
+
+    // Add Dot
+    $('#btn-freestyle-add-dot').off('click').on('click', function (e) {
+        e.preventDefault();
+        const curDot = getCurrentDot();
+        const newX = Math.round(Math.min(6.0, curDot.x + 0.5) * 100) / 100;
+        const newY = Math.round(curDot.y * 100) / 100;
+        localDots.push({
+            x: newX,
+            y: newY,
+            label: `Nét ${localDots.length + 1}`
+        });
+        activeDotIdx = localDots.length - 1;
+        renderAll();
+    });
+
+    // Delete Dot
+    $('#btn-freestyle-del-dot').off('click').on('click', function (e) {
+        e.preventDefault();
+        if (localDots.length <= 1) {
+            alert('Mỗi cấu hình cần ít nhất 1 điểm chấm.');
+            return;
+        }
+        localDots.splice(activeDotIdx, 1);
+        activeDotIdx = Math.max(0, activeDotIdx - 1);
+        renderAll();
+    });
+
+    // Snap to 0.25 ô ly
+    $('#btn-freestyle-snap').off('click').on('click', function (e) {
+        e.preventDefault();
+        const dot = getCurrentDot();
+        dot.x = Math.round(dot.x * 4) / 4;
+        dot.y = Math.round(dot.y * 4) / 4;
+        renderAll();
+    });
+
+    // Load preset if available
+    $('#btn-freestyle-load-preset').off('click').on('click', function (e) {
+        e.preventDefault();
+        const presetCfgs = model.getGlyphDotConfigs(charUnit);
+        if (presetCfgs && presetCfgs.length > 0 && presetCfgs[0].dots && presetCfgs[0].dots.length > 0) {
+            localDots = JSON.parse(JSON.stringify(presetCfgs[0].dots));
+            activeDotIdx = 0;
+            renderAll();
+        } else {
+            alert(`Chữ '${charUnit}' chưa có mẫu chấm sẵn trong hệ thống.`);
+        }
+    });
+
+    // Pointer-events Dragging & Placing
+    function getOlyFromEvent(e) {
+        const rect = $svg[0].getBoundingClientRect();
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        if (clientX === undefined && e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (clientX === undefined && e.originalEvent) {
+            if (e.originalEvent.touches && e.originalEvent.touches.length > 0) {
+                clientX = e.originalEvent.touches[0].clientX;
+                clientY = e.originalEvent.touches[0].clientY;
+            } else {
+                clientX = e.originalEvent.clientX;
+                clientY = e.originalEvent.clientY;
+            }
+        }
+        const scaleX = WIDTH / rect.width;
+        const scaleY = HEIGHT / rect.height;
+        const px = ((clientX || 0) - rect.left) * scaleX;
+        const py = ((clientY || 0) - rect.top) * scaleY;
+        const xOly = (px - ORIGIN_X) / CELL_PX;
+        const yOly = (BASELINE_Y - py) / CELL_PX;
+        return {
+            x: Math.round(Math.max(-0.5, Math.min(6.5, xOly)) * 100) / 100,
+            y: Math.round(Math.max(-3.0, Math.min(6.0, yOly)) * 100) / 100
+        };
+    }
+
+    $container.off('.freestyle').on('pointerdown.freestyle mousedown.freestyle touchstart.freestyle', function (e) {
+        const $dotNode = $(e.target).closest('.svg-dot-node');
+        if ($dotNode.length) {
+            const clickedIdx = parseInt($dotNode.attr('data-dot-idx'), 10);
+            if (!isNaN(clickedIdx) && clickedIdx !== activeDotIdx) {
+                activeDotIdx = clickedIdx;
+                renderDotsList();
+                renderActiveDotInputs();
+                renderSvgDots();
+            }
+        } else {
+            // Clicked on canvas: reposition active dot
+            const pos = getOlyFromEvent(e);
+            const dot = getCurrentDot();
+            dot.x = pos.x;
+            dot.y = pos.y;
+            updateActiveDotVisualsOnly(pos.x, pos.y);
+        }
+
+        isDragging = true;
+        try {
+            if (e.pointerId !== undefined && this.setPointerCapture) {
+                this.setPointerCapture(e.pointerId);
+            }
+        } catch (_) {}
+        e.preventDefault();
+    });
+
+    $container.on('pointermove.freestyle mousemove.freestyle touchmove.freestyle', function (e) {
+        if (!isDragging) return;
+        const pos = getOlyFromEvent(e);
+        const dot = getCurrentDot();
+        dot.x = pos.x;
+        dot.y = pos.y;
+        updateActiveDotVisualsOnly(pos.x, pos.y);
+        e.preventDefault();
+    });
+
+    function endDrag(e) {
+        if (isDragging) {
+            isDragging = false;
+            try {
+                if (e && e.pointerId !== undefined && $container[0].releasePointerCapture) {
+                    $container[0].releasePointerCapture(e.pointerId);
+                }
+            } catch (_) {}
+            renderAll();
+        }
+    }
+
+    $container.on('pointerup.freestyle pointercancel.freestyle mouseup.freestyle touchend.freestyle', endDrag);
+
+    $(window).off('.freestyleDrag').on('pointerup.freestyleDrag pointercancel.freestyleDrag mouseup.freestyleDrag touchend.freestyleDrag', function (e) {
+        if (isDragging) endDrag(e);
+    });
+
+    // Close / Cancel
+    function closeModal() {
+        isDragging = false;
+        cleanupModal();
+        $modal.fadeOut(150);
+    }
+
+    $('#btn-close-freestyle-modal, #btn-freestyle-cancel').off('click').on('click', function (e) {
+        e.preventDefault();
+        closeModal();
+    });
+
+    $(document).off('.freestyleKey').on('keydown.freestyleKey', function (e) {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
+
+    // Reset default
+    $('#btn-freestyle-reset-default').off('click').on('click', function (e) {
+        e.preventDefault();
+        const applyAll = $('#freestyleApplyAll').is(':checked');
+
+        if (applyAll) {
+            $('#result').children('p.line').each(function (lIdx) {
+                $(this).children('.word').each(function () {
+                    const wIdx = parseInt($(this).attr('data-word-idx'), 10);
+                    const rawToken = $(this).attr('data-raw') || $(this).text();
+                    const wCharUnit = model.getFirstCharUnit(rawToken);
+                    if (wCharUnit === charUnit) {
+                        const key = `${lIdx}_${wIdx}`;
+                        if (view.wordDotConfigs && view.wordDotConfigs[key]) {
+                            delete view.wordDotConfigs[key].customDots;
+                            view.wordDotConfigs[key].dotConfigId = null;
+                        }
+                        if (wIdx === 0 && view.lineDotConfigs && view.lineDotConfigs[lIdx]) {
+                            delete view.lineDotConfigs[lIdx].customDots;
+                            view.lineDotConfigs[lIdx].dotConfigId = null;
+                        }
+                    }
+                });
+            });
+        } else {
+            const key = `${lineIdx}_${wordIdx}`;
+            if (view.wordDotConfigs && view.wordDotConfigs[key]) {
+                delete view.wordDotConfigs[key].customDots;
+                view.wordDotConfigs[key].dotConfigId = null;
+            }
+            if (wordIdx === 0 && view.lineDotConfigs && view.lineDotConfigs[lineIdx]) {
+                delete view.lineDotConfigs[lineIdx].customDots;
+                view.lineDotConfigs[lineIdx].dotConfigId = null;
+            }
+        }
+
+        closeModal();
+        view.render();
+        view.saveWorkspaceToLocalStorage();
+    });
+
+    // Apply & Save
+    $('#btn-freestyle-apply').off('click').on('click', function (e) {
+        e.preventDefault();
+        const finalDots = localDots.map((d, i) => ({
+            x: Math.round(d.x * 100) / 100,
+            y: Math.round(d.y * 100) / 100,
+            label: (d.label || '').trim() || `Nét ${i + 1}`
+        }));
+
+        const applyAll = $('#freestyleApplyAll').is(':checked');
+
+        if (applyAll) {
+            $('#result').children('p.line').each(function (lIdx) {
+                $(this).children('.word').each(function () {
+                    const wIdx = parseInt($(this).attr('data-word-idx'), 10);
+                    const rawToken = $(this).attr('data-raw') || $(this).text();
+                    const wCharUnit = model.getFirstCharUnit(rawToken);
+                    if (wCharUnit === charUnit) {
+                        const key = `${lIdx}_${wIdx}`;
+                        if (!view.wordDotConfigs) view.wordDotConfigs = {};
+                        view.wordDotConfigs[key] = {
+                            customDots: JSON.parse(JSON.stringify(finalDots)),
+                            dotConfigId: 'dynamic'
+                        };
+                        if (wIdx === 0) {
+                            if (!view.lineDotConfigs[lIdx]) view.lineDotConfigs[lIdx] = {};
+                            view.lineDotConfigs[lIdx].customDots = JSON.parse(JSON.stringify(finalDots));
+                            view.lineDotConfigs[lIdx].dotConfigId = 'dynamic';
+                            view.lineDotConfigs[lIdx].isCustom = true;
+                        }
+                    }
+                });
+            });
+        } else {
+            const key = `${lineIdx}_${wordIdx}`;
+            if (!view.wordDotConfigs) view.wordDotConfigs = {};
+            view.wordDotConfigs[key] = {
+                customDots: JSON.parse(JSON.stringify(finalDots)),
+                dotConfigId: 'dynamic'
+            };
+            if (wordIdx === 0) {
+                if (!view.lineDotConfigs[lineIdx]) view.lineDotConfigs[lineIdx] = {};
+                view.lineDotConfigs[lineIdx].customDots = JSON.parse(JSON.stringify(finalDots));
+                view.lineDotConfigs[lineIdx].dotConfigId = 'dynamic';
+                view.lineDotConfigs[lineIdx].isCustom = true;
+            }
+        }
+
+        closeModal();
+        $('#btn-reset-line-dotting').show();
+        view.render();
+        view.saveWorkspaceToLocalStorage();
     });
 };
 
 view.changeFontSize = function (fontSize) {
     const $results = $('.result-text, #result');
-    if (fontSize === "36") {
+    if (fontSize === "37" || fontSize === "36") {
         $results.addClass('small');
     } else {
         $results.removeClass('small');
     }
-    const isBlackboard = $('#board-color-select').val() === 'blackboard' || $('.board').hasClass('blackboard');
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout ? (layout === 'blackboard') : $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout ? (layout === 'white_11x14' || layout === 'white_10x14') : ($('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14'));
+
     if (isBlackboard) {
         view.adjustBlackboardFontSize();
+    } else if (isWhite11x14) {
+        view.render();
     } else {
         $results.css({ 'font-size': '', 'top': '' });
+    }
+    if (view.isDottingActive()) {
+        view.render();
     }
 };
 
@@ -712,13 +2915,16 @@ view.changeBoardColor = function (boardColor) {
     if (boardColor === "white") {
         view.syncNormalBoard();
         const $board = $(".board");
-        $board.removeClass('blackboard black').addClass('white');
+        $board.removeClass('blackboard black white_11x14 white_10x14').addClass('white');
         const paperInk = "#2b1055";
         $colorInput.val(paperInk);
         $('.result-text, #result').css({ 'color': paperInk, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
+    } else if (boardColor === "white_11x14" || boardColor === "white_10x14") {
+        const paperInk = "#2b1055";
+        $colorInput.val(paperInk);
     } else if (boardColor === "blackboard") {
-        // Automatically change font size to small (36pt / 1 ô ly)
-        $('#font-size-select').val('36');
+        // Automatically change font size to small (37pt / 1 ô ly equivalent)
+        $('#font-size-select').val('37');
         // Automatically change weight to normal instead of bold
         $('#weight-checkbox').prop('checked', false);
         // Automatically set text color to yellow
@@ -727,11 +2933,12 @@ view.changeBoardColor = function (boardColor) {
     } else {
         view.syncNormalBoard();
         const $board = $(".board");
-        $board.removeClass('blackboard white').addClass('black');
+        $board.removeClass('blackboard white white_11x14 white_10x14').addClass('black');
         const chalkWhite = "#ffffff";
         $colorInput.val(chalkWhite);
         $('.result-text, #result').css({ 'color': chalkWhite, 'font-size': '', 'top': '', 'left': '', 'position': '', 'width': '', 'min-width': '', 'white-space': '' });
     }
+    view.updateDottingControlsState();
     view.render();
 };
 
@@ -753,8 +2960,13 @@ view.changeStyle = function (isItalics) {
 
 view.loadSample = function (sampleKey) {
     if (view.sampleTexts[sampleKey]) {
+        view.resetLineDotConfigs();
         $('#input').val(view.sampleTexts[sampleKey]);
+        if (window.model && typeof model.getFirstCharUnit === 'function') {
+            view.prevLineFirstChars = view.sampleTexts[sampleKey].split('\n').map(l => model.getFirstCharUnit(l));
+        }
         view.render();
+        view.triggerAutoSave(true);
     }
 };
 
@@ -793,6 +3005,483 @@ view.generateFileName = function (layoutPrefix, text) {
     return base + '.png';
 };
 
+view.downloadCanvasAsPng = function (canvas, fileName) {
+    return new Promise((resolve) => {
+        const triggerDownload = (url, isBlob) => {
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                if (document.body.contains(a)) {
+                    document.body.removeChild(a);
+                }
+                resolve();
+            }, 300);
+            if (isBlob) {
+                setTimeout(() => {
+                    try {
+                        URL.revokeObjectURL(url);
+                    } catch (e) {}
+                }, 60000);
+            }
+        };
+
+        if (canvas.toBlob) {
+            canvas.toBlob(function (blob) {
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    triggerDownload(url, true);
+                } else {
+                    try {
+                        const dataUrl = canvas.toDataURL('image/png');
+                        triggerDownload(dataUrl, false);
+                    } catch (e) {
+                        console.error('Canvas export error:', e);
+                        resolve();
+                    }
+                }
+            }, 'image/png');
+        } else {
+            try {
+                const dataUrl = canvas.toDataURL('image/png');
+                triggerDownload(dataUrl, false);
+            } catch (e) {
+                console.error('Canvas export error:', e);
+                resolve();
+            }
+        }
+    });
+};
+
+/* ==========================================================================
+   Workspace State Persistence & Project File Management (.json)
+   ========================================================================== */
+
+view._autoSaveTimer = null;
+view._isApplyingState = false;
+view._draftBannerTimer = null;
+
+view.captureWorkspaceState = function () {
+    const $input = $('#input');
+    const state = {
+        app: "VietnameseHandwritingGenerator",
+        version: 1,
+        savedAt: new Date().toISOString(),
+        text: $input.val() || '',
+        sampleSelect: $('#sample-select').val() || '',
+        settings: {
+            fontSize: $('#font-size-select').val() || '72',
+            boardColor: $('#board-color-select').val() || 'black',
+            fontColor: $('#font-color-input').val() || '#ffffff',
+            weight: $('#weight-checkbox').is(':checked'),
+            style: $('#style-checkbox').is(':checked')
+        },
+        dotting: {
+            enabled: $('#dotting-checkbox').is(':checked'),
+            spaces: parseInt($('#dotting-spaces-input').val(), 10) || 2,
+            repetitions: parseInt($('#dotting-reps-input').val(), 10) || 5,
+            linesCount: parseInt($('#dotting-lines-input').val(), 10) || 1,
+            fullDot: $('#dotting-fulldot-checkbox').is(':checked'),
+            outline: $('#dotting-outline-select').val() || 'none',
+            color: $('#dotting-color-input').val() || '#e53935',
+            userCustomGlobalSpaces: view.userCustomGlobalSpaces !== undefined ? view.userCustomGlobalSpaces : null,
+            userCustomGlobalLinesCount: view.userCustomGlobalLinesCount !== undefined ? view.userCustomGlobalLinesCount : null,
+            userCustomGlobalFullDot: view.userCustomGlobalFullDot !== undefined ? view.userCustomGlobalFullDot : null,
+            userCustomGlobalOutline: view.userCustomGlobalOutline !== undefined ? view.userCustomGlobalOutline : null,
+            lineDotConfigs: JSON.parse(JSON.stringify(view.lineDotConfigs || {})),
+            wordDotConfigs: JSON.parse(JSON.stringify(view.wordDotConfigs || {}))
+        },
+        wordLayout: {}
+    };
+
+    // Capture word layout overrides (margins and stretch factors)
+    $('#result').children('p.line').each(function (lineIdx) {
+        const lineOverrides = {};
+        let hasOverrides = false;
+        $(this).children('.word').each(function () {
+            const wIdx = $(this).attr('data-word-idx');
+            const ml = this.style.marginLeft;
+            const stretch = $(this).attr('data-stretch');
+            const natW = $(this).attr('data-natural-width');
+            if (ml || (stretch && stretch !== '1')) {
+                lineOverrides[wIdx] = {
+                    marginLeft: ml || null,
+                    stretch: stretch ? parseFloat(stretch) : null,
+                    naturalWidth: natW ? parseFloat(natW) : null
+                };
+                hasOverrides = true;
+            }
+        });
+        if (hasOverrides) {
+            state.wordLayout[lineIdx] = lineOverrides;
+        }
+    });
+
+    return state;
+};
+
+view.applyWorkspaceState = function (state) {
+    if (!state || typeof state !== 'object') return;
+
+    view._isApplyingState = true;
+
+    try {
+        // 1. Text input & sample selector
+        if (typeof state.text === 'string') {
+            $('#input').val(state.text);
+        }
+        if (state.sampleSelect !== undefined) {
+            $('#sample-select').val(state.sampleSelect);
+        }
+
+        // 2. Settings (font size, board, color, bold, italic)
+        if (state.settings) {
+            if (state.settings.fontSize) {
+                $('#font-size-select').val(state.settings.fontSize);
+                view.changeFontSize(state.settings.fontSize);
+            }
+            if (state.settings.boardColor) {
+                $('#board-color-select').val(state.settings.boardColor);
+                view.changeBoardColor(state.settings.boardColor);
+            }
+            if (state.settings.fontColor) {
+                $('#font-color-input').val(state.settings.fontColor);
+                view.changeColorText(state.settings.fontColor);
+            }
+            if (state.settings.weight !== undefined) {
+                $('#weight-checkbox').prop('checked', !!state.settings.weight);
+                view.changeWeight(!!state.settings.weight);
+            }
+            if (state.settings.style !== undefined) {
+                $('#style-checkbox').prop('checked', !!state.settings.style);
+                view.changeStyle(!!state.settings.style);
+            }
+        }
+
+        // 3. Dotting Configurations
+        if (state.dotting) {
+            const d = state.dotting;
+            $('#dotting-checkbox').prop('checked', !!d.enabled);
+            if (d.enabled) {
+                $('#dotting-options').show();
+            } else {
+                $('#dotting-options').hide();
+            }
+            if (d.spaces !== undefined) $('#dotting-spaces-input').val(d.spaces);
+            if (d.repetitions !== undefined) $('#dotting-reps-input').val(d.repetitions);
+            if (d.linesCount !== undefined) $('#dotting-lines-input').val(d.linesCount);
+            if (d.fullDot !== undefined) $('#dotting-fulldot-checkbox').prop('checked', !!d.fullDot);
+            if (d.outline !== undefined) $('#dotting-outline-select').val(d.outline);
+            if (d.color !== undefined) $('#dotting-color-input').val(d.color);
+
+            view.userCustomGlobalSpaces = d.userCustomGlobalSpaces !== undefined ? d.userCustomGlobalSpaces : null;
+            view.userCustomGlobalLinesCount = d.userCustomGlobalLinesCount !== undefined ? d.userCustomGlobalLinesCount : null;
+            view.userCustomGlobalFullDot = d.userCustomGlobalFullDot !== undefined ? d.userCustomGlobalFullDot : null;
+            view.userCustomGlobalOutline = d.userCustomGlobalOutline !== undefined ? d.userCustomGlobalOutline : null;
+            view.lineDotConfigs = d.lineDotConfigs ? JSON.parse(JSON.stringify(d.lineDotConfigs)) : {};
+            view.wordDotConfigs = d.wordDotConfigs ? JSON.parse(JSON.stringify(d.wordDotConfigs)) : {};
+        }
+
+        // 4. Synchronize line dot configs and render board
+        view.syncLineDotConfigs();
+        view.render();
+
+        // 5. Apply Word Layout overrides (margins and stretch factors)
+        if (state.wordLayout && typeof state.wordLayout === 'object') {
+            const $lines = $('#result').children('p.line');
+            for (const [lineIdxStr, wordMap] of Object.entries(state.wordLayout)) {
+                const lineIdx = parseInt(lineIdxStr, 10);
+                const $line = $lines.eq(lineIdx);
+                if ($line.length && wordMap) {
+                    for (const [wIdxStr, override] of Object.entries(wordMap)) {
+                        const $word = $line.find(`.word[data-word-idx="${wIdxStr}"]`);
+                        if ($word.length && override) {
+                            if (override.marginLeft) {
+                                $word.css('margin-left', override.marginLeft);
+                            }
+                            if (override.stretch && override.stretch !== 1) {
+                                $word.attr('data-stretch', override.stretch);
+                                if (override.naturalWidth) {
+                                    $word.attr('data-natural-width', override.naturalWidth);
+                                    $word.css('width', (override.naturalWidth * override.stretch).toFixed(2) + 'px');
+                                    $word.children('.word-text').css({
+                                        'width': override.naturalWidth + 'px',
+                                        'transform': `scaleX(${override.stretch})`,
+                                        'transform-origin': '0 0',
+                                        'display': 'inline-block',
+                                        'vertical-align': 'baseline'
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    if (view.isDottingActive()) {
+                        view.renderDotsForLineAndPracticeLines($line);
+                    }
+                }
+            }
+        }
+
+        view.updateDottingLineSelect();
+        view.updateDottingControlsState();
+    } finally {
+        view._isApplyingState = false;
+    }
+};
+
+view.triggerAutoSave = function (immediate) {
+    if (view._isApplyingState) return;
+    if (view._autoSaveTimer) {
+        clearTimeout(view._autoSaveTimer);
+        view._autoSaveTimer = null;
+    }
+
+    const doSave = function () {
+        try {
+            const state = view.captureWorkspaceState();
+            localStorage.setItem('chudep_workspace_draft', JSON.stringify(state));
+            localStorage.setItem('handwriting_workspace_draft_v1', JSON.stringify(state));
+            $('#btn-menu-restore-draft').show();
+        } catch (e) {
+            console.warn('Auto-save error:', e);
+        }
+    };
+
+    if (immediate) {
+        doSave();
+    } else {
+        view._autoSaveTimer = setTimeout(doSave, 500);
+    }
+};
+
+view.saveWorkspaceToLocalStorage = function () {
+    view.triggerAutoSave(true);
+};
+
+view.formatDraftTime = function (isoString) {
+    if (!isoString) return '';
+    try {
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        const now = new Date();
+        const isToday = d.toDateString() === now.toDateString();
+        const pad = (n) => String(n).padStart(2, '0');
+        const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        if (isToday) {
+            return `hôm nay lúc ${timeStr}`;
+        }
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} lúc ${timeStr}`;
+    } catch (_) {
+        return '';
+    }
+};
+
+view.checkDraftOnLoad = function () {
+    try {
+        const raw = localStorage.getItem('handwriting_workspace_draft_v1') || localStorage.getItem('chudep_workspace_draft');
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (!draft || !draft.text) return;
+
+        $('#btn-menu-restore-draft').show();
+
+        const currentText = ($('#input').val() || '').trim();
+        const draftText = (draft.text || '').trim();
+        const hasCustomSettings = draft.settings && (draft.settings.fontSize !== '72' || draft.settings.boardColor !== 'black');
+        const hasDotting = draft.dotting && draft.dotting.enabled;
+        const hasWordOverrides = draft.wordLayout && Object.keys(draft.wordLayout).length > 0;
+        const hasCustomText = draftText.length > 0 && draftText !== currentText;
+
+        if (hasCustomText || hasCustomSettings || hasDotting || hasWordOverrides) {
+            const timeDesc = view.formatDraftTime(draft.savedAt);
+            const msg = timeDesc ? `Phát hiện bản nháp chưa lưu (${timeDesc}).` : 'Phát hiện bản nháp chưa lưu.';
+            $('#draft-banner-text').text(msg);
+            $('#draft-banner').slideDown(200);
+
+            if (view._draftBannerTimer) clearTimeout(view._draftBannerTimer);
+            view._draftBannerTimer = setTimeout(function () {
+                view.dismissDraftNotification();
+            }, 10000);
+        }
+    } catch (e) {
+        console.warn('Draft check error:', e);
+    }
+};
+
+view.dismissDraftNotification = function () {
+    if (view._draftBannerTimer) {
+        clearTimeout(view._draftBannerTimer);
+        view._draftBannerTimer = null;
+    }
+    $('#draft-banner').slideUp(180);
+};
+
+view.restoreSavedDraft = function () {
+    try {
+        const raw = localStorage.getItem('handwriting_workspace_draft_v1') || localStorage.getItem('chudep_workspace_draft');
+        if (!raw) {
+            alert('Không tìm thấy bản nháp đã lưu.');
+            return;
+        }
+        const state = JSON.parse(raw);
+        view.applyWorkspaceState(state);
+        view.dismissDraftNotification();
+    } catch (e) {
+        console.error('Lỗi khi khôi phục bản nháp:', e);
+        alert('Không thể khôi phục bản nháp: ' + e.message);
+    }
+};
+
+view.resetToDefault = function () {
+    if (confirm('Bạn có chắc chắn muốn đặt lại bài viết về mặc định? Mọi thay đổi hiện tại trên bảng sẽ bị xóa.')) {
+        try {
+            localStorage.removeItem('chudep_workspace_draft');
+            localStorage.removeItem('handwriting_workspace_draft_v1');
+        } catch (_) {}
+        view.applyWorkspaceState({
+            text: "Nét chữ nết người",
+            sampleSelect: "",
+            settings: {
+                fontSize: '72',
+                boardColor: 'black',
+                fontColor: '#ffffff',
+                weight: true,
+                style: false
+            },
+            dotting: {
+                enabled: false,
+                spaces: 2,
+                repetitions: 5,
+                linesCount: 1,
+                fullDot: true,
+                outline: 'none',
+                color: '#e53935'
+            },
+            wordLayout: {}
+        });
+        $('#btn-menu-restore-draft').hide();
+        view.dismissDraftNotification();
+    }
+};
+
+view.generateProjectFileName = function (text) {
+    let cleanText = (text || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[\s\t\n]+/g, '_')
+        .replace(/[/\\:*?"<>|#%&{}+,;=~`^!@$()[\].,]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    if (!cleanText) cleanText = 'bai_tap';
+    if (cleanText.length > 35) {
+        cleanText = cleanText.substring(0, 35).replace(/_+$/, '');
+    }
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const mm = pad(now.getMonth() + 1);
+    const dd = pad(now.getDate());
+    const hh = pad(now.getHours());
+    const min = pad(now.getMinutes());
+
+    return `chudep_${cleanText}_${yyyy}${mm}${dd}-${hh}${min}.json`;
+};
+
+view.exportProjectFile = function () {
+    try {
+        const state = view.captureWorkspaceState();
+        const firstLine = ($('#input').val() || '').split('\n').map(l => l.trim()).filter(l => l.length > 0)[0] || '';
+        const fileName = view.generateProjectFileName(firstLine);
+        const jsonStr = JSON.stringify(state, null, 2);
+
+        const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+        console.error('Lỗi khi xuất tệp dự án:', e);
+        alert('Không thể xuất tệp dự án: ' + e.message);
+    }
+};
+
+view.importProjectFile = function (file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
+        alert('Vui lòng chọn tệp có định dạng .json');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const state = JSON.parse(e.target.result);
+            if (!state || typeof state !== 'object' || Array.isArray(state)) {
+                throw new Error('Dữ liệu JSON không đúng định dạng đối tượng.');
+            }
+            if (state.app !== 'VietnameseHandwritingGenerator' && typeof state.text !== 'string' && !state.settings) {
+                throw new Error('Tệp này không phải là tệp dự án bài tập Viết Chữ Đẹp.');
+            }
+            view.applyWorkspaceState(state);
+
+            // Also stage into localStorage
+            localStorage.setItem('chudep_workspace_draft', JSON.stringify(state));
+            localStorage.setItem('handwriting_workspace_draft_v1', JSON.stringify(state));
+            $('#btn-menu-restore-draft').show();
+            view.dismissDraftNotification();
+        } catch (err) {
+            console.error('Lỗi nạp tệp dự án:', err);
+            alert('Không thể mở tệp dự án: ' + (err.message || 'Cấu trúc không hợp lệ'));
+        }
+    };
+    reader.readAsText(file, 'utf-8');
+};
+
+view.setupProjectDragAndDrop = function () {
+    $(window).off('dragover.projectDrop dragleave.projectDrop drop.projectDrop');
+
+    $(window).on('dragover.projectDrop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('body').addClass('project-drag-active');
+    });
+
+    $(window).on('dragleave.projectDrop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.originalEvent.pageX === 0 && e.originalEvent.pageY === 0) {
+            $('body').removeClass('project-drag-active');
+        }
+    });
+
+    $(window).on('drop.projectDrop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('body').removeClass('project-drag-active');
+        const dt = e.originalEvent.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+            view.importProjectFile(dt.files[0]);
+        }
+    });
+
+    // File input handler
+    $('#project-file-input').off('change').on('change', function (e) {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+            view.importProjectFile(file);
+        }
+        $(this).val('');
+    });
+};
+
 view.exportBlackboardToPng = async function () {
     const $boards = $('.board.blackboard');
     if (!$boards.length) return;
@@ -801,24 +3490,30 @@ view.exportBlackboardToPng = async function () {
     const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
     const textColor = $('#font-color-input').val() || '#ffd700';
 
-    // High resolution retina export: 2x of A4 Landscape (1684 x 1190)
-    const S = 2;
-    const widthPx = 1684;
-    const heightPx = 1190;
+    // Ultra HD resolution export: 4x of A4 Landscape (3368 x 2380)
+    const S = 4;
+    const widthPx = 842 * S;
+    const heightPx = 595 * S;
     const baselineY = 408.05 * S; // 816.1px (Line 2 baseline)
     const startX = 96.092 * S;    // 192.18px
 
-    // Ensure custom font is ready before drawing
+    // Ensure custom fonts are ready before drawing
     if (document.fonts) {
-        await document.fonts.ready;
+        try {
+            await Promise.all([
+                document.fonts.load('16px HP001'),
+                document.fonts.load('16px HP001TD'),
+                document.fonts.ready
+            ]);
+        } catch (_) {}
     }
 
-    const isSmall = $('#font-size-select').val() === '36' || $('.result-text, #result').hasClass('small');
-    const domFontSize = isSmall ? 140.75 : 281.5;
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('.result-text, #result').hasClass('small');
+    const domFontSize = isSmall ? 144.66 : 281.5;
     const exportFontSize = domFontSize * S;
 
     // Get raw input lines for file naming
-    const rawInputLines = $('#input').val().split('\n').map(l => l.replace(/[\t]/g, "    ")).map(l => l.trim()).filter(l => l.length > 0);
+    const rawInputLines = ($('#input').val() || '').split('\n').map(l => l.replace(/[\t]/g, "    ").trim());
 
     const exportSingleBoard = function (bgImg, boardEl, bIdx) {
         return new Promise((resolve) => {
@@ -836,9 +3531,11 @@ view.exportBlackboardToPng = async function () {
             $line.children('.word').each(function () {
                 const wordEl = this;
                 const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+                const rawWord = $(wordEl).attr('data-raw') || '';
                 const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
                 words.push({
                     text: wordText,
+                    raw: rawWord,
                     offsetLeft: wordEl.offsetLeft,
                     offsetWidth: wordEl.offsetWidth,
                     stretch: stretch
@@ -846,7 +3543,7 @@ view.exportBlackboardToPng = async function () {
             });
 
             // Original line text for filename
-            const rawLineText = rawInputLines[bIdx] || words.map(w => w.text).join(' ');
+            const rawLineText = rawInputLines[bIdx] || words.map(w => w.raw || w.text).join(' ');
 
             if (words.length > 0) {
                 // 3. Draw text anchored on Line 2 baseline
@@ -863,6 +3560,7 @@ view.exportBlackboardToPng = async function () {
 
                 words.forEach(word => {
                     const xPos = startX + (word.offsetLeft * S);
+                    ctx.fillStyle = textColor;
                     if (word.stretch && word.stretch !== 1.0) {
                         ctx.save();
                         ctx.translate(xPos, baselineY);
@@ -877,25 +3575,173 @@ view.exportBlackboardToPng = async function () {
                 ctx.restore();
             }
 
-            const fileName = view.generateFileName('blackboard', rawLineText);
-
-            canvas.toBlob(function (blob) {
-                if (!blob) {
-                    resolve();
-                    return;
+            const $lineEl = $(boardEl).find('p.line').first();
+            const srcLineIdx = parseInt($lineEl.attr('data-source-line-idx'), 10);
+            const validSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : bIdx;
+            const lineDotConfig = view.getDottingConfig(validSrcIdx);
+            const hasText = words.length > 0;
+            const hasAnyText = ($('#input').val() || '').trim().length > 0;
+            if (lineDotConfig && lineDotConfig.enabled && hasAnyText) {
+                let wordsToDraw = words;
+                if (wordsToDraw.length === 0) {
+                    let $srcBoard = $(`p.line[data-source-line-idx="${validSrcIdx}"][data-is-practice="false"]`).closest('.board.blackboard');
+                    if (!$srcBoard.length) {
+                        $srcBoard = $(boardEl).prevAll('.board.blackboard').filter(function () {
+                            return $(this).find('p.line .word').length > 0;
+                        }).first();
+                    }
+                    if (!$srcBoard.length) $srcBoard = $($boards[0]);
+                    $srcBoard.find('p.line').first().children('.word').each(function () {
+                        const wEl = this;
+                        wordsToDraw.push({
+                            text: $(wEl).find('.word-text').text() || $(wEl).text(),
+                            raw: $(wEl).attr('data-raw') || '',
+                            offsetLeft: wEl.offsetLeft,
+                            offsetWidth: wEl.offsetWidth,
+                            stretch: parseFloat($(wEl).attr('data-stretch')) || 1.0
+                        });
+                    });
                 }
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => {
-                    URL.revokeObjectURL(url);
-                    resolve();
-                }, 200);
-            }, 'image/png');
+                let rawLine = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || rawInputLines[validSrcIdx] || wordsToDraw[0].text) : (rawInputLines[validSrcIdx] || rawInputLines[0] || 'a');
+                const charUnit = model.getFirstCharUnit(rawLine);
+                const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
+                let hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+                if (!hasDotConfigs && wordsToDraw.length > 1) {
+                    for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
+                        const wInfo = wordsToDraw[wIdx];
+                        const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                        const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                        if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                            hasDotConfigs = true;
+                            break;
+                        }
+                    }
+                }
+                const outlineInfo = view.parseOutlineOption(lineDotConfig.outline);
+
+                const olyUnitPx = (isSmall ? 28.932 : 56.3) * S;
+                const blockWidth = 225.2 * S;
+                const dotRadius = (isSmall ? 4 : 7) * S;
+
+                const wordOffset = wordsToDraw.length > 0 ? (wordsToDraw[0].offsetLeft * S) : 0;
+                const firstStretch = wordsToDraw.length > 0 && wordsToDraw[0].stretch ? wordsToDraw[0].stretch : 1.0;
+                const baseWordX = startX + wordOffset;
+
+                if (hasDotConfigs || outlineInfo.isEnabled) {
+                    ctx.save();
+                    if (isItalics) {
+                        ctx.translate(0, baselineY);
+                        ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
+                        ctx.translate(0, -baselineY);
+                    }
+
+                    for (let j = 0; j < lineDotConfig.repetitions; j++) {
+                        if (hasText || lineDotConfig.fullDot || j === 0) {
+                            const shiftX = j * blockWidth * lineDotConfig.spaces;
+
+                            // A. Faint / Dotted / Curve outline copies for students to trace
+                            if (outlineInfo.isEnabled) {
+                                const isCopy = (!hasText || j > 0);
+                                if (isCopy) {
+                                    ctx.save();
+                                    ctx.textBaseline = 'alphabetic';
+                                    const isDotted = (outlineInfo.style === 'dotted');
+                                    const isFaint = (outlineInfo.style === 'faint');
+                                    const isCurve = (outlineInfo.style === 'curve');
+
+                                    if (isDotted) {
+                                        ctx.font = `normal ${exportFontSize}px HP001TD, serif`;
+                                        ctx.fillStyle = 'rgba(255, 215, 0, 0.75)';
+                                    } else if (isFaint) {
+                                        ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
+                                        ctx.fillStyle = 'rgba(255, 215, 0, 0.38)';
+                                    } else {
+                                        ctx.font = `${isBold ? 'bold' : 'normal'} ${exportFontSize}px HP001, serif`;
+                                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                                        ctx.lineWidth = 1.2 * S;
+                                    }
+
+                                    const drawText = (str, x, y, strStretch) => {
+                                        if (strStretch && strStretch !== 1.0) {
+                                            ctx.save();
+                                            ctx.translate(x, y);
+                                            ctx.scale(strStretch, 1.0);
+                                            if (isCurve) {
+                                                ctx.strokeText(str, 0, 0);
+                                            } else {
+                                                ctx.fillText(str, 0, 0);
+                                            }
+                                            ctx.restore();
+                                        } else {
+                                            if (isCurve) {
+                                                ctx.strokeText(str, x, y);
+                                            } else {
+                                                ctx.fillText(str, x, y);
+                                            }
+                                        }
+                                    };
+
+                                    if (outlineInfo.scope === 'first') {
+                                        const xPos = baseWordX + shiftX;
+                                        const textToDraw = isDotted ? charUnit : model.getUnicodeStr(charUnit);
+                                        drawText(textToDraw, xPos, baselineY, firstStretch);
+                                    } else if (outlineInfo.scope === 'all') {
+                                        wordsToDraw.forEach(w => {
+                                            const xPos = startX + (w.offsetLeft * S) + shiftX;
+                                            const textToDraw = isDotted ? (w.raw || w.text) : (w.text || model.getUnicodeStr(w.raw));
+                                            drawText(textToDraw, xPos, baselineY, w.stretch || 1.0);
+                                        });
+                                    }
+                                    ctx.restore();
+                                }
+                            }
+
+                            // B. Guide dots
+                            if (hasDotConfigs) {
+                                if (wordsToDraw && wordsToDraw.length > 0) {
+                                    wordsToDraw.forEach((wInfo, wIdx) => {
+                                        const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                                        const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                                        if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                                            const wBaseX = startX + (wInfo.offsetLeft * S);
+                                            const wStretch = wInfo.stretch || 1.0;
+                                            for (const dot of wDotCfg.dots) {
+                                                const dotX = wBaseX + (dot.x * olyUnitPx * wStretch) + shiftX;
+                                                const dotY = baselineY - (dot.y * olyUnitPx);
+                                                ctx.beginPath();
+                                                ctx.fillStyle = lineDotConfig.color;
+                                                ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                                ctx.fill();
+                                                ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                                                ctx.lineWidth = 1 * S;
+                                                ctx.stroke();
+                                            }
+                                        }
+                                    });
+                                } else if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
+                                    for (const dot of activeDotConfig.dots) {
+                                        const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
+                                        const dotY = baselineY - (dot.y * olyUnitPx);
+                                        ctx.beginPath();
+                                        ctx.fillStyle = lineDotConfig.color;
+                                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                        ctx.fill();
+                                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                                        ctx.lineWidth = 1 * S;
+                                        ctx.stroke();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ctx.restore();
+                }
+            }
+
+            const lineSuffix = $boards.length > 1 ? (`_dong${bIdx + 1}`) : '';
+            const fileName = view.generateFileName('blackboard' + lineSuffix, rawLineText);
+
+            view.downloadCanvasAsPng(canvas, fileName).then(resolve);
         });
     };
 
@@ -920,10 +3766,333 @@ view.exportBlackboardToPng = async function () {
     }
 };
 
+view.exportWhite11x14ToPng = async function () {
+    const $boards = $('.board.white_11x14, .board.white_10x14');
+    if (!$boards.length) return;
+
+    const isSmall = $('#font-size-select').val() === '37' || $('#font-size-select').val() === '36' || $('.board.white_11x14 .result-text, .board.white_10x14 .result-text, #result').hasClass('small');
+    const isBold = $('#weight-checkbox').is(':checked') || $('.result-text, #result').hasClass('bold');
+    const isItalics = $('.grid').hasClass('italics') || $('.board').hasClass('italics') || $('#style-checkbox').is(':checked');
+    const textColor = $('#font-color-input').val() || '#2b1055';
+
+    // Ensure custom fonts are ready before drawing
+    if (document.fonts) {
+        try {
+            await Promise.all([
+                document.fonts.load('16px HP001'),
+                document.fonts.load('16px HP001TD'),
+                document.fonts.ready
+            ]);
+        } catch (_) {}
+    }
+
+    let scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
+    const ptToPx = 96 / 72; // 1.3333333333333333
+    const subGridPx = 14.4 * ptToPx; // 19.2px
+
+    // Dimensions: 46 cells wide (1 + 44 + 1), 60 cells tall (2 + 56 + 2)
+    const widthPx = 883.2;
+    const heightPx = 1152;
+    const maxCanvasDim = 8192;
+    const maxCanvasArea = 25000000;
+    if (widthPx * scale > maxCanvasDim || heightPx * scale > maxCanvasDim || (widthPx * scale * heightPx * scale) > maxCanvasArea) {
+        const scaleDim = maxCanvasDim / Math.max(widthPx, heightPx);
+        const scaleArea = Math.sqrt(maxCanvasArea / (widthPx * heightPx));
+        scale = Math.max(1, Math.min(4, Math.floor(Math.min(scaleDim, scaleArea) * 10) / 10));
+    }
+    const canvasWidth = Math.round(widthPx * scale);
+    const canvasHeight = Math.round(heightPx * scale);
+
+    const gridOriginX = subGridPx; // 19.2px (1 cell buffer left)
+    const gridOriginY = subGridPx * 2; // 38.4px (2 cells buffer top)
+
+    const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
+    const lineHeightPx = (isSmall ? (subGridPx * 4) : (subGridPx * 8)); // 76.8px or 153.6px
+    const firstBaselineY = gridOriginY + 4 * subGridPx; // Line 1 baseline at y = 6 cells (115.2px) matching on-screen Major Line 1
+
+    const exportSinglePage = function (boardEl, pIdx) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+
+            // 1. Draw Paper Background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, widthPx, heightPx);
+
+            // 2. Draw Grid Lines (Crisp and opaque for printing)
+            const majorColor = 'rgba(60, 75, 115, 0.9)';
+            const minorColor = 'rgba(90, 115, 165, 0.7)';
+
+            // Horizontal grid lines
+            for (let y = 0; y <= heightPx + 0.1; y += subGridPx) {
+                const k = Math.round((y - gridOriginY) / subGridPx);
+                const isMajor = (k % 4 === 0);
+                ctx.beginPath();
+                ctx.strokeStyle = isMajor ? majorColor : minorColor;
+                ctx.lineWidth = isMajor ? 2.0 : 1.0;
+                ctx.moveTo(0, y);
+                ctx.lineTo(widthPx, y);
+                ctx.stroke();
+            }
+
+            // Vertical grid lines (respecting slant if italics)
+            const slantOffset = isItalics ? Math.tan(17 * Math.PI / 180) : 0;
+            const xMin = -heightPx * slantOffset;
+            const xMax = widthPx + heightPx * slantOffset;
+            const startX = (gridOriginX % subGridPx) - heightPx * slantOffset;
+
+            for (let x = startX; x <= xMax; x += subGridPx) {
+                const k = Math.round((x - gridOriginX) / subGridPx);
+                const isMajor = (k % 4 === 0);
+                ctx.beginPath();
+                ctx.strokeStyle = isMajor ? majorColor : minorColor;
+                ctx.lineWidth = isMajor ? 2.0 : 1.0;
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x - heightPx * slantOffset, heightPx);
+                ctx.stroke();
+            }
+
+            // 3. Draw Text
+            ctx.save();
+            if (isItalics) {
+                ctx.transform(1, 0, -Math.tan(17 * Math.PI / 180), 1, 0, 0);
+            }
+
+            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, sans-serif`;
+            ctx.fillStyle = textColor;
+            ctx.textBaseline = 'alphabetic';
+
+            const linesPerPage = isSmall ? 14 : 7;
+            const dotConfig = view.getDottingConfig();
+            const $lines = $(boardEl).find('p.line');
+            const pageTexts = [];
+
+            $lines.each(function (lIdx) {
+                const globalLineIdx = (pIdx * linesPerPage) + lIdx;
+                const yPos = firstBaselineY + (lIdx * lineHeightPx);
+                const $line = $(this);
+                const words = [];
+                $line.children('.word').each(function () {
+                    const wordEl = this;
+                    const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+                    const rawWord = $(wordEl).attr('data-raw') || '';
+                    const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
+                    words.push({
+                        text: wordText,
+                        raw: rawWord,
+                        offsetLeft: wordEl.offsetLeft,
+                        offsetWidth: wordEl.offsetWidth,
+                        stretch: stretch
+                    });
+                });
+
+                if (words.length > 0) {
+                    pageTexts.push(words.map(w => w.raw || w.text).join(' '));
+                }
+
+                ctx.fillStyle = textColor;
+                words.forEach(word => {
+                    const xPos = gridOriginX + word.offsetLeft;
+                    if (word.stretch && word.stretch !== 1.0) {
+                        ctx.save();
+                        ctx.translate(xPos, yPos);
+                        ctx.scale(word.stretch, 1.0);
+                        ctx.fillStyle = textColor;
+                        ctx.fillText(word.text, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillStyle = textColor;
+                        ctx.fillText(word.text, xPos, yPos);
+                    }
+                });
+
+                const srcLineIdx = parseInt($line.attr('data-source-line-idx'), 10);
+                const validSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : globalLineIdx;
+                const hasText = words.length > 0;
+                const hasAnyText = ($('#input').val() || '').trim().length > 0;
+                const lineDotConfig = view.getDottingConfig(validSrcIdx);
+                if (lineDotConfig && lineDotConfig.enabled && hasAnyText) {
+                    let wordsToDraw = words;
+                    if (wordsToDraw.length === 0) {
+                        let $lineWithWords = $(`p.line[data-source-line-idx="${validSrcIdx}"][data-is-practice="false"]`).first();
+                        if (!$lineWithWords.length) {
+                            $lineWithWords = $line.prevAll('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
+                        }
+                        if (!$lineWithWords.length) {
+                            $lineWithWords = $('.board.white_11x14, .board.white_10x14').find('p.line').filter(function () { return $(this).children('.word').length > 0; }).first();
+                        }
+                        if ($lineWithWords.length) {
+                            $lineWithWords.children('.word').each(function () {
+                                wordsToDraw.push({
+                                    text: $(this).find('.word-text').text() || $(this).text(),
+                                    raw: $(this).attr('data-raw') || '',
+                                    offsetLeft: this.offsetLeft,
+                                    stretch: parseFloat($(this).attr('data-stretch')) || 1.0
+                                });
+                            });
+                        }
+                    }
+                    let rawLineText = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || wordsToDraw[0].text) : '';
+                    if (!rawLineText) {
+                        const rawLines = ($('#input').val() || '').split('\n').map(l => l.trim());
+                        const lineFromInput = rawLines[validSrcIdx] || rawLines[0] || 'a';
+                        rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
+                    }
+                    const charUnit = model.getFirstCharUnit(rawLineText);
+                    const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
+                    let hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+                    if (!hasDotConfigs && wordsToDraw.length > 1) {
+                        for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
+                            const wInfo = wordsToDraw[wIdx];
+                            const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                            const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                            if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                                hasDotConfigs = true;
+                                break;
+                            }
+                        }
+                    }
+                    const outlineInfo = view.parseOutlineOption(lineDotConfig.outline);
+
+                    const olyUnitPx = isSmall ? 9.6 : 19.2;
+                    const blockWidth = 76.8;
+                    const dotRadius = isSmall ? 2.5 : 3.5;
+
+                    const wordOffset = wordsToDraw.length > 0 ? wordsToDraw[0].offsetLeft : 0;
+                    const firstStretch = wordsToDraw.length > 0 && wordsToDraw[0].stretch ? wordsToDraw[0].stretch : 1.0;
+                    const baseWordX = gridOriginX + wordOffset;
+
+                    if (hasDotConfigs || outlineInfo.isEnabled) {
+                        for (let j = 0; j < lineDotConfig.repetitions; j++) {
+                            if (hasText || lineDotConfig.fullDot || j === 0) {
+                                const shiftX = j * blockWidth * lineDotConfig.spaces;
+
+                                // A. Outline copies (faint, dotted, curve)
+                                if (outlineInfo.isEnabled) {
+                                    const isCopy = (!hasText || j > 0);
+                                    if (isCopy) {
+                                        ctx.save();
+                                        ctx.textBaseline = 'alphabetic';
+                                        const isDotted = (outlineInfo.style === 'dotted');
+                                        const isFaint = (outlineInfo.style === 'faint');
+                                        const isCurve = (outlineInfo.style === 'curve');
+
+                                        if (isDotted) {
+                                            ctx.font = `normal ${fontSizePx}px HP001TD, serif`;
+                                            ctx.fillStyle = 'rgba(43, 16, 85, 0.65)';
+                                        } else if (isFaint) {
+                                            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
+                                            ctx.fillStyle = 'rgba(43, 16, 85, 0.32)';
+                                        } else {
+                                            ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
+                                            ctx.strokeStyle = 'rgba(43, 16, 85, 0.42)';
+                                            ctx.lineWidth = isSmall ? 0.8 : 1.0;
+                                        }
+
+                                        const drawText = (str, x, y, strStretch) => {
+                                            if (strStretch && strStretch !== 1.0) {
+                                                ctx.save();
+                                                ctx.translate(x, y);
+                                                ctx.scale(strStretch, 1.0);
+                                                if (isCurve) {
+                                                    ctx.strokeText(str, 0, 0);
+                                                } else {
+                                                    ctx.fillText(str, 0, 0);
+                                                }
+                                                ctx.restore();
+                                            } else {
+                                                if (isCurve) {
+                                                    ctx.strokeText(str, x, y);
+                                                } else {
+                                                    ctx.fillText(str, x, y);
+                                                }
+                                            }
+                                        };
+
+                                        if (outlineInfo.scope === 'first') {
+                                            const xPos = baseWordX + shiftX;
+                                            const textToDraw = isDotted ? charUnit : model.getUnicodeStr(charUnit);
+                                            drawText(textToDraw, xPos, yPos, firstStretch);
+                                        } else if (outlineInfo.scope === 'all') {
+                                            wordsToDraw.forEach(w => {
+                                                const xPos = gridOriginX + w.offsetLeft + shiftX;
+                                                const textToDraw = isDotted ? (w.raw || w.text) : (w.text || model.getUnicodeStr(w.raw));
+                                                drawText(textToDraw, xPos, yPos, w.stretch || 1.0);
+                                            });
+                                        }
+                                        ctx.restore();
+                                    }
+                                }
+
+                                // B. Guide dots
+                                if (hasDotConfigs) {
+                                    if (wordsToDraw && wordsToDraw.length > 0) {
+                                        wordsToDraw.forEach((wInfo, wIdx) => {
+                                            const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                                            const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                                            if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                                                const wBaseX = gridOriginX + wInfo.offsetLeft;
+                                                const wStretch = wInfo.stretch || 1.0;
+                                                for (const dot of wDotCfg.dots) {
+                                                    const dotX = wBaseX + (dot.x * olyUnitPx * wStretch) + shiftX;
+                                                    const dotY = yPos - (dot.y * olyUnitPx);
+                                                    ctx.beginPath();
+                                                    ctx.fillStyle = lineDotConfig.color;
+                                                    ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                                    ctx.fill();
+                                                }
+                                            }
+                                        });
+                                    } else if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
+                                        for (const dot of activeDotConfig.dots) {
+                                            const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
+                                            const dotY = yPos - (dot.y * olyUnitPx);
+                                            ctx.beginPath();
+                                            ctx.fillStyle = lineDotConfig.color;
+                                            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                            ctx.fill();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            ctx.restore();
+
+            const firstText = pageTexts[0] || 'chu_dep';
+            const pageSuffix = $boards.length > 1 ? `_p${pIdx + 1}` : '';
+            const fileName = view.generateFileName('white_11x14' + pageSuffix, firstText);
+
+            view.downloadCanvasAsPng(canvas, fileName).then(resolve);
+        });
+    };
+
+    for (let i = 0; i < $boards.length; i++) {
+        await exportSinglePage($boards[i], i);
+        if (i < $boards.length - 1) {
+            await new Promise(r => setTimeout(r, 400));
+        }
+    }
+};
+view.exportWhite10x14ToPng = view.exportWhite11x14ToPng;
+
 view.exportToPng = async function () {
-    const $board = $('.board');
-    if ($board.hasClass('blackboard')) {
-        view.exportBlackboardToPng();
+    const layout = $('#board-color-select').val();
+    const isBlackboard = layout ? (layout === 'blackboard') : $('.board').hasClass('blackboard');
+    const isWhite11x14 = layout ? (layout === 'white_11x14' || layout === 'white_10x14') : ($('.board').hasClass('white_11x14') || $('.board').hasClass('white_10x14'));
+
+    if (isBlackboard) {
+        await view.exportBlackboardToPng();
+        return;
+    }
+    if (isWhite11x14) {
+        await view.exportWhite11x14ToPng();
         return;
     }
 
@@ -941,9 +4110,11 @@ view.exportToPng = async function () {
         $line.children('.word').each(function () {
             const wordEl = this;
             const wordText = $(wordEl).find('.word-text').text() || $(wordEl).text();
+            const rawWord = $(wordEl).attr('data-raw') || '';
             const stretch = parseFloat($(wordEl).attr('data-stretch')) || 1.0;
             lineWords.push({
                 text: wordText,
+                raw: rawWord,
                 offsetLeft: wordEl.offsetLeft,
                 offsetWidth: wordEl.offsetWidth,
                 stretch: stretch
@@ -954,23 +4125,31 @@ view.exportToPng = async function () {
         });
     });
 
-    if (lines.length === 0 || !lines.some(l => l.words.length > 0)) {
+    const hasAnyText = ($('#input').val() || '').trim().length > 0;
+    const dotConfig = hasAnyText ? view.getDottingConfig() : null;
+    if (lines.length === 0 || !hasAnyText) {
         alert("Chưa có nội dung để xuất ảnh!");
         return;
     }
 
-    // Ensure custom font is ready before drawing
+    // Ensure custom fonts are ready before drawing
     if (document.fonts) {
-        await document.fonts.ready;
+        try {
+            await Promise.all([
+                document.fonts.load('16px HP001'),
+                document.fonts.load('16px HP001TD'),
+                document.fonts.ready
+            ]);
+        } catch (_) {}
     }
 
-    const scale = 2; // Retina sharpness
+    let scale = 4; // Ultra HD resolution (4x) for crystal-clear zooming and printing
     const ptToPx = 96 / 72; // 1.3333333333333333
     const subGridPx = 14.4 * ptToPx; // 19.2px
     const bigGridPx = subGridPx * 4; // 76.8px
 
     const fontSizePx = (isSmall ? 37 : 72) * ptToPx;
-    const lineHeightPx = (isSmall ? (36 + 14.4 * 1.5) : (72 + 14.4 * 3)) * ptToPx; // 76.8px or 153.6px
+    const lineHeightPx = (isSmall ? 4 : 8) * subGridPx; // 76.8px or 153.6px
 
     // 1. Accurately measure the widest line
     const measureCanvas = document.createElement('canvas');
@@ -988,6 +4167,17 @@ view.exportToPng = async function () {
         });
     });
 
+    if (dotConfig && dotConfig.enabled) {
+        const totalLinesCount = Math.max(lines.length, dotConfig.linesCount || 0);
+        for (let idx = 0; idx < totalLinesCount; idx++) {
+            const lineCfg = view.getDottingConfig(idx);
+            const maxDotsRight = subGridPx + (lineCfg.repetitions * bigGridPx * lineCfg.spaces);
+            if (maxDotsRight > maxLineRight) {
+                maxLineRight = maxDotsRight;
+            }
+        }
+    }
+
     // Grid origins matching CSS background-position: var(--grid-unit) calc(var(--grid-unit) * 2.5)
     const gridOriginX = subGridPx; // 19.2px
     const gridOriginY = subGridPx * 2.5; // 48px (shifted half cell lower)
@@ -998,17 +4188,25 @@ view.exportToPng = async function () {
     const neededWidth = Math.max(minViewportWidth, maxLineRight + bigGridPx * 2 + slantExtra);
     const widthPx = Math.ceil(neededWidth / bigGridPx) * bigGridPx;
 
-    // First line baseline rests on major line:
-    // In 72pt mode: gridOriginY + 8 sub-grids = 192px (Major line 2)
-    // In 36pt mode: gridOriginY + 4 sub-grids = 115.2px (Major line 1)
-    const firstBaselineY = gridOriginY + (isSmall ? 4 : 8) * subGridPx;
-    const lastBaselineY = firstBaselineY + (lines.length - 1) * lineHeightPx;
+    // First line baseline rests on major line 1 (124.8px) matching CSS on-screen display
+    const firstBaselineY = gridOriginY + 4 * subGridPx;
+    const totalLinesCount = Math.max(lines.length, (dotConfig && dotConfig.enabled) ? dotConfig.linesCount : 0);
+    const lastBaselineY = firstBaselineY + Math.max(0, totalLinesCount - 1) * lineHeightPx;
     const neededHeight = lastBaselineY + bigGridPx * 2;
     const heightPx = Math.ceil(neededHeight / bigGridPx) * bigGridPx;
 
+    // Item 3.1: Clamp export scale dynamically if dimensions exceed browser canvas memory limits
+    const maxCanvasDim = 8192;
+    const maxCanvasArea = 25000000;
+    if (widthPx * scale > maxCanvasDim || heightPx * scale > maxCanvasDim || (widthPx * scale * heightPx * scale) > maxCanvasArea) {
+        const scaleDim = maxCanvasDim / Math.max(widthPx, heightPx);
+        const scaleArea = Math.sqrt(maxCanvasArea / (widthPx * heightPx));
+        scale = Math.max(1, Math.min(4, Math.floor(Math.min(scaleDim, scaleArea) * 10) / 10));
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = widthPx * scale;
-    canvas.height = heightPx * scale;
+    canvas.width = Math.round(widthPx * scale);
+    canvas.height = Math.round(heightPx * scale);
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
 
@@ -1020,9 +4218,9 @@ view.exportToPng = async function () {
     }
     ctx.fillRect(0, 0, widthPx, heightPx);
 
-    // 3. Draw Grid Lines synchronized with CSS gridOrigin
-    const majorColor = isWhiteBoard ? 'rgba(100, 110, 140, 0.5)' : 'rgba(220, 220, 220, 0.7)';
-    const minorColor = isWhiteBoard ? 'rgba(140, 160, 200, 0.28)' : 'rgba(200, 200, 200, 0.32)';
+    // 3. Draw Grid Lines synchronized with CSS gridOrigin (Crisp and opaque for printing)
+    const majorColor = isWhiteBoard ? 'rgba(60, 75, 115, 0.9)' : 'rgba(220, 220, 220, 0.7)';
+    const minorColor = isWhiteBoard ? 'rgba(90, 115, 165, 0.7)' : 'rgba(200, 200, 200, 0.32)';
 
     // Horizontal grid lines
     const startY = gridOriginY % subGridPx;
@@ -1031,7 +4229,7 @@ view.exportToPng = async function () {
         const isMajor = (k % 4 === 0);
         ctx.beginPath();
         ctx.strokeStyle = isMajor ? majorColor : minorColor;
-        ctx.lineWidth = isMajor ? 1.5 : 0.75;
+        ctx.lineWidth = isMajor ? 2.0 : 1.0;
         ctx.moveTo(0, y);
         ctx.lineTo(widthPx, y);
         ctx.stroke();
@@ -1048,7 +4246,7 @@ view.exportToPng = async function () {
         const isMajor = (k % 4 === 0);
         ctx.beginPath();
         ctx.strokeStyle = isMajor ? majorColor : minorColor;
-        ctx.lineWidth = isMajor ? 1.5 : 0.75;
+        ctx.lineWidth = isMajor ? 2.0 : 1.0;
         ctx.moveTo(x, 0);
         ctx.lineTo(x - heightPx * slantOffset, heightPx);
         ctx.stroke();
@@ -1066,35 +4264,192 @@ view.exportToPng = async function () {
 
     lines.forEach((lineObj, idx) => {
         const yPos = firstBaselineY + (idx * lineHeightPx);
+        ctx.fillStyle = textColor;
         lineObj.words.forEach(word => {
             const xPos = gridOriginX + word.offsetLeft;
             if (word.stretch && word.stretch !== 1.0) {
                 ctx.save();
                 ctx.translate(xPos, yPos);
                 ctx.scale(word.stretch, 1.0);
+                ctx.fillStyle = textColor;
                 ctx.fillText(word.text, 0, 0);
                 ctx.restore();
             } else {
+                ctx.fillStyle = textColor;
                 ctx.fillText(word.text, xPos, yPos);
             }
         });
     });
+
+    // Draw dots
+    if (dotConfig && dotConfig.enabled) {
+        const olyUnitPx = isSmall ? 9.6 : 19.2;
+        const dotRadius = isSmall ? 2.5 : 3.5;
+        const rawInputLines = ($('#input').val() || '').split('\n').map(l => l.trim());
+
+        for (let idx = 0; idx < totalLinesCount; idx++) {
+            const lineObj = lines[idx];
+            const $line = $($result.children('p.line')[idx]);
+            const srcLineIdx = parseInt($line.attr('data-source-line-idx'), 10);
+            const validSrcIdx = !isNaN(srcLineIdx) ? srcLineIdx : idx;
+            const hasText = lineObj && lineObj.words.length > 0;
+            const lineDotConfig = view.getDottingConfig(validSrcIdx);
+
+            const yPos = firstBaselineY + (idx * lineHeightPx);
+            let wordsToDraw = hasText ? lineObj.words : [];
+            if (wordsToDraw.length === 0) {
+                const $modelLine = $(`p.line[data-source-line-idx="${validSrcIdx}"][data-is-practice="false"]`).first();
+                if ($modelLine.length) {
+                    const modelDomIdx = $result.children('p.line').index($modelLine);
+                    if (modelDomIdx !== -1 && lines[modelDomIdx] && lines[modelDomIdx].words.length > 0) {
+                        wordsToDraw = lines[modelDomIdx].words;
+                    }
+                }
+                if (wordsToDraw.length === 0) {
+                    for (let prev = idx - 1; prev >= 0; prev--) {
+                        if (lines[prev] && lines[prev].words.length > 0) {
+                            wordsToDraw = lines[prev].words;
+                            break;
+                        }
+                    }
+                    if (wordsToDraw.length === 0) {
+                        const firstLineWithWords = lines.find(l => l.words.length > 0);
+                        if (firstLineWithWords) {
+                            wordsToDraw = firstLineWithWords.words;
+                        }
+                    }
+                }
+            }
+            let rawLineText = wordsToDraw.length > 0 ? (wordsToDraw[0].raw || wordsToDraw[0].text) : '';
+            if (!rawLineText) {
+                const lineFromInput = rawInputLines[validSrcIdx] || rawInputLines.find(l => l.length > 0) || 'a';
+                rawLineText = lineFromInput.split(/\s+/)[0] || 'a';
+            }
+            const charUnit = model.getFirstCharUnit(rawLineText);
+            const activeDotConfig = view.getActiveDotConfig(charUnit, validSrcIdx, 0);
+            let hasDotConfigs = !!(activeDotConfig && activeDotConfig.dots && activeDotConfig.dots.length > 0);
+            if (!hasDotConfigs && wordsToDraw.length > 1) {
+                for (let wIdx = 1; wIdx < wordsToDraw.length; wIdx++) {
+                    const wInfo = wordsToDraw[wIdx];
+                    const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                    const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                    if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                        hasDotConfigs = true;
+                        break;
+                    }
+                }
+            }
+            const outlineInfo = view.parseOutlineOption(lineDotConfig.outline);
+
+            if (!hasDotConfigs && !outlineInfo.isEnabled) {
+                continue;
+            }
+
+            const wordOffset = wordsToDraw.length > 0 ? wordsToDraw[0].offsetLeft : 0;
+            const firstStretch = wordsToDraw.length > 0 && wordsToDraw[0].stretch ? wordsToDraw[0].stretch : 1.0;
+            const baseWordX = gridOriginX + wordOffset;
+
+            for (let j = 0; j < lineDotConfig.repetitions; j++) {
+                if (hasText || lineDotConfig.fullDot || j === 0) {
+                    const shiftX = j * bigGridPx * lineDotConfig.spaces;
+
+                    // A. Faint / Dotted / Curve outline copies
+                    if (outlineInfo.isEnabled) {
+                        const isCopy = (!hasText || j > 0);
+                        if (isCopy) {
+                            ctx.save();
+                            ctx.textBaseline = 'alphabetic';
+                            const isDotted = (outlineInfo.style === 'dotted');
+                            const isFaint = (outlineInfo.style === 'faint');
+                            const isCurve = (outlineInfo.style === 'curve');
+
+                            if (isDotted) {
+                                ctx.font = `normal ${fontSizePx}px HP001TD, serif`;
+                                ctx.fillStyle = isWhiteBoard ? 'rgba(43, 16, 85, 0.65)' : 'rgba(255, 255, 255, 0.75)';
+                            } else if (isFaint) {
+                                ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
+                                ctx.fillStyle = isWhiteBoard ? 'rgba(43, 16, 85, 0.32)' : 'rgba(255, 255, 255, 0.38)';
+                            } else {
+                                ctx.font = `${isBold ? 'bold' : 'normal'} ${fontSizePx}px HP001, serif`;
+                                ctx.strokeStyle = isWhiteBoard ? 'rgba(43, 16, 85, 0.42)' : 'rgba(255, 255, 255, 0.45)';
+                                ctx.lineWidth = isSmall ? 0.8 : 1.0;
+                            }
+
+                            const drawText = (str, x, y, strStretch) => {
+                                if (strStretch && strStretch !== 1.0) {
+                                    ctx.save();
+                                    ctx.translate(x, y);
+                                    ctx.scale(strStretch, 1.0);
+                                    if (isCurve) {
+                                        ctx.strokeText(str, 0, 0);
+                                    } else {
+                                        ctx.fillText(str, 0, 0);
+                                    }
+                                    ctx.restore();
+                                } else {
+                                    if (isCurve) {
+                                        ctx.strokeText(str, x, y);
+                                    } else {
+                                        ctx.fillText(str, x, y);
+                                    }
+                                }
+                            };
+
+                            if (outlineInfo.scope === 'first') {
+                                const xPos = baseWordX + shiftX;
+                                const textToDraw = isDotted ? charUnit : model.getUnicodeStr(charUnit);
+                                drawText(textToDraw, xPos, yPos, firstStretch);
+                            } else if (outlineInfo.scope === 'all') {
+                                wordsToDraw.forEach(w => {
+                                    const xPos = gridOriginX + w.offsetLeft + shiftX;
+                                    const textToDraw = isDotted ? (w.raw || w.text) : (w.text || model.getUnicodeStr(w.raw));
+                                    drawText(textToDraw, xPos, yPos, w.stretch || 1.0);
+                                });
+                            }
+                            ctx.restore();
+                        }
+                    }
+
+                    // B. Guide dots
+                    if (hasDotConfigs) {
+                        if (wordsToDraw && wordsToDraw.length > 0) {
+                            wordsToDraw.forEach((wInfo, wIdx) => {
+                                const wChar = model.getFirstCharUnit(wInfo.raw || wInfo.text);
+                                const wDotCfg = view.getActiveDotConfig(wChar, validSrcIdx, wIdx);
+                                if (wDotCfg && Array.isArray(wDotCfg.dots) && wDotCfg.dots.length > 0) {
+                                    const wBaseX = gridOriginX + wInfo.offsetLeft;
+                                    const wStretch = wInfo.stretch || 1.0;
+                                    for (const dot of wDotCfg.dots) {
+                                        const dotX = wBaseX + (dot.x * olyUnitPx * wStretch) + shiftX;
+                                        const dotY = yPos - (dot.y * olyUnitPx);
+                                        ctx.beginPath();
+                                        ctx.fillStyle = lineDotConfig.color;
+                                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                        ctx.fill();
+                                    }
+                                }
+                            });
+                        } else if (activeDotConfig && Array.isArray(activeDotConfig.dots) && activeDotConfig.dots.length > 0) {
+                            for (const dot of activeDotConfig.dots) {
+                                const dotX = baseWordX + (dot.x * olyUnitPx * firstStretch) + shiftX;
+                                const dotY = yPos - (dot.y * olyUnitPx);
+                                ctx.beginPath();
+                                ctx.fillStyle = lineDotConfig.color;
+                                ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     ctx.restore();
 
     // 5. Trigger Download
     const rawInputLines = $('#input').val().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    const layout = $('#board-color-select').val();
     const fileName = view.generateFileName(layout, rawInputLines[0] || 'chu_dep');
 
-    canvas.toBlob(function (blob) {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 'image/png');
+    await view.downloadCanvasAsPng(canvas, fileName);
 };

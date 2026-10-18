@@ -14,6 +14,14 @@
     src: url(/static/font/HP001B30.ttf) format('truetype');
 }
 
+@font-face {
+    font-family: 'HP001TD';
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+    src: url(/static/font/HP001TD.otf) format('opentype');
+}
+
 :root {
     --primary: #1976d2;
     --primary-hover: #1565c0;
@@ -106,6 +114,8 @@ body {
     width: 100%;
     padding: 0 16px 24px 16px;
     box-sizing: border-box;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Control Panel */
@@ -221,6 +231,68 @@ input[type="checkbox"] {
     accent-color: var(--primary);
 }
 
+.tool-dotting-toggle input[type="checkbox"] {
+    accent-color: #dc2626;
+}
+
+.dotting-options-wrapper {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.dotting-options-wrapper .tool-item {
+    font-size: 0.85rem;
+    gap: 4px;
+}
+
+.num-input-sm {
+    width: 48px;
+    padding: 3px 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: #ffffff;
+    color: var(--text-main);
+    outline: none;
+}
+
+.num-input-sm:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+}
+
+.num-input-sm:disabled {
+    background: #e2e8f0;
+    color: #64748b;
+    cursor: not-allowed;
+    border-color: #cbd5e1;
+}
+
+.badge-subtle {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+    border-radius: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.unit-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 input[type="color"] {
     -webkit-appearance: none;
     border: 1px solid var(--border);
@@ -313,6 +385,11 @@ input[type="color"]::-webkit-color-swatch {
     overflow: hidden;
 }
 
+.dropdown.dropdown-left .dropdown-content {
+    left: 0;
+    right: auto;
+}
+
 .dropdown:hover .dropdown-content {
     display: block;
 }
@@ -370,4 +447,851 @@ input[type="color"]::-webkit-color-swatch {
 
 .app-footer a:hover {
     text-decoration: underline;
+}
+
+/* Line Dotting Controls & Popover */
+.line-dot-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.btn-line-dot-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+    border-radius: 3px;
+    padding: 0 5px;
+    height: 18px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    transition: all 0.15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1;
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+
+.btn-line-dot-badge:hover {
+    background: #fecaca;
+    border-color: #f87171;
+    transform: scale(1.04);
+}
+
+.btn-line-dot-badge.is-custom {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #b91c1c;
+}
+
+/* Elevate stacking context when popover is open so it NEVER renders behind other lines */
+p.line.has-dot-popover {
+    z-index: 900 !important;
+}
+
+.word.is-dotting-open,
+.word.is-dotting-open .word-handle,
+p.line.has-dot-popover .word.is-dotting-open .word-handle {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 1000 !important;
+}
+
+.line-dot-popover {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    width: 210px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+    padding: 10px 12px;
+    z-index: 2000 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85rem;
+    color: #1e293b;
+    line-height: 1.4;
+    white-space: normal;
+    text-align: left;
+}
+
+/* Cancel italic skew on popover so it stays upright */
+.grid.italics .line-dot-popover,
+.italics .line-dot-popover {
+    transform: skewX(17deg);
+    transform-origin: top left;
+}
+
+.line-dot-popover .popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.line-dot-popover .popover-header strong {
+    font-size: 0.85rem;
+    color: #0f172a;
+}
+
+.line-dot-popover .popover-close {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 0 4px;
+}
+
+.line-dot-popover .popover-close:hover {
+    color: #334155;
+}
+
+.line-dot-popover .popover-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.line-dot-popover .step-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.line-dot-popover .btn-step {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: #334155;
+}
+
+.line-dot-popover .btn-step:hover {
+    background: #e2e8f0;
+}
+
+.line-dot-popover .step-val {
+    font-weight: 600;
+    min-width: 32px;
+    text-align: center;
+    color: #0f172a;
+}
+
+.line-dot-popover .btn-popover-reset {
+    width: 100%;
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    color: #64748b;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.line-dot-popover .btn-popover-reset:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+/* Word Dotting Configuration Button and Popover */
+.word-dot-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+
+.btn-word-dot-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+    border-radius: 3px;
+    padding: 0 5px;
+    height: 18px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    transition: all 0.15s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1;
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+
+.btn-word-dot-badge:hover {
+    background: #bae6fd;
+    border-color: #38bdf8;
+    transform: scale(1.04);
+}
+
+.btn-word-dot-badge.is-custom {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0369a1;
+}
+
+.btn-word-dot-badge.is-empty {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #cbd5e1;
+}
+
+.btn-word-dot-badge.is-empty:hover {
+    background: #e2e8f0;
+    color: #475569;
+    border-color: #94a3b8;
+}
+
+.word-dot-config-popover {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    width: 260px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+    padding: 10px 12px;
+    z-index: 2000 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.82rem;
+    color: #1e293b;
+    line-height: 1.4;
+    white-space: normal;
+    text-align: left;
+}
+
+.grid.italics .word-dot-config-popover,
+.italics .word-dot-config-popover {
+    transform: skewX(17deg);
+    transform-origin: top left;
+}
+
+.word-dot-config-popover .popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.word-dot-config-popover .popover-header strong {
+    font-size: 0.82rem;
+    color: #0f172a;
+}
+
+.word-dot-config-popover .popover-close {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 0 4px;
+}
+
+.word-dot-config-popover .popover-close:hover {
+    color: #334155;
+}
+
+.dot-cfg-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.dot-cfg-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.dot-cfg-item:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+}
+
+.dot-cfg-item.is-selected {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.dot-cfg-item-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.dot-cfg-item-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #0f172a;
+}
+
+.dot-cfg-item-desc {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 1px;
+    line-height: 1.25;
+}
+
+.dot-cfg-check {
+    font-size: 0.85rem;
+}
+
+.popover-dynamic-teaser {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.popover-dynamic-teaser .dynamic-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.popover-dynamic-teaser .dynamic-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+    line-height: 1.3;
+    margin-top: 2px;
+}
+
+/* Draft notification banner */
+.draft-banner {
+    max-width: 1240px;
+    margin: 12px auto 0 auto;
+    padding: 10px 18px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    animation: slideDownFade 0.25s ease-out;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.draft-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #1e3a8a;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.draft-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-subtle {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #64748b;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-subtle:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.text-danger {
+    color: #dc2626 !important;
+}
+
+.text-danger:hover {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+}
+
+/* Drag-and-drop active project dropzone */
+body.project-drag-active::after {
+    content: "Thả tệp dự án (.json) vào đây để mở bài tập";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(37, 99, 235, 0.92);
+    color: #ffffff;
+    padding: 18px 36px;
+    border-radius: 12px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 10000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+body.project-drag-active .panel {
+    outline: 3px dashed #2563eb !important;
+    outline-offset: -4px;
+}
+
+/* ==========================================================================
+   Freestyle Runtime Dotting Modal & Popover Styling
+   ========================================================================== */
+
+.btn-open-freestyle-modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 8px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #2563eb;
+    background: #f0f7ff;
+    border: 1px dashed #93c5fd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-open-freestyle-modal:hover {
+    background: #dbeafe;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+
+.dot-cfg-item.is-custom-dynamic {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.dot-cfg-item.is-custom-dynamic.is-selected {
+    border-color: #d97706;
+    background: #fef3c7;
+    box-shadow: 0 0 0 1px #d97706;
+}
+
+.dot-cfg-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-icon-xs {
+    background: transparent;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    color: #64748b;
+    font-size: 0.7rem;
+    padding: 2px 5px;
+    cursor: pointer;
+    line-height: 1.2;
+    transition: all 0.15s ease;
+}
+
+.btn-icon-xs:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+    border-color: #94a3b8;
+}
+
+.btn-icon-xs.text-danger:hover {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+
+/* Freestyle Modal Overlay & Dialog */
+.freestyle-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+    animation: fadeInModal 0.2s ease-out;
+}
+
+@keyframes fadeInModal {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.freestyle-modal-dialog {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    width: 900px;
+    max-width: 100%;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1e293b;
+}
+
+.freestyle-modal-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+}
+
+.freestyle-modal-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.badge-char {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #ffffff;
+    font-family: HP001, serif;
+    font-size: 1.25rem;
+    line-height: 1.1;
+    font-weight: bold;
+}
+
+.freestyle-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.freestyle-modal-close:hover {
+    color: #334155;
+    background: #e2e8f0;
+}
+
+.freestyle-modal-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: #f8fafc;
+}
+
+.freestyle-grid-col {
+    flex: 0 0 448px;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#freestylePreviewContainer {
+    width: 448px;
+    max-width: 100%;
+    height: 504px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    position: relative;
+    user-select: none;
+    touch-action: none;
+    overflow: hidden;
+}
+
+.freestyle-grid-hint {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.freestyle-controls-col {
+    flex: 1;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.freestyle-section {
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.freestyle-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.freestyle-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.03em;
+    margin: 0;
+}
+
+.freestyle-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-xs {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.freestyle-dots-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 32px;
+    align-items: center;
+}
+
+.freestyle-dot-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 14px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.freestyle-dot-pill:hover {
+    background: #e2e8f0;
+}
+
+.freestyle-dot-pill.is-active {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #dc2626;
+    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.35);
+}
+
+.freestyle-card {
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.freestyle-card-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.freestyle-form-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    margin-bottom: 10px;
+}
+
+.freestyle-form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.freestyle-form-group.flex-2 {
+    flex: 1.5;
+}
+
+.freestyle-form-group label {
+    font-size: 0.73rem;
+    font-weight: 600;
+    color: #64748b;
+    margin: 0;
+}
+
+.freestyle-input-unit {
+    display: flex;
+    align-items: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.freestyle-input-unit input {
+    border: none;
+    outline: none;
+    padding: 4px 6px;
+    width: 100%;
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+.freestyle-input-unit span {
+    padding: 4px 6px;
+    background: #f1f5f9;
+    border-left: 1px solid #cbd5e1;
+    font-size: 0.73rem;
+    color: #64748b;
+}
+
+.form-input {
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-input:focus, .freestyle-input-unit input:focus {
+    border-color: #2563eb;
+}
+
+.freestyle-actions-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.freestyle-scope-box {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.freestyle-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e40af;
+    cursor: pointer;
+    margin: 0;
+}
+
+.freestyle-checkbox-label input {
+    cursor: pointer;
+}
+
+.freestyle-scope-hint {
+    font-size: 0.72rem;
+    color: #3b82f6;
+    margin-top: 4px;
+    margin-left: 22px;
+    line-height: 1.3;
+}
+
+.freestyle-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }

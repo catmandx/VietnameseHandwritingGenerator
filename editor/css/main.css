@@ -28,9 +28,62 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
-.card{
+.baseCard {
     cursor: pointer;
     width: 220px;
+}
+
+.start-point-card {
+    width: 100% !important;
+    cursor: default !important;
+}
+
+.dot-badge {
+    gap: 4px;
+    z-index: 2;
+    padding: 3px;
+    user-select: none;
+    cursor: help;
+    transition: transform 0.15s ease;
+}
+
+.dot-badge:hover {
+    transform: scale(1.2);
+}
+
+.dot-badge .dot-indicator {
+    display: inline-block;
+    width: 8.5px;
+    height: 8.5px;
+    border-radius: 50%;
+    background-color: #dc2626;
+    box-shadow: 0 0 0 1.5px #ffffff, 0 1px 3px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+}
+
+/* Drag and drop active dropzone styling */
+#app.drop-zone-active {
+    outline: 3px dashed #0d6efd !important;
+    outline-offset: -10px;
+    background-color: rgba(13, 110, 253, 0.04) !important;
+    position: relative;
+}
+
+#app.drop-zone-active::after {
+    content: "Thả file all.json vào đây để nạp dữ liệu";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(13, 110, 253, 0.92);
+    color: #ffffff;
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .card-header{
@@ -67,4 +120,26 @@ input.glyph-display{
 .input-padding{
     line-height: 10pt;
     background-color: aquamarine;
+}
+
+#startPointPreviewContainer {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#startPointSvg {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.svg-dot-node {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.config-tab-pill,
+.dot-item-pill {
+    transition: none !important;
 }
